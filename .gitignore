@@ -1,12 +1,21 @@
+*.iml
+*.ipr
+*.iws
+target/
+pom.xml.versionsBackup
+test-output/
+test-reports/
+/atlassian-ide-plugin.xml
+.idea
+.DS_Store
+.classpath
+.settings
+.project
+temp-testng-customsuite.xml
+test-output
+.externalToolBuilders
+*~
+benchmark_outputs
 *.class
-
-# Mobile Tools for Java (J2ME)
-.mtj.tmp/
-
-# Package Files #
-*.jar
-*.war
-*.ear
-
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
-hs_err_pid*
+.checkstyle
+.mvn/timing.properties
