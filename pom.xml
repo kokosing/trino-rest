@@ -2,6 +2,12 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
+    <parent>
+        <groupId>io.airlift</groupId>
+        <artifactId>airbase</artifactId>
+        <version>61</version>
+    </parent>
+
     <groupId>rocks.prestodb</groupId>
     <artifactId>presto-rest</artifactId>
     <description>Presto rest</description>
@@ -16,6 +22,14 @@
     </modules>
 
     <properties>
-        <presto.version>0.162</presto.version>
+        <air.check.skip-extended>true</air.check.skip-extended>
+        <air.check.skip-license>false</air.check.skip-license>
+
+        <air.check.fail-checkstyle>true</air.check.fail-checkstyle>
+        <air.check.skip-checkstyle>false</air.check.skip-checkstyle>
+        <air.java.version>1.8.0-30</air.java.version>
+        <air.maven.version>3.3.9</air.maven.version>
+
+        <presto.version>0.165</presto.version>
     </properties>
 </project>
