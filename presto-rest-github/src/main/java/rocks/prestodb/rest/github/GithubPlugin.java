@@ -17,7 +17,7 @@ package rocks.prestodb.rest.github;
 import com.facebook.presto.spi.Plugin;
 import com.facebook.presto.spi.connector.ConnectorFactory;
 import com.google.common.collect.ImmutableList;
-import com.teradata.rest.RestConnectorFactory;
+import rocks.prestodb.rest.RestConnectorFactory;
 
 public class GithubPlugin
         implements Plugin

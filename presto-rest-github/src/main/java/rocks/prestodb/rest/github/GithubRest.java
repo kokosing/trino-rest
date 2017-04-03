@@ -20,11 +20,11 @@ import com.facebook.presto.spi.SchemaTableName;
 import com.facebook.presto.spi.type.BigintType;
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
-import com.teradata.rest.Rest;
-import rocks.prestodb.rest.github.model.Issue;
 import retrofit2.Response;
 import retrofit2.Retrofit;
 import retrofit2.converter.jackson.JacksonConverterFactory;
+import rocks.prestodb.rest.Rest;
+import rocks.prestodb.rest.github.model.Issue;
 
 import java.io.IOException;
 import java.util.Collection;
