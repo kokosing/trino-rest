@@ -17,7 +17,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <groupId>rocks.prestodb</groupId>
+        <groupId>rocks.prestosql</groupId>
         <artifactId>presto-rest</artifactId>
         <version>0.1-SNAPSHOT</version>
     </parent>
@@ -34,7 +34,7 @@
     <dependencies>
         <!-- Presto SPI -->
         <dependency>
-            <groupId>com.facebook.presto</groupId>
+            <groupId>io.prestosql</groupId>
             <artifactId>presto-spi</artifactId>
             <scope>provided</scope>
         </dependency>
