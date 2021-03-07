@@ -16,35 +16,166 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
+    <groupId>pl.net.was</groupId>
+    <artifactId>trino-rest</artifactId>
+    <version>0.2-SNAPSHOT</version>
+    <description>Trino RESTful Connectors</description>
+    <packaging>pom</packaging>
+
     <parent>
         <groupId>io.airlift</groupId>
         <artifactId>airbase</artifactId>
-        <version>104</version>
+        <version>105</version>
     </parent>
 
-    <groupId>rocks.prestosql</groupId>
-    <artifactId>presto-rest</artifactId>
-    <version>0.1-SNAPSHOT</version>
-    <description>Presto rest</description>
-    <packaging>pom</packaging>
+    <licenses>
+        <license>
+            <name>Apache License 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
 
     <modules>
-        <module>presto-rest-base</module>
-        <module>presto-rest-slack</module>
-        <module>presto-rest-github</module>
-        <module>presto-rest-twitter</module>
+        <module>trino-rest-base</module>
+        <module>trino-rest-slack</module>
+        <module>trino-rest-github</module>
+        <module>trino-rest-twitter</module>
     </modules>
 
     <properties>
         <project.build.targetJdk>11</project.build.targetJdk>
+
         <air.check.skip-extended>true</air.check.skip-extended>
         <air.check.skip-license>false</air.check.skip-license>
 
         <air.check.fail-checkstyle>true</air.check.fail-checkstyle>
         <air.check.skip-checkstyle>false</air.check.skip-checkstyle>
 
-        <presto.version>347</presto.version>
+        <dep.trino.version>352</dep.trino.version>
+        <dep.airlift.version>202</dep.airlift.version>
+        <dep.packaging.version>${dep.airlift.version}</dep.packaging.version>
+        <dep.errorprone.version>2.5.1</dep.errorprone.version>
+        <dep.jackson.version>2.11.4</dep.jackson.version>
+        <dep.testng.version>6.10</dep.testng.version>
     </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>io.airlift</groupId>
+            <artifactId>slice</artifactId>
+            <version>0.40</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!--dependency>
+            <groupId>org.openjdk.jol</groupId>
+            <artifactId>jol-core</artifactId>
+            <version>0.12</version>
+            <scope>provided</scope>
+        </dependency-->
+
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>30.1-jre</version>
+        </dependency>
+
+        <!--dependency>
+            <groupId>com.google.inject</groupId>
+            <artifactId>guice</artifactId>
+            <version>4.2.3</version>
+        </dependency-->
+
+        <dependency>
+            <groupId>com.google.errorprone</groupId>
+            <artifactId>error_prone_annotations</artifactId>
+            <version>${dep.errorprone.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>joda-time</groupId>
+            <artifactId>joda-time</artifactId>
+            <version>2.10.9</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!--dependency>
+            <groupId>javax.inject</groupId>
+            <artifactId>javax.inject</artifactId>
+            <version>1</version>
+        </dependency-->
+
+        <!--dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${dep.jackson.version}</version>
+        </dependency-->
+
+        <!--dependency>
+            <groupId>com.squareup.okhttp3</groupId>
+            <artifactId>okhttp</artifactId>
+            <version>3.14.9</version>
+        </dependency-->
+
+        <dependency>
+            <groupId>io.trino</groupId>
+            <artifactId>trino-spi</artifactId>
+            <scope>provided</scope>
+            <version>${dep.trino.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+            <version>${dep.jackson.version}</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <!-- for testing -->
+        <dependency>
+            <groupId>io.trino</groupId>
+            <artifactId>trino-main</artifactId>
+            <scope>test</scope>
+            <version>${dep.trino.version}</version>
+        </dependency>
+
+        <!--dependency>
+            <groupId>io.trino</groupId>
+            <artifactId>trino-main</artifactId>
+            <type>test-jar</type>
+            <version>${dep.trino.version}</version>
+        </dependency-->
+
+        <dependency>
+            <groupId>io.trino</groupId>
+            <artifactId>trino-testing</artifactId>
+            <scope>test</scope>
+            <version>${dep.trino.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>io.trino</groupId>
+            <artifactId>trino-memory</artifactId>
+            <scope>test</scope>
+            <version>${dep.trino.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <version>3.18.1</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>net.java.dev.jna</groupId>
+            <artifactId>jna</artifactId>
+            <version>5.7.0</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
 
     <build>
         <pluginManagement>
@@ -63,10 +194,15 @@
         </pluginManagement>
         <plugins>
             <plugin>
-                <groupId>io.prestosql</groupId>
-                <artifactId>presto-maven-plugin</artifactId>
-                <version>9</version>
+                <groupId>io.trino</groupId>
+                <artifactId>trino-maven-plugin</artifactId>
+                <version>10</version>
                 <extensions>true</extensions>
+                <configuration>
+                    <pluginClassName>io.trino.spi.Plugin</pluginClassName>
+                    <spiGroupId>io.trino</spiGroupId>
+                    <spiArtifactId>trino-spi</spiArtifactId>
+                </configuration>
             </plugin>
 
             <plugin>
@@ -88,17 +224,6 @@
                 <artifactId>maven-enforcer-plugin</artifactId>
                 <configuration>
                     <rules>
-                        <!-- TODO
-                        <compound implementation="com.github.ferstl.maven.pomenforcers.CompoundPedanticEnforcer">
-                            <enforcers>POM_SECTION_ORDER,MODULE_ORDER,DEPENDENCY_MANAGEMENT_ORDER,DEPENDENCY_ORDER</enforcers>
-                            <pomSectionPriorities>modelVersion,parent,groupId,artifactId,version,name,description,packaging,url,inceptionYear,licenses,scm,properties,modules</pomSectionPriorities>
-                            <dependenciesGroupIdPriorities>io.prestosql,io.airlift</dependenciesGroupIdPriorities>
-                            <dependenciesOrderBy>scope,groupId,artifactId</dependenciesOrderBy>
-                            <dependenciesScopePriorities>compile,runtime,provided,test</dependenciesScopePriorities>
-                            <dependencyManagementOrderBy>groupId,artifactId</dependencyManagementOrderBy>
-                            <dependencyManagementGroupIdPriorities>io.prestosql,io.airlift</dependencyManagementGroupIdPriorities>
-                        </compound>
-                        -->
                         <requireUpperBoundDeps>
                             <excludes combine.children="append">
                                 <!-- TODO: fix this in Airlift resolver -->
@@ -117,75 +242,4 @@
             </plugin>
         </plugins>
     </build>
-
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>rocks.prestosql</groupId>
-                <artifactId>presto-rest-base</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.prestosql</groupId>
-                <artifactId>presto-spi</artifactId>
-                <version>${presto.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.prestosql</groupId>
-                <artifactId>presto-tests</artifactId>
-                <version>${presto.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.prestosql</groupId>
-                <artifactId>presto-main</artifactId>
-                <version>${presto.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.prestosql</groupId>
-                <artifactId>presto-testing</artifactId>
-                <version>${presto.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>io.prestosql</groupId>
-                <artifactId>presto-main</artifactId>
-                <version>${presto.version}</version>
-                <type>test-jar</type>
-            </dependency>
-            <dependency>
-                <groupId>io.airlift</groupId>
-                <artifactId>slice</artifactId>
-                <version>0.39</version>
-            </dependency>
-            <dependency>
-                <groupId>com.squareup.retrofit2</groupId>
-                <artifactId>retrofit</artifactId>
-                <version>2.5.0</version>
-            </dependency>
-            <dependency>
-                <groupId>com.squareup.retrofit2</groupId>
-                <artifactId>converter-jackson</artifactId>
-                <version>2.1.0</version>
-            </dependency>
-            <dependency>
-                <groupId>com.fasterxml.jackson.core</groupId>
-                <artifactId>jackson-databind</artifactId>
-                <version>2.10.5.1</version>
-            </dependency>
-            <dependency>
-                <groupId>com.google.errorprone</groupId>
-                <artifactId>error_prone_annotations</artifactId>
-                <version>2.4.0</version>
-            </dependency>
-            <dependency>
-                <groupId>com.squareup.okhttp3</groupId>
-                <artifactId>okhttp</artifactId>
-                <version>3.9.0</version>
-            </dependency>
-            <dependency>
-                <groupId>se.akerfeldt</groupId>
-                <artifactId>okhttp-signpost</artifactId>
-                <version>1.1.0</version>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
 </project>
