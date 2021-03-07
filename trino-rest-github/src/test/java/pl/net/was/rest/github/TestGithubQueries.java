@@ -56,7 +56,10 @@ public class TestGithubQueries
         queryRunner.createCatalog(
                 "github",
                 "github",
-                ImmutableMap.of("token", System.getenv("GITHUB_TOKEN")));
+                ImmutableMap.of(
+                        "user", "trinodb",
+                        "repo", "trino",
+                        "token", System.getenv("GITHUB_TOKEN")));
 
         return queryRunner;
     }
@@ -65,12 +68,12 @@ public class TestGithubQueries
     public void showTables()
     {
         assertQuery("SHOW SCHEMAS FROM github", "VALUES 'default', 'information_schema'");
-        assertQuery("SHOW TABLES FROM github.default", "VALUES 'trino_issues'");
+        assertQuery("SHOW TABLES FROM github.default", "VALUES 'issues'");
     }
 
     @Test
     public void selectFromGeneral()
     {
-        computeActual("SELECT * FROM trino_issues");
+        computeActual("SELECT * FROM issues");
     }
 }

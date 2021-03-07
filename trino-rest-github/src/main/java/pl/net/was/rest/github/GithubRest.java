@@ -39,11 +39,19 @@ public class GithubRest
 {
     public static final String SCHEMA_NAME = "default";
 
+    private final String user;
+    private final String repo;
     private final GithubService service = new Retrofit.Builder()
             .baseUrl("https://api.github.com/")
             .addConverterFactory(JacksonConverterFactory.create())
             .build()
             .create(GithubService.class);
+
+    public GithubRest(String user, String repo)
+    {
+        this.user = user;
+        this.repo = repo;
+    }
 
     @Override
     public ConnectorTableMetadata getTableMetadata(SchemaTableName schemaTableName)
@@ -66,14 +74,14 @@ public class GithubRest
     @Override
     public List<SchemaTableName> listTables(String schema)
     {
-        return ImmutableList.of(new SchemaTableName(SCHEMA_NAME, "trino_issues"));
+        return ImmutableList.of(new SchemaTableName(SCHEMA_NAME, "issues"));
     }
 
     @Override
     public Collection<? extends List<?>> getRows(SchemaTableName schemaTableName)
     {
         try {
-            Response<List<Issue>> execute = service.listTrinoIssues().execute();
+            Response<List<Issue>> execute = service.listIssues(user, repo).execute();
             if (!execute.isSuccessful()) {
                 throw new IllegalStateException("Unable to read: " + execute.message());
             }

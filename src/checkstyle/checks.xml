@@ -170,9 +170,6 @@
 
         <module name="IllegalImport">
             <property name="illegalPkgs" value="
-                com.facebook.presto.hadoop.shaded,
-                com.facebook.presto.hadoop.$internal,
-                com.facebook.presto.hive.$internal,
                 org.weakref.jmx.internal,
                 jersey.repackaged,
                 jdk.nashorn.internal,

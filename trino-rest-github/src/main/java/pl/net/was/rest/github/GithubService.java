@@ -17,11 +17,12 @@ package pl.net.was.rest.github;
 import pl.net.was.rest.github.model.Issue;
 import retrofit2.Call;
 import retrofit2.http.GET;
+import retrofit2.http.Path;
 
 import java.util.List;
 
 public interface GithubService
 {
-    @GET("/repos/trinodb/trino/issues")
-    Call<List<Issue>> listTrinoIssues();
+    @GET("/repos/{user}/{repo}/issues")
+    Call<List<Issue>> listIssues(@Path("user") String user, @Path("repo") String repo);
 }

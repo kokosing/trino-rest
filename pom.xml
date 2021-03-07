@@ -25,7 +25,7 @@
     <parent>
         <groupId>io.airlift</groupId>
         <artifactId>airbase</artifactId>
-        <version>105</version>
+        <version>106</version>
     </parent>
 
     <licenses>
@@ -52,7 +52,7 @@
         <air.check.fail-checkstyle>true</air.check.fail-checkstyle>
         <air.check.skip-checkstyle>false</air.check.skip-checkstyle>
 
-        <dep.trino.version>352</dep.trino.version>
+        <dep.trino.version>353</dep.trino.version>
         <dep.airlift.version>202</dep.airlift.version>
         <dep.packaging.version>${dep.airlift.version}</dep.packaging.version>
         <dep.errorprone.version>2.5.1</dep.errorprone.version>
@@ -68,24 +68,11 @@
             <scope>provided</scope>
         </dependency>
 
-        <!--dependency>
-            <groupId>org.openjdk.jol</groupId>
-            <artifactId>jol-core</artifactId>
-            <version>0.12</version>
-            <scope>provided</scope>
-        </dependency-->
-
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
             <version>30.1-jre</version>
         </dependency>
-
-        <!--dependency>
-            <groupId>com.google.inject</groupId>
-            <artifactId>guice</artifactId>
-            <version>4.2.3</version>
-        </dependency-->
 
         <dependency>
             <groupId>com.google.errorprone</groupId>
@@ -100,24 +87,6 @@
             <version>2.10.9</version>
             <scope>runtime</scope>
         </dependency>
-
-        <!--dependency>
-            <groupId>javax.inject</groupId>
-            <artifactId>javax.inject</artifactId>
-            <version>1</version>
-        </dependency-->
-
-        <!--dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-            <version>${dep.jackson.version}</version>
-        </dependency-->
-
-        <!--dependency>
-            <groupId>com.squareup.okhttp3</groupId>
-            <artifactId>okhttp</artifactId>
-            <version>3.14.9</version>
-        </dependency-->
 
         <dependency>
             <groupId>io.trino</groupId>
@@ -140,13 +109,6 @@
             <scope>test</scope>
             <version>${dep.trino.version}</version>
         </dependency>
-
-        <!--dependency>
-            <groupId>io.trino</groupId>
-            <artifactId>trino-main</artifactId>
-            <type>test-jar</type>
-            <version>${dep.trino.version}</version>
-        </dependency-->
 
         <dependency>
             <groupId>io.trino</groupId>

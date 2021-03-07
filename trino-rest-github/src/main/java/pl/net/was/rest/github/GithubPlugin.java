@@ -25,6 +25,10 @@ public class GithubPlugin
     @Override
     public Iterable<ConnectorFactory> getConnectorFactories()
     {
-        return ImmutableList.of(new RestConnectorFactory("github", config -> new GithubRest()));
+        return ImmutableList.of(new RestConnectorFactory(
+                "github",
+                config -> new GithubRest(
+                        config.get("user"),
+                        config.get("repo"))));
     }
 }
