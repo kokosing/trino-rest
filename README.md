@@ -1,1 +1,1 @@
-# presto-rest
+# trino-rest
