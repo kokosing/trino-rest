@@ -19,20 +19,20 @@
     <parent>
         <groupId>io.airlift</groupId>
         <artifactId>airbase</artifactId>
-        <version>104</version>
+        <version>106</version>
     </parent>
 
-    <groupId>rocks.prestosql</groupId>
-    <artifactId>presto-rest</artifactId>
+    <groupId>rocks.trino</groupId>
+    <artifactId>trino-rest</artifactId>
     <version>0.1-SNAPSHOT</version>
     <description>Presto rest</description>
     <packaging>pom</packaging>
 
     <modules>
-        <module>presto-rest-base</module>
-        <module>presto-rest-slack</module>
-        <module>presto-rest-github</module>
-        <module>presto-rest-twitter</module>
+        <module>trino-rest-base</module>
+        <module>trino-rest-slack</module>
+        <module>trino-rest-github</module>
+        <module>trino-rest-twitter</module>
     </modules>
 
     <properties>
@@ -43,7 +43,7 @@
         <air.check.fail-checkstyle>true</air.check.fail-checkstyle>
         <air.check.skip-checkstyle>false</air.check.skip-checkstyle>
 
-        <presto.version>347</presto.version>
+        <trino.version>353</trino.version>
     </properties>
 
     <build>
@@ -63,9 +63,9 @@
         </pluginManagement>
         <plugins>
             <plugin>
-                <groupId>io.prestosql</groupId>
-                <artifactId>presto-maven-plugin</artifactId>
-                <version>9</version>
+                <groupId>io.trino</groupId>
+                <artifactId>trino-maven-plugin</artifactId>
+                <version>10</version>
                 <extensions>true</extensions>
             </plugin>
 
@@ -92,11 +92,11 @@
                         <compound implementation="com.github.ferstl.maven.pomenforcers.CompoundPedanticEnforcer">
                             <enforcers>POM_SECTION_ORDER,MODULE_ORDER,DEPENDENCY_MANAGEMENT_ORDER,DEPENDENCY_ORDER</enforcers>
                             <pomSectionPriorities>modelVersion,parent,groupId,artifactId,version,name,description,packaging,url,inceptionYear,licenses,scm,properties,modules</pomSectionPriorities>
-                            <dependenciesGroupIdPriorities>io.prestosql,io.airlift</dependenciesGroupIdPriorities>
+                            <dependenciesGroupIdPriorities>io.trino,io.airlift</dependenciesGroupIdPriorities>
                             <dependenciesOrderBy>scope,groupId,artifactId</dependenciesOrderBy>
                             <dependenciesScopePriorities>compile,runtime,provided,test</dependenciesScopePriorities>
                             <dependencyManagementOrderBy>groupId,artifactId</dependencyManagementOrderBy>
-                            <dependencyManagementGroupIdPriorities>io.prestosql,io.airlift</dependencyManagementGroupIdPriorities>
+                            <dependencyManagementGroupIdPriorities>io.trino,io.airlift</dependencyManagementGroupIdPriorities>
                         </compound>
                         -->
                         <requireUpperBoundDeps>
@@ -121,34 +121,34 @@
     <dependencyManagement>
         <dependencies>
             <dependency>
-                <groupId>rocks.prestosql</groupId>
-                <artifactId>presto-rest-base</artifactId>
+                <groupId>rocks.trino</groupId>
+                <artifactId>trino-rest-base</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.prestosql</groupId>
-                <artifactId>presto-spi</artifactId>
-                <version>${presto.version}</version>
+                <groupId>io.trino</groupId>
+                <artifactId>trino-spi</artifactId>
+                <version>${trino.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.prestosql</groupId>
-                <artifactId>presto-tests</artifactId>
-                <version>${presto.version}</version>
+                <groupId>io.trino</groupId>
+                <artifactId>trino-tests</artifactId>
+                <version>${trino.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.prestosql</groupId>
-                <artifactId>presto-main</artifactId>
-                <version>${presto.version}</version>
+                <groupId>io.trino</groupId>
+                <artifactId>trino-main</artifactId>
+                <version>${trino.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.prestosql</groupId>
-                <artifactId>presto-testing</artifactId>
-                <version>${presto.version}</version>
+                <groupId>io.trino</groupId>
+                <artifactId>trino-testing</artifactId>
+                <version>${trino.version}</version>
             </dependency>
             <dependency>
-                <groupId>io.prestosql</groupId>
-                <artifactId>presto-main</artifactId>
-                <version>${presto.version}</version>
+                <groupId>io.trino</groupId>
+                <artifactId>trino-main</artifactId>
+                <version>${trino.version}</version>
                 <type>test-jar</type>
             </dependency>
             <dependency>
@@ -169,17 +169,22 @@
             <dependency>
                 <groupId>com.fasterxml.jackson.core</groupId>
                 <artifactId>jackson-databind</artifactId>
-                <version>2.10.5.1</version>
+                <version>2.11.4</version>
             </dependency>
             <dependency>
                 <groupId>com.google.errorprone</groupId>
                 <artifactId>error_prone_annotations</artifactId>
-                <version>2.4.0</version>
+                <version>2.5.1</version>
             </dependency>
             <dependency>
                 <groupId>com.squareup.okhttp3</groupId>
                 <artifactId>okhttp</artifactId>
-                <version>3.9.0</version>
+                <version>3.14.9</version>
+            </dependency>
+            <dependency>
+                <groupId>net.java.dev.jna</groupId>
+                <artifactId>jna</artifactId>
+                <version>5.5.0</version>
             </dependency>
             <dependency>
                 <groupId>se.akerfeldt</groupId>
