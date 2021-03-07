@@ -18,6 +18,14 @@
 
     <artifactId>trino-rest-base</artifactId>
     <description>Trino REST base</description>
+    <dependencies>
+        <dependency>
+            <groupId>com.squareup.retrofit2</groupId>
+            <artifactId>converter-jackson</artifactId>
+            <version>2.9.0</version>
+            <scope>compile</scope>
+        </dependency>
+    </dependencies>
     <packaging>jar</packaging>
     <version>0.2-SNAPSHOT</version>
 

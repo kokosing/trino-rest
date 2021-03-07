@@ -15,9 +15,16 @@
 package pl.net.was.rest.github;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import io.trino.spi.Plugin;
 import io.trino.spi.connector.ConnectorFactory;
 import pl.net.was.rest.RestConnectorFactory;
+import pl.net.was.rest.github.function.WorkflowJobLogs;
+import pl.net.was.rest.github.function.WorkflowJobs;
+import pl.net.was.rest.github.function.WorkflowRuns;
+import pl.net.was.rest.github.function.WorkflowSteps;
+
+import java.util.Set;
 
 public class GithubPlugin
         implements Plugin
@@ -28,7 +35,19 @@ public class GithubPlugin
         return ImmutableList.of(new RestConnectorFactory(
                 "github",
                 config -> new GithubRest(
-                        config.get("user"),
+                        config.get("token"),
+                        config.get("owner"),
                         config.get("repo"))));
+    }
+
+    @Override
+    public Set<Class<?>> getFunctions()
+    {
+        return ImmutableSet.<Class<?>>builder()
+                .add(WorkflowRuns.class)
+                .add(WorkflowJobs.class)
+                .add(WorkflowSteps.class)
+                .add(WorkflowJobLogs.class)
+                .build();
     }
 }

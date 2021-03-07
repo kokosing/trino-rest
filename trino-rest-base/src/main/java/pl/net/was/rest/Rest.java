@@ -17,10 +17,12 @@ package pl.net.was.rest;
 import io.trino.spi.connector.ColumnMetadata;
 import io.trino.spi.connector.ConnectorTableMetadata;
 import io.trino.spi.connector.SchemaTableName;
+import io.trino.spi.connector.SchemaTablePrefix;
 import io.trino.spi.type.Type;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 import static java.util.stream.Collectors.toList;
@@ -39,6 +41,8 @@ public interface Rest
     }
 
     List<SchemaTableName> listTables(String schema);
+
+    Map<SchemaTableName, List<ColumnMetadata>> listTableColumns(SchemaTablePrefix schemaTablePrefix);
 
     Collection<? extends List<?>> getRows(SchemaTableName schemaTableName);
 

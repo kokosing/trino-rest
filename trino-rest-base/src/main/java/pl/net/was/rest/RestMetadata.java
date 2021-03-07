@@ -113,7 +113,7 @@ public class RestMetadata
     @Override
     public Map<SchemaTableName, List<ColumnMetadata>> listTableColumns(ConnectorSession connectorSession, SchemaTablePrefix schemaTablePrefix)
     {
-        return null;
+        return rest.listTableColumns(schemaTablePrefix);
     }
 
     @Override

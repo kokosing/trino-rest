@@ -19,6 +19,7 @@ import com.google.common.collect.ImmutableList;
 import io.trino.spi.connector.ColumnMetadata;
 import io.trino.spi.connector.ConnectorTableMetadata;
 import io.trino.spi.connector.SchemaTableName;
+import io.trino.spi.connector.SchemaTablePrefix;
 import pl.net.was.rest.Rest;
 import pl.net.was.rest.slack.model.Channel;
 import pl.net.was.rest.slack.model.Channels;
@@ -61,6 +62,11 @@ public class SlackRest
     private final Map<String, Im> ims;
     private final String token;
 
+    private final List<ColumnMetadata> columns = ImmutableList.of(
+            new ColumnMetadata("type", createUnboundedVarcharType()),
+            new ColumnMetadata("user", createUnboundedVarcharType()),
+            new ColumnMetadata("text", createUnboundedVarcharType()));
+
     public SlackRest(String token)
     {
         this.token = token;
@@ -97,10 +103,7 @@ public class SlackRest
     {
         return new ConnectorTableMetadata(
                 schemaTableName,
-                ImmutableList.of(
-                        new ColumnMetadata("type", createUnboundedVarcharType()),
-                        new ColumnMetadata("user", createUnboundedVarcharType()),
-                        new ColumnMetadata("text", createUnboundedVarcharType())));
+                columns);
     }
 
     @Override
@@ -123,6 +126,12 @@ public class SlackRest
                     .collect(toList());
         }
         return ImmutableList.of();
+    }
+
+    @Override
+    public Map<SchemaTableName, List<ColumnMetadata>> listTableColumns(SchemaTablePrefix schemaTablePrefix)
+    {
+        return null;
     }
 
     @Override
