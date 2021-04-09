@@ -21,6 +21,8 @@ import io.trino.spi.PageBuilder;
 import io.trino.spi.block.Block;
 import io.trino.spi.block.BlockBuilder;
 import io.trino.spi.type.ArrayType;
+import io.airlift.log.Level;
+import io.airlift.log.Logging;
 import okhttp3.OkHttpClient;
 import okhttp3.logging.HttpLoggingInterceptor;
 import pl.net.was.rest.github.GithubService;
@@ -39,14 +41,19 @@ public abstract class BaseFunction
 
     public BaseFunction()
     {
-        HttpLoggingInterceptor interceptor = new HttpLoggingInterceptor();
-        interceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
-        OkHttpClient client = new OkHttpClient.Builder().addInterceptor(interceptor).build();
+        OkHttpClient.Builder clientBuilder = new OkHttpClient.Builder();
+
+        Logging logger = Logging.initialize();
+        if (logger.getLevel(BaseFunction.class.getName()) == Level.DEBUG) {
+            HttpLoggingInterceptor interceptor = new HttpLoggingInterceptor();
+            interceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
+            clientBuilder.addInterceptor(interceptor);
+        }
 
         // TODO this is duplicated in GithubRest.service, figure out if DI can be used with functions
         service = new Retrofit.Builder()
                 .baseUrl("https://api.github.com/")
-                .client(client)
+                .client(clientBuilder.build())
                 .addConverterFactory(JacksonConverterFactory.create(
                         new ObjectMapper()
                                 .registerModule(new Jdk8Module())
