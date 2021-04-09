@@ -181,12 +181,23 @@ public class RunsSaver
         // we need to know the last checked run id and add a condition to fetch lesser ids
         PreparedStatement idStatement = conn.prepareStatement(runsQuery);
 
-        PreparedStatement insertStatement = conn.prepareStatement(
+        String insertQuery =
                 "INSERT INTO " + destSchema + ".steps " +
                         "SELECT src.* " +
                         "FROM unnest(workflow_steps(?, ?, ?, ?)) src " +
                         "LEFT JOIN " + destSchema + ".steps dst ON (dst.job_id, dst.number) = (src.job_id, src.number) " +
-                        "WHERE dst.number IS NULL");
+                        "WHERE dst.number IS NULL";
+        // the LEFT JOIN used to avoid duplicate errors always fetches all steps
+        // and gets costly if there are many (>1 million) of those
+        // allow to disable it, which should be safe when dst database supports transactions
+        // WARNING: ensure that steps table has a primary key or an unique index on job_id and number columns
+        String checkDuplicates = System.getenv("CHECK_STEPS_DUPLICATES");
+        if (checkDuplicates != null && checkDuplicates.equals("false")) {
+            insertQuery =
+                    "INSERT INTO " + destSchema + ".steps " +
+                            "SELECT * FROM unnest(workflow_steps(?, ?, ?, ?)) src";
+        }
+        PreparedStatement insertStatement = conn.prepareStatement(insertQuery);
         insertStatement.setString(1, "Bearer " + System.getenv("GITHUB_TOKEN"));
         insertStatement.setString(2, owner);
         insertStatement.setString(3, repo);
