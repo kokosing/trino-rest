@@ -94,14 +94,20 @@ public class RunsSaver
         statement.setString(3, repo);
 
         int page = 1;
+        int breaker = getEmptyLimit();
         while (true) {
             log.info(format("Fetching page number %d", page));
             long startTime = System.currentTimeMillis();
             statement.setInt(4, page++);
-            int rows = statement.executeUpdate();
+            int rows = retryExecute(statement);
             log.info(format("Inserted %d rows, took %s", rows, Duration.ofMillis(System.currentTimeMillis() - startTime)));
             if (rows == 0) {
-                break;
+                if (breaker-- == 0) {
+                    break;
+                }
+            }
+            else {
+                breaker = getEmptyLimit();
             }
         }
     }
@@ -139,7 +145,7 @@ public class RunsSaver
         while (true) {
             log.info("Fetching jobs");
             long startTime = System.currentTimeMillis();
-            int rows = statement.executeUpdate();
+            int rows = retryExecute(statement);
             log.info(format("Inserted %d rows, took %s", rows, Duration.ofMillis(System.currentTimeMillis() - startTime)));
             if (rows == 0) {
                 break;
@@ -197,7 +203,7 @@ public class RunsSaver
 
             log.info(format("Fetching steps for jobs of runs with id less than %d", previousId));
             long startTime = System.currentTimeMillis();
-            int rows = insertStatement.executeUpdate();
+            int rows = retryExecute(insertStatement);
             log.info(format("Inserted %d rows, took %s", rows, Duration.ofMillis(System.currentTimeMillis() - startTime)));
         }
     }
@@ -232,10 +238,37 @@ public class RunsSaver
         while (true) {
             log.info("Fetching logs");
             long startTime = System.currentTimeMillis();
-            int rows = statement.executeUpdate();
+            int rows = retryExecute(statement);
             log.info(format("Inserted %d rows, took %s", rows, Duration.ofMillis(System.currentTimeMillis() - startTime)));
             if (rows == 0) {
                 break;
+            }
+        }
+    }
+
+    private static int getEmptyLimit()
+    {
+        String limit = System.getenv("EMPTY_INSERT_LIMIT");
+        if (limit == null) {
+            return 1;
+        }
+        return Integer.parseInt(limit);
+    }
+
+    private static int retryExecute(PreparedStatement statement)
+            throws SQLException
+    {
+        int breaker = 3;
+        while (true) {
+            try {
+                return statement.executeUpdate();
+            }
+            catch (SQLException e) {
+                if (breaker-- == 1) {
+                    throw e;
+                }
+                log.severe(e.getMessage());
+                log.severe(format("Retrying %d more times", breaker));
             }
         }
     }
