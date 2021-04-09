@@ -16,9 +16,11 @@ package pl.net.was.rest.twitter;
 
 import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import io.trino.spi.connector.ColumnMetadata;
 import io.trino.spi.connector.ConnectorTableMetadata;
 import io.trino.spi.connector.SchemaTableName;
+import io.trino.spi.connector.SchemaTablePrefix;
 import pl.net.was.rest.Rest;
 import pl.net.was.rest.twitter.model.SearchResult;
 import pl.net.was.rest.twitter.model.Status;
@@ -28,6 +30,7 @@ import retrofit2.Response;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 import static io.trino.spi.type.BigintType.BIGINT;
@@ -42,6 +45,13 @@ public class TwitterRest
 
     private final TwitterService service;
 
+    private final List<ColumnMetadata> columns = ImmutableList.of(
+            new ColumnMetadata("id", createUnboundedVarcharType()),
+            new ColumnMetadata("text", createUnboundedVarcharType()),
+            new ColumnMetadata("retweet_count", BIGINT),
+            new ColumnMetadata("user_name", createUnboundedVarcharType()),
+            new ColumnMetadata("user_screen_name", createUnboundedVarcharType()));
+
     public TwitterRest(String consumerKey, String consumerSecret, String token, String secret)
     {
         service = TwitterService.create(consumerKey, consumerSecret, token, secret);
@@ -52,12 +62,7 @@ public class TwitterRest
     {
         return new ConnectorTableMetadata(
                 schemaTableName,
-                ImmutableList.of(
-                        new ColumnMetadata("id", createUnboundedVarcharType()),
-                        new ColumnMetadata("text", createUnboundedVarcharType()),
-                        new ColumnMetadata("retweet_count", BIGINT),
-                        new ColumnMetadata("user_name", createUnboundedVarcharType()),
-                        new ColumnMetadata("user_screen_name", createUnboundedVarcharType())));
+                columns);
     }
 
     @Override
@@ -77,6 +82,16 @@ public class TwitterRest
                     new SchemaTableName(SCHEMA, "hive"));
         }
         return ImmutableList.of();
+    }
+
+    @Override
+    public Map<SchemaTableName, List<ColumnMetadata>> listTableColumns(SchemaTablePrefix schemaTablePrefix)
+    {
+        return ImmutableMap.of(
+                new SchemaTableName(SCHEMA, "whug"), columns,
+                new SchemaTableName(SCHEMA, "trino"), columns,
+                new SchemaTableName(SCHEMA, "teradata"), columns,
+                new SchemaTableName(SCHEMA, "hive"), columns);
     }
 
     @Override

@@ -19,6 +19,7 @@ import io.trino.spi.connector.ColumnMetadata;
 import io.trino.spi.connector.ConnectorRecordSetProvider;
 import io.trino.spi.connector.ConnectorSession;
 import io.trino.spi.connector.ConnectorSplit;
+import io.trino.spi.connector.ConnectorTableHandle;
 import io.trino.spi.connector.ConnectorTableMetadata;
 import io.trino.spi.connector.ConnectorTransactionHandle;
 import io.trino.spi.connector.InMemoryRecordSet;
@@ -46,13 +47,14 @@ public class RestRecordSetProvider
             ConnectorTransactionHandle connectorTransactionHandle,
             ConnectorSession connectorSession,
             ConnectorSplit connectorSplit,
+            ConnectorTableHandle table,
             List<? extends ColumnHandle> list)
     {
         RestConnectorSplit split = Types.checkType(connectorSplit, RestConnectorSplit.class, "split");
         // TODO fix below cast
         List<RestColumnHandle> restColumnHandles = (List<RestColumnHandle>) list;
 
-        SchemaTableName schemaTableName = split.getTableHandle().getSchemaTableName();
+        SchemaTableName schemaTableName = ((RestTableHandle) table).getSchemaTableName();
         Collection<? extends List<?>> rows = rest.getRows(schemaTableName);
         ConnectorTableMetadata tableMetadata = rest.getTableMetadata(schemaTableName);
 

@@ -1,0 +1,140 @@
+/*
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package pl.net.was.rest.github.model;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.common.collect.ImmutableList;
+import io.trino.spi.block.BlockBuilder;
+import io.trino.spi.type.DateTimeEncoding;
+
+import java.time.ZonedDateTime;
+import java.util.List;
+
+import static io.trino.spi.type.BigintType.BIGINT;
+import static io.trino.spi.type.TimestampWithTimeZoneType.TIMESTAMP_TZ_SECONDS;
+import static io.trino.spi.type.Timestamps.MILLISECONDS_PER_SECOND;
+import static io.trino.spi.type.Timestamps.NANOSECONDS_PER_MILLISECOND;
+import static io.trino.spi.type.Timestamps.roundDiv;
+import static io.trino.spi.type.VarcharType.VARCHAR;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class Run
+        implements BlockWriter
+{
+    private final long id;
+    private final String name;
+    private final String nodeId;
+    private final String headBranch;
+    private final String headSha;
+    private final long runNumber;
+    private final String event;
+    private final String status;
+    private final String conclusion;
+    private final long workflowId;
+    private final ZonedDateTime createdAt;
+    private final ZonedDateTime updatedAt;
+
+    public Run(
+            @JsonProperty("id") long id,
+            @JsonProperty("name") String name,
+            @JsonProperty("node_id") String nodeId,
+            @JsonProperty("head_branch") String headBranch,
+            @JsonProperty("head_sha") String headSha,
+            @JsonProperty("run_number") long runNumber,
+            @JsonProperty("event") String event,
+            @JsonProperty("status") String status,
+            @JsonProperty("conclusion") String conclusion,
+            @JsonProperty("workflow_id") long workflowId,
+            @JsonProperty("created_at") ZonedDateTime createdAt,
+            @JsonProperty("updated_at") ZonedDateTime updatedAt)
+    {
+        this.id = id;
+        this.name = name;
+        this.nodeId = nodeId;
+        this.headBranch = headBranch;
+        this.headSha = headSha;
+        this.runNumber = runNumber;
+        this.event = event;
+        this.status = status;
+        this.conclusion = conclusion;
+        this.workflowId = workflowId;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
+    }
+
+    public List<?> toRow()
+    {
+        return ImmutableList.of(
+                id,
+                name,
+                nodeId,
+                headBranch,
+                headSha,
+                runNumber,
+                event,
+                status,
+                conclusion,
+                workflowId,
+                createdAt,
+                updatedAt);
+    }
+
+    public void writeTo(BlockBuilder rowBuilder)
+    {
+        BIGINT.writeLong(rowBuilder, id);
+        VARCHAR.writeString(rowBuilder, name);
+        VARCHAR.writeString(rowBuilder, nodeId);
+        VARCHAR.writeString(rowBuilder, headBranch);
+        VARCHAR.writeString(rowBuilder, headSha);
+        BIGINT.writeLong(rowBuilder, runNumber);
+        VARCHAR.writeString(rowBuilder, event);
+        if (status == null) {
+            rowBuilder.appendNull();
+        }
+        else {
+            VARCHAR.writeString(rowBuilder, status);
+        }
+        if (conclusion == null) {
+            rowBuilder.appendNull();
+        }
+        else {
+            VARCHAR.writeString(rowBuilder, conclusion);
+        }
+        BIGINT.writeLong(rowBuilder, workflowId);
+        if (createdAt == null) {
+            rowBuilder.appendNull();
+        }
+        else {
+            TIMESTAMP_TZ_SECONDS.writeLong(rowBuilder, packTimestamp(createdAt));
+        }
+        if (updatedAt == null) {
+            rowBuilder.appendNull();
+        }
+        else {
+            TIMESTAMP_TZ_SECONDS.writeLong(rowBuilder, packTimestamp(updatedAt));
+        }
+    }
+
+    private static long packTimestamp(ZonedDateTime timestamp)
+    {
+        if (timestamp == null) {
+            return 0;
+        }
+        return DateTimeEncoding.packDateTimeWithZone(
+                timestamp.toEpochSecond() * MILLISECONDS_PER_SECOND + roundDiv(timestamp.toLocalTime().getNano(), NANOSECONDS_PER_MILLISECOND),
+                timestamp.getZone().getId());
+    }
+}
