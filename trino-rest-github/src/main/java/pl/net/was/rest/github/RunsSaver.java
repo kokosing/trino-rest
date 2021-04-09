@@ -63,7 +63,7 @@ public class RunsSaver
         try (Connection conn = DriverManager.getConnection(url, username, password)) {
             fetchRuns(conn, owner, repo, destSchema, srcSchema);
             fetchJobs(conn, owner, repo, destSchema, srcSchema);
-            fetchSteps(conn, owner, repo, destSchema, srcSchema);
+            fetchSteps(conn, owner, repo, destSchema, srcSchema, 2);
             fetchLogs(conn, owner, repo, destSchema, srcSchema);
         }
         catch (Exception e) {
@@ -153,7 +153,7 @@ public class RunsSaver
         }
     }
 
-    private static void fetchSteps(Connection conn, String owner, String repo, String destSchema, String srcSchema)
+    private static void fetchSteps(Connection conn, String owner, String repo, String destSchema, String srcSchema, int batchSize)
             throws SQLException
     {
         conn.createStatement().executeUpdate(
@@ -161,8 +161,57 @@ public class RunsSaver
         // consider adding some indexes:
         // ALTER TABLE steps ADD PRIMARY KEY (job_id, number);
 
-        // only fetch steps from jobs from up to 2 completed runs not older than 2 months, without any job steps
+        if (batchSize > 2) {
+            fetchStepsBatches(conn, owner, repo, destSchema, srcSchema, batchSize);
+            return;
+        }
+        // if the batchSize is small, it's completely ignored and runs will be processed one by one
+
+        // only fetch steps from jobs from completed runs not older than 2 months, without any job steps
         String runsQuery =
+                "SELECT r.id " +
+                        "FROM " + destSchema + ".runs r " +
+                        "JOIN " + destSchema + ".jobs j ON j.run_id = r.id " +
+                        "LEFT JOIN " + destSchema + ".steps s ON s.job_id = j.id " +
+                        "WHERE r.status = 'completed' AND r.created_at > NOW() - INTERVAL '2' MONTH " +
+                        "GROUP BY r.id " +
+                        "HAVING COUNT(s.number) = 0 " +
+                        "ORDER BY r.id DESC";
+        // since there's no difference between jobs without steps and those we have not checked or yet,
+        // we need to know the last checked run id and add a condition to fetch lesser ids
+        PreparedStatement idStatement = conn.prepareStatement(runsQuery);
+
+        PreparedStatement insertStatement = conn.prepareStatement(
+                "INSERT INTO " + destSchema + ".steps " +
+                        "SELECT src.* " +
+                        "FROM unnest(workflow_steps(?, ?, ?, ?)) src " +
+                        "LEFT JOIN " + destSchema + ".steps dst ON (dst.job_id, dst.number) = (src.job_id, src.number) " +
+                        "WHERE dst.number IS NULL");
+        insertStatement.setString(1, "Bearer " + System.getenv("GITHUB_TOKEN"));
+        insertStatement.setString(2, owner);
+        insertStatement.setString(3, repo);
+
+        log.info("Fetching run ids to get steps for");
+        if (!idStatement.execute()) {
+            return;
+        }
+        ResultSet resultSet = idStatement.getResultSet();
+        while (resultSet.next()) {
+            long runId = resultSet.getLong(1);
+            insertStatement.setLong(4, runId);
+
+            log.info(format("Fetching steps for jobs of run %d", runId));
+            long startTime = System.currentTimeMillis();
+            int rows = retryExecute(insertStatement);
+            log.info(format("Inserted %d rows, took %s", rows, Duration.ofMillis(System.currentTimeMillis() - startTime)));
+        }
+    }
+
+    private static void fetchStepsBatches(Connection conn, String owner, String repo, String destSchema, String srcSchema, int batchSize)
+            throws SQLException
+    {
+        // only fetch steps from jobs from up to 2 completed runs not older than 2 months, without any job steps
+        String runsQuery = format(
                 "SELECT r.id " +
                         "FROM " + destSchema + ".runs r " +
                         "JOIN " + destSchema + ".jobs j ON j.run_id = r.id " +
@@ -170,7 +219,7 @@ public class RunsSaver
                         "WHERE r.status = 'completed' AND r.created_at > NOW() - INTERVAL '2' MONTH AND r.id < ? " +
                         "GROUP BY r.id " +
                         "HAVING COUNT(s.number) = 0 " +
-                        "ORDER BY r.id DESC LIMIT 2";
+                        "ORDER BY r.id DESC LIMIT %d", batchSize);
         // since there's no difference between jobs without steps and those we have not checked or yet,
         // we need to know the last checked run id and add a condition to fetch lesser ids
         PreparedStatement idStatement = conn.prepareStatement("SELECT min(r.id) FROM (" + runsQuery + ") r");
