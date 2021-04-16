@@ -19,4 +19,4 @@ benchmark_outputs
 *.class
 .checkstyle
 .mvn/timing.properties
-/catalog
+/config

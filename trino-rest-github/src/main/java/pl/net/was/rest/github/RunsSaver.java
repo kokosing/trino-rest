@@ -20,10 +20,13 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.Duration;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 
 import static java.lang.String.format;
+import static java.util.Objects.requireNonNull;
 
 public class RunsSaver
 {
@@ -39,11 +42,37 @@ public class RunsSaver
 
     public static void main(String[] args)
     {
-        Map<String, String> env = System.getenv();
-
         String url = "jdbc:trino://localhost:8080/github/default";
         String username = "admin";
         String password = "";
+
+        Map<String, String> env = System.getenv();
+
+        // TODO combine with System.Properties
+        List<String> names = Arrays.asList(
+                "GITHUB_OWNER",
+                "GITHUB_REPO",
+                "GITHUB_TOKEN",
+                "TRINO_DEST_SCHEMA",
+                "TRINO_SRC_SCHEMA",
+                "TRINO_URL",
+                "TRINO_USERNAME",
+                "TRINO_PASSWORD",
+                "EMPTY_INSERT_LIMIT",
+                "CHECK_STEPS_DUPLICATES");
+        Map<String, String> defaults = Map.of(
+                "TRINO_URL", url,
+                "TRINO_USERNAME", username,
+                "TRINO_PASSWORD", password,
+                "EMPTY_INSERT_LIMIT", "1",
+                "CHECK_STEPS_DUPLICATES", "false");
+        for (String name : names) {
+            String value = env.getOrDefault(name, defaults.getOrDefault(name, ""));
+            if (!value.isEmpty() && (name.equals("TRINO_PASSWORD") || name.equals("GITHUB_TOKEN"))) {
+                value = "***";
+            }
+            log.info(format("%s=%s", name, value));
+        }
 
         if (env.containsKey("TRINO_URL")) {
             url = env.get("TRINO_URL");
@@ -59,6 +88,11 @@ public class RunsSaver
         String repo = System.getenv("GITHUB_REPO");
         String destSchema = System.getenv("TRINO_DEST_SCHEMA");
         String srcSchema = System.getenv("TRINO_SRC_SCHEMA");
+
+        requireNonNull(owner, "GITHUB_OWNER environmental variable must be set");
+        requireNonNull(repo, "GITHUB_REPO environmental variable must be set");
+        requireNonNull(destSchema, "TRINO_DEST_SCHEMA environmental variable must be set");
+        requireNonNull(srcSchema, "TRINO_SRC_SCHEMA environmental variable must be set");
 
         try (Connection conn = DriverManager.getConnection(url, username, password)) {
             fetchRuns(conn, owner, repo, destSchema, srcSchema);
