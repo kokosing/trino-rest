@@ -52,7 +52,7 @@
         <air.check.fail-checkstyle>true</air.check.fail-checkstyle>
         <air.check.skip-checkstyle>false</air.check.skip-checkstyle>
 
-        <dep.trino.version>353</dep.trino.version>
+        <dep.trino.version>355</dep.trino.version>
         <dep.airlift.version>202</dep.airlift.version>
         <dep.packaging.version>${dep.airlift.version}</dep.packaging.version>
         <dep.errorprone.version>2.5.1</dep.errorprone.version>
@@ -84,7 +84,7 @@
         <dependency>
             <groupId>joda-time</groupId>
             <artifactId>joda-time</artifactId>
-            <version>2.10.9</version>
+            <version>2.10.10</version>
             <scope>runtime</scope>
         </dependency>
 
@@ -127,7 +127,7 @@
         <dependency>
             <groupId>org.assertj</groupId>
             <artifactId>assertj-core</artifactId>
-            <version>3.18.1</version>
+            <version>3.19.0</version>
             <scope>test</scope>
         </dependency>
 
