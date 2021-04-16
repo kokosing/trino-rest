@@ -54,7 +54,7 @@
         <dependency>
             <groupId>com.fasterxml.jackson.datatype</groupId>
             <artifactId>jackson-datatype-jsr310</artifactId>
-            <version>2.9.8</version>
+            <version>2.12.3</version>
         </dependency>
 
         <dependency>
@@ -78,7 +78,7 @@
         <dependency>
             <groupId>io.airlift</groupId>
             <artifactId>log-manager</artifactId>
-            <version>203</version>
+            <version>204</version>
         </dependency>
 
         <!-- for running PageSaver -->

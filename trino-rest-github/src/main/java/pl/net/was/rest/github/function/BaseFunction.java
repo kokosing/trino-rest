@@ -17,8 +17,6 @@ package pl.net.was.rest.github.function;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import io.airlift.log.Level;
-import io.airlift.log.Logging;
 import io.trino.spi.PageBuilder;
 import io.trino.spi.block.Block;
 import io.trino.spi.block.BlockBuilder;
@@ -31,6 +29,8 @@ import retrofit2.Retrofit;
 import retrofit2.converter.jackson.JacksonConverterFactory;
 
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public abstract class BaseFunction
 {
@@ -43,8 +43,7 @@ public abstract class BaseFunction
     {
         OkHttpClient.Builder clientBuilder = new OkHttpClient.Builder();
 
-        Logging logger = Logging.initialize();
-        if (logger.getLevel(BaseFunction.class.getName()) == Level.DEBUG) {
+        if (getLogLevel().intValue() <= Level.FINE.intValue()) {
             HttpLoggingInterceptor interceptor = new HttpLoggingInterceptor();
             interceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
             clientBuilder.addInterceptor(interceptor);
@@ -60,6 +59,21 @@ public abstract class BaseFunction
                                 .registerModule(new JavaTimeModule())))
                 .build()
                 .create(GithubService.class);
+    }
+
+    private Level getLogLevel()
+    {
+        String loggerName = BaseFunction.class.getName();
+        Logger logger = Logger.getLogger(loggerName);
+        Level level = logger.getLevel();
+        while (level == null) {
+            Logger parent = logger.getParent();
+            if (parent == null) {
+                return Level.OFF;
+            }
+            level = parent.getLevel();
+        }
+        return level;
     }
 
     protected Block buildBlock(List<? extends BlockWriter> writers)
