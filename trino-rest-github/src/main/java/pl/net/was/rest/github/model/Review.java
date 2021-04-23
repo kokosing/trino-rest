@@ -68,8 +68,6 @@ public class Review
                 user.getLogin(),
                 body,
                 state,
-                htmlUrl,
-                pullRequestUrl,
                 submittedAt,
                 commitId,
                 authorAssociation);
@@ -83,8 +81,6 @@ public class Review
         writeString(rowBuilder, user.getLogin());
         writeString(rowBuilder, body);
         writeString(rowBuilder, state);
-        writeString(rowBuilder, htmlUrl);
-        writeString(rowBuilder, pullRequestUrl);
         writeTimestamp(rowBuilder, submittedAt);
         writeString(rowBuilder, commitId);
         writeString(rowBuilder, authorAssociation);

@@ -109,7 +109,6 @@ public class ReviewComment
     public List<?> toRow()
     {
         return ImmutableList.of(
-                url,
                 pullRequestReviewId,
                 id,
                 diffHunk,
@@ -124,8 +123,6 @@ public class ReviewComment
                 body,
                 createdAt,
                 updatedAt,
-                htmlUrl,
-                pullRequestUrl,
                 authorAssociation,
                 startLine,
                 originalStartLine,
@@ -141,7 +138,6 @@ public class ReviewComment
         Map<String, ColumnMetadata> columns = GithubRest.columns.get("issues").stream()
                 .collect(Collectors.toMap(ColumnMetadata::getName, columnMetadata -> columnMetadata));
 
-        writeString(rowBuilder, url);
         BIGINT.writeLong(rowBuilder, pullRequestReviewId);
         BIGINT.writeLong(rowBuilder, id);
         writeString(rowBuilder, diffHunk);
@@ -156,8 +152,6 @@ public class ReviewComment
         writeString(rowBuilder, body);
         writeTimestamp(rowBuilder, createdAt);
         writeTimestamp(rowBuilder, updatedAt);
-        writeString(rowBuilder, htmlUrl);
-        writeString(rowBuilder, pullRequestUrl);
         writeString(rowBuilder, authorAssociation);
         BIGINT.writeLong(rowBuilder, startLine);
         BIGINT.writeLong(rowBuilder, originalStartLine);

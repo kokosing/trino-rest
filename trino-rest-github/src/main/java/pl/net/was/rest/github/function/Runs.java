@@ -35,6 +35,7 @@ import static io.trino.spi.type.StandardTypes.INTEGER;
 import static io.trino.spi.type.StandardTypes.VARCHAR;
 import static java.lang.String.format;
 import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
+import static pl.net.was.rest.github.GithubRest.RUNS_TABLE_TYPE;
 
 @ScalarFunction("runs")
 @Description("Get workflow runs")
@@ -55,21 +56,7 @@ public class Runs
         pageBuilder = new PageBuilder(ImmutableList.of(arrayType));
     }
 
-    // TODO can this be constructed automatically? it must match GithubRest.columns
-    @SqlType("array(row(" +
-            "id bigint, " +
-            "name varchar, " +
-            "node_id varchar, " +
-            "head_branch varchar, " +
-            "head_sha varchar, " +
-            "run_number bigint, " +
-            "event varchar, " +
-            "status varchar, " +
-            "conclusion varchar, " +
-            "workflow_id bigint, " +
-            "created_at timestamp(3) with time zone, " +
-            "updated_at timestamp(3) with time zone" +
-            "))")
+    @SqlType(RUNS_TABLE_TYPE)
     public Block getPage(@SqlType(VARCHAR) Slice token, @SqlType(VARCHAR) Slice owner, @SqlType(VARCHAR) Slice repo, @SqlType(INTEGER) long page)
             throws IOException
     {

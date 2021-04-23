@@ -64,14 +64,11 @@ public class IssueComment
     {
         return ImmutableList.of(
                 id,
-                url,
-                htmlUrl,
                 body,
                 user.getId(),
                 user.getLogin(),
                 createdAt,
                 updatedAt,
-                issueUrl,
                 authorAssociation);
     }
 
@@ -80,14 +77,11 @@ public class IssueComment
     {
         // TODO this should be a map of column names to value getters and types should be fetched from GithubRest.columns
         BIGINT.writeLong(rowBuilder, id);
-        writeString(rowBuilder, url);
-        writeString(rowBuilder, htmlUrl);
         writeString(rowBuilder, body);
         BIGINT.writeLong(rowBuilder, user.getId());
         writeString(rowBuilder, user.getLogin());
         writeTimestamp(rowBuilder, createdAt);
         writeTimestamp(rowBuilder, updatedAt);
-        writeString(rowBuilder, issueUrl);
         writeString(rowBuilder, authorAssociation);
     }
 }

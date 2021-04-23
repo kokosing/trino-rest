@@ -58,7 +58,7 @@ docker run -it --rm --link trino trinodb/trino:353 trino --server trino:8080 --c
 
 To run the `PageSaver` utility in `trino-rest-github`:
 ```bash
-java -cp "trino-rest-github/target/trino-rest-github-0.2-SNAPSHOT/*" pl.net.was.rest.github.RunsSaver
+java -cp "trino-rest-github/target/trino-rest-github-0.2-SNAPSHOT/*" pl.net.was.rest.github.Sync
 ```
 
 Check how much data the `PageSaver` collected by running a query like:

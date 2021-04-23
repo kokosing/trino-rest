@@ -99,9 +99,6 @@ public class Issue
     {
         return ImmutableList.of(
                 id,
-                url,
-                eventsUrl,
-                htmlUrl,
                 number,
                 state,
                 title,
@@ -128,9 +125,6 @@ public class Issue
     {
         // TODO this should be a map of column names to value getters and types should be fetched from GithubRest.columns
         BIGINT.writeLong(rowBuilder, id);
-        writeString(rowBuilder, url);
-        writeString(rowBuilder, eventsUrl);
-        writeString(rowBuilder, htmlUrl);
         BIGINT.writeLong(rowBuilder, number);
         writeString(rowBuilder, state);
         writeString(rowBuilder, title);

@@ -64,10 +64,7 @@ public class PullCommit
     public List<?> toRow()
     {
         return ImmutableList.of(
-                url,
                 sha,
-                htmlUrl,
-                commentsUrl,
                 commit,
                 author,
                 committer,
@@ -80,13 +77,8 @@ public class PullCommit
         Map<String, ColumnMetadata> columns = GithubRest.columns.get("issues").stream()
                 .collect(Collectors.toMap(ColumnMetadata::getName, columnMetadata -> columnMetadata));
 
-        writeString(rowBuilder, url);
         writeString(rowBuilder, sha);
-        writeString(rowBuilder, htmlUrl);
-        writeString(rowBuilder, commentsUrl);
-        writeString(rowBuilder, commit.getUrl());
         writeString(rowBuilder, commit.getMessage());
-        writeString(rowBuilder, commit.getTree().getUrl());
         writeString(rowBuilder, commit.getTree().getSha());
         BIGINT.writeLong(rowBuilder, commit.getCommentsCount());
         BOOLEAN.writeBoolean(rowBuilder, commit.getVerification().getVerified());
@@ -103,12 +95,6 @@ public class PullCommit
         writeString(rowBuilder, committer.getLogin());
 
         // parents array
-        BlockBuilder parentUrls = columns.get("parent_urls").getType().createBlockBuilder(null, parents.size());
-        for (Ref parent : parents) {
-            writeString(parentUrls, parent.getUrl());
-        }
-        rowBuilder.appendStructure(parentUrls.build());
-
         BlockBuilder parentShas = columns.get("label_names").getType().createBlockBuilder(null, parents.size());
         for (Ref parent : parents) {
             writeString(parentShas, parent.getSha());

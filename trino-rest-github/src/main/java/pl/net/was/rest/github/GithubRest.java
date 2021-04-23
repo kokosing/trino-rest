@@ -59,16 +59,6 @@ public class GithubRest
     public static final Map<String, List<ColumnMetadata>> columns = new ImmutableMap.Builder<String, List<ColumnMetadata>>()
             .put("pulls", ImmutableList.of(
                     new ColumnMetadata("id", BIGINT),
-                    new ColumnMetadata("url", createUnboundedVarcharType()),
-                    new ColumnMetadata("html_url", createUnboundedVarcharType()),
-                    new ColumnMetadata("diff_url", createUnboundedVarcharType()),
-                    new ColumnMetadata("patch_url", createUnboundedVarcharType()),
-                    new ColumnMetadata("issue_url", createUnboundedVarcharType()),
-                    new ColumnMetadata("commits_url", createUnboundedVarcharType()),
-                    new ColumnMetadata("review_comments_url", createUnboundedVarcharType()),
-                    new ColumnMetadata("review_comment_url", createUnboundedVarcharType()),
-                    new ColumnMetadata("comments_url", createUnboundedVarcharType()),
-                    new ColumnMetadata("statuses_url", createUnboundedVarcharType()),
                     new ColumnMetadata("number", BIGINT),
                     new ColumnMetadata("state", createUnboundedVarcharType()),
                     new ColumnMetadata("locked", BOOLEAN),
@@ -97,13 +87,8 @@ public class GithubRest
                     new ColumnMetadata("author_association", createUnboundedVarcharType()),
                     new ColumnMetadata("draft", BOOLEAN)))
             .put("pull_commits", ImmutableList.of(
-                    new ColumnMetadata("url", createUnboundedVarcharType()),
                     new ColumnMetadata("sha", createUnboundedVarcharType()),
-                    new ColumnMetadata("html_url", createUnboundedVarcharType()),
-                    new ColumnMetadata("comments_url", createUnboundedVarcharType()),
-                    new ColumnMetadata("commit_url", createUnboundedVarcharType()),
                     new ColumnMetadata("commit_message", createUnboundedVarcharType()),
-                    new ColumnMetadata("commit_tree_url", createUnboundedVarcharType()),
                     new ColumnMetadata("commit_tree_sha", createUnboundedVarcharType()),
                     new ColumnMetadata("commit_comments_count", BIGINT),
                     new ColumnMetadata("commit_verified", BOOLEAN),
@@ -118,7 +103,6 @@ public class GithubRest
                     new ColumnMetadata("committer_date", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
                     new ColumnMetadata("committer_id", BIGINT),
                     new ColumnMetadata("committer_login", createUnboundedVarcharType()),
-                    new ColumnMetadata("parent_urls", new ArrayType(createUnboundedVarcharType())),
                     new ColumnMetadata("parent_shas", new ArrayType(createUnboundedVarcharType()))))
             .put("reviews", ImmutableList.of(
                     new ColumnMetadata("id", BIGINT),
@@ -126,13 +110,10 @@ public class GithubRest
                     new ColumnMetadata("user_login", createUnboundedVarcharType()),
                     new ColumnMetadata("body", createUnboundedVarcharType()),
                     new ColumnMetadata("state", createUnboundedVarcharType()),
-                    new ColumnMetadata("html_url", createUnboundedVarcharType()),
-                    new ColumnMetadata("pull_request_url", createUnboundedVarcharType()),
                     new ColumnMetadata("submitted_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
                     new ColumnMetadata("commit_id", createUnboundedVarcharType()),
                     new ColumnMetadata("author_association", createUnboundedVarcharType())))
             .put("review_comments", ImmutableList.of(
-                    new ColumnMetadata("url", createUnboundedVarcharType()),
                     new ColumnMetadata("pull_request_review_id", BIGINT),
                     new ColumnMetadata("id", BIGINT),
                     new ColumnMetadata("diff_hunk", createUnboundedVarcharType()),
@@ -147,8 +128,6 @@ public class GithubRest
                     new ColumnMetadata("body", createUnboundedVarcharType()),
                     new ColumnMetadata("created_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
                     new ColumnMetadata("updated_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
-                    new ColumnMetadata("html_url", createUnboundedVarcharType()),
-                    new ColumnMetadata("pull_request_url", createUnboundedVarcharType()),
                     new ColumnMetadata("author_association", createUnboundedVarcharType()),
                     new ColumnMetadata("start_line", BIGINT),
                     new ColumnMetadata("original_start_line", BIGINT),
@@ -158,9 +137,6 @@ public class GithubRest
                     new ColumnMetadata("side", createUnboundedVarcharType())))
             .put("issues", ImmutableList.of(
                     new ColumnMetadata("id", BIGINT),
-                    new ColumnMetadata("url", createUnboundedVarcharType()),
-                    new ColumnMetadata("events_url", createUnboundedVarcharType()),
-                    new ColumnMetadata("html_url", createUnboundedVarcharType()),
                     new ColumnMetadata("number", BIGINT),
                     new ColumnMetadata("state", createUnboundedVarcharType()),
                     new ColumnMetadata("title", createUnboundedVarcharType()),
@@ -182,14 +158,11 @@ public class GithubRest
                     new ColumnMetadata("author_association", createUnboundedVarcharType())))
             .put("issue_comments", ImmutableList.of(
                     new ColumnMetadata("id", BIGINT),
-                    new ColumnMetadata("url", createUnboundedVarcharType()),
-                    new ColumnMetadata("html_url", createUnboundedVarcharType()),
                     new ColumnMetadata("body", createUnboundedVarcharType()),
                     new ColumnMetadata("user_id", BIGINT),
                     new ColumnMetadata("user_login", createUnboundedVarcharType()),
                     new ColumnMetadata("created_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
                     new ColumnMetadata("updated_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
-                    new ColumnMetadata("issue_url", createUnboundedVarcharType()),
                     new ColumnMetadata("author_association", createUnboundedVarcharType())))
             .put("runs", ImmutableList.of(
                     new ColumnMetadata("id", BIGINT),
@@ -207,17 +180,13 @@ public class GithubRest
             .put("jobs", ImmutableList.of(
                     new ColumnMetadata("id", BIGINT),
                     new ColumnMetadata("run_id", BIGINT),
-                    new ColumnMetadata("run_url", createUnboundedVarcharType()),
                     new ColumnMetadata("node_id", createUnboundedVarcharType()),
                     new ColumnMetadata("head_sha", createUnboundedVarcharType()),
-                    new ColumnMetadata("url", createUnboundedVarcharType()),
-                    new ColumnMetadata("html_url", createUnboundedVarcharType()),
                     new ColumnMetadata("status", createUnboundedVarcharType()),
                     new ColumnMetadata("conclusion", createUnboundedVarcharType()),
                     new ColumnMetadata("started_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
                     new ColumnMetadata("completed_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
-                    new ColumnMetadata("name", createUnboundedVarcharType()),
-                    new ColumnMetadata("check_run_url", createUnboundedVarcharType())))
+                    new ColumnMetadata("name", createUnboundedVarcharType())))
             .put("steps", ImmutableList.of(
                     new ColumnMetadata("job_id", BIGINT),
                     new ColumnMetadata("name", createUnboundedVarcharType()),
@@ -231,16 +200,6 @@ public class GithubRest
     // TODO consider moving to a separate class
     public static final String PULLS_TABLE_TYPE = "array(row(" +
             "id bigint, " +
-            "url varchar, " +
-            "html_url varchar, " +
-            "diff_url varchar, " +
-            "patch_url varchar, " +
-            "issue_url varchar, " +
-            "commits_url varchar, " +
-            "review_comments_url varchar, " +
-            "review_comment_url varchar, " +
-            "comments_url varchar, " +
-            "statuses_url varchar, " +
             "number bigint, " +
             "state varchar, " +
             "locked boolean, " +
@@ -271,13 +230,8 @@ public class GithubRest
             "))";
 
     public static final String PULL_COMMITS_TABLE_TYPE = "array(row(" +
-            "url varchar, " +
             "sha varchar, " +
-            "html_url varchar, " +
-            "comments_url varchar, " +
-            "commit_url varchar, " +
             "commit_message varchar, " +
-            "commit_tree_url varchar, " +
             "commit_tree_sha varchar, " +
             "commit_comments_count bigint, " +
             "commit_verified boolean, " +
@@ -292,7 +246,6 @@ public class GithubRest
             "committer_date timestamp(3) with time zone, " +
             "committer_id bigint, " +
             "committer_login varchar, " +
-            "parent_urls array(varchar), " +
             "parent_shas array(varchar)" +
             "))";
 
@@ -302,15 +255,12 @@ public class GithubRest
             "user_login varchar, " +
             "body varchar, " +
             "state varchar, " +
-            "html_url varchar, " +
-            "pull_request_url varchar, " +
             "submitted_at timestamp(3) with time zone, " +
             "commit_id varchar, " +
             "author_association varchar" +
             "))";
 
     public static final String REVIEW_COMMENTS_TABLE_TYPE = "array(row(" +
-            "url varchar, " +
             "pull_request_review_id bigint, " +
             "id bigint, " +
             "diff_hunk varchar, " +
@@ -325,8 +275,6 @@ public class GithubRest
             "body varchar, " +
             "created_at timestamp(3) with time zone, " +
             "updated_at timestamp(3) with time zone, " +
-            "html_url varchar, " +
-            "pull_request_url varchar, " +
             "author_association varchar, " +
             "start_line bigint, " +
             "original_start_line bigint, " +
@@ -338,9 +286,6 @@ public class GithubRest
 
     public static final String ISSUES_TABLE_TYPE = "array(row(" +
             "id bigint, " +
-            "url varchar, " +
-            "events_url varchar, " +
-            "html_url varchar, " +
             "number bigint, " +
             "state varchar, " +
             "title varchar, " +
@@ -364,15 +309,49 @@ public class GithubRest
 
     public static final String ISSUE_COMMENTS_TABLE_TYPE = "array(row(" +
             "id bigint, " +
-            "url varchar, " +
-            "html_url varchar, " +
             "body varchar, " +
             "user_id bigint, " +
             "user_login varchar, " +
             "created_at timestamp(3) with time zone, " +
             "updated_at timestamp(3) with time zone, " +
-            "issue_url varchar, " +
             "author_association varchar" +
+            "))";
+
+    public static final String RUNS_TABLE_TYPE = "array(row(" +
+            "id bigint, " +
+            "name varchar, " +
+            "node_id varchar, " +
+            "head_branch varchar, " +
+            "head_sha varchar, " +
+            "run_number bigint, " +
+            "event varchar, " +
+            "status varchar, " +
+            "conclusion varchar, " +
+            "workflow_id bigint, " +
+            "created_at timestamp(3) with time zone, " +
+            "updated_at timestamp(3) with time zone" +
+            "))";
+
+    public static final String JOBS_TABLE_TYPE = "array(row(" +
+            "id bigint, " +
+            "run_id bigint, " +
+            "node_id varchar, " +
+            "head_sha varchar, " +
+            "status varchar, " +
+            "conclusion varchar, " +
+            "created_at timestamp(3) with time zone, " +
+            "updated_at timestamp(3) with time zone, " +
+            "name varchar" +
+            "))";
+
+    public static final String STEPS_TABLE_TYPE = "array(row(" +
+            "job_id bigint, " +
+            "name varchar, " +
+            "status varchar, " +
+            "conclusion varchar, " +
+            "number bigint, " +
+            "created_at timestamp(3) with time zone, " +
+            "updated_at timestamp(3) with time zone" +
             "))";
 
     public GithubRest(String token, String owner, String repo)

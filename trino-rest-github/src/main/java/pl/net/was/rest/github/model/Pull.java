@@ -139,16 +139,6 @@ public class Pull
     {
         return ImmutableList.of(
                 id,
-                url,
-                htmlUrl,
-                diffUrl,
-                patchUrl,
-                issueUrl,
-                commitsUrl,
-                reviewCommentsUrl,
-                reviewCommentUrl,
-                commentsUrl,
-                statusesUrl,
                 number,
                 state,
                 locked,
@@ -186,16 +176,6 @@ public class Pull
 
         // TODO this should be a map of column names to value getters and types should be fetched from GithubRest.columns
         BIGINT.writeLong(rowBuilder, id);
-        writeString(rowBuilder, url);
-        writeString(rowBuilder, htmlUrl);
-        writeString(rowBuilder, diffUrl);
-        writeString(rowBuilder, patchUrl);
-        writeString(rowBuilder, issueUrl);
-        writeString(rowBuilder, commitsUrl);
-        writeString(rowBuilder, reviewCommentsUrl);
-        writeString(rowBuilder, reviewCommentUrl);
-        writeString(rowBuilder, commentsUrl);
-        writeString(rowBuilder, statusesUrl);
         BIGINT.writeLong(rowBuilder, number);
         writeString(rowBuilder, state);
         BOOLEAN.writeBoolean(rowBuilder, locked);

@@ -38,6 +38,7 @@ import static io.trino.spi.type.StandardTypes.BIGINT;
 import static io.trino.spi.type.StandardTypes.VARCHAR;
 import static java.lang.String.format;
 import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
+import static pl.net.was.rest.github.GithubRest.STEPS_TABLE_TYPE;
 
 @ScalarFunction("steps")
 @Description("Get workflow steps")
@@ -58,16 +59,7 @@ public class Steps
         pageBuilder = new PageBuilder(ImmutableList.of(arrayType));
     }
 
-    // TODO can this be constructed automatically? it must match GithubRest.columns
-    @SqlType("array(row(" +
-            "job_id bigint, " +
-            "name varchar, " +
-            "status varchar, " +
-            "conclusion varchar, " +
-            "number bigint, " +
-            "created_at timestamp(3) with time zone, " +
-            "updated_at timestamp(3) with time zone" +
-            "))")
+    @SqlType(STEPS_TABLE_TYPE)
     public Block getPage(@SqlType(VARCHAR) Slice token, @SqlType(VARCHAR) Slice owner, @SqlType(VARCHAR) Slice repo, @SqlType(BIGINT) long runId)
             throws IOException
     {

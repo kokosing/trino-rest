@@ -81,18 +81,14 @@ public class Job
         return ImmutableList.of(
                 id,
                 runId,
-                runUrl,
                 nodeId,
                 headSha,
-                url,
-                htmlUrl,
                 status,
                 conclusion,
                 startedAt,
                 completedAt,
                 name,
-                steps,
-                checkRunUrl);
+                steps);
     }
 
     @Override
@@ -100,11 +96,8 @@ public class Job
     {
         BIGINT.writeLong(rowBuilder, id);
         BIGINT.writeLong(rowBuilder, runId);
-        writeString(rowBuilder, runUrl);
         writeString(rowBuilder, nodeId);
         writeString(rowBuilder, headSha);
-        writeString(rowBuilder, url);
-        writeString(rowBuilder, htmlUrl);
         writeString(rowBuilder, status);
         writeString(rowBuilder, conclusion);
         writeString(rowBuilder, conclusion);
@@ -112,7 +105,6 @@ public class Job
         writeTimestamp(rowBuilder, completedAt);
         writeString(rowBuilder, name);
         // not writing steps
-        writeString(rowBuilder, checkRunUrl);
     }
 
     public List<Step> getSteps()

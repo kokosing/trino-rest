@@ -28,17 +28,17 @@ import java.util.logging.Logger;
 import static java.lang.String.format;
 import static java.util.Objects.requireNonNull;
 
-public class RunsSaver
+public class Sync
 {
     private static final Logger log;
 
     static {
         System.setProperty("java.util.logging.SimpleFormatter.format",
                 "%1$tF %1$tT %4$s %2$s %5$s%6$s%n");
-        log = Logger.getLogger(RunsSaver.class.getName());
+        log = Logger.getLogger(Sync.class.getName());
     }
 
-    private RunsSaver() {}
+    private Sync() {}
 
     public static void main(String[] args)
     {
@@ -95,10 +95,10 @@ public class RunsSaver
         requireNonNull(srcSchema, "TRINO_SRC_SCHEMA environmental variable must be set");
 
         try (Connection conn = DriverManager.getConnection(url, username, password)) {
-            fetchRuns(conn, owner, repo, destSchema, srcSchema);
-            fetchJobs(conn, owner, repo, destSchema, srcSchema);
-            fetchSteps(conn, owner, repo, destSchema, srcSchema, 2);
-            fetchLogs(conn, owner, repo, destSchema, srcSchema);
+            syncRuns(conn, owner, repo, destSchema, srcSchema);
+            syncJobs(conn, owner, repo, destSchema, srcSchema);
+            syncSteps(conn, owner, repo, destSchema, srcSchema, 2);
+            syncLogs(conn, owner, repo, destSchema, srcSchema);
         }
         catch (Exception e) {
             log.severe("Got an exception! ");
@@ -107,7 +107,20 @@ public class RunsSaver
         }
     }
 
-    private static void fetchRuns(Connection conn, String owner, String repo, String destSchema, String srcSchema)
+    private static void syncIssues(Connection conn, String owner, String repo, String destSchema, String srcSchema)
+            throws SQLException
+    {
+        /*
+         TODO these steps:
+         * create if not exists temp table in mem catalog
+         * fetch one page and save into the temp table
+         * insert new
+         * update existing where update_at is newer
+         * drop temp table
+         */
+    }
+
+    private static void syncRuns(Connection conn, String owner, String repo, String destSchema, String srcSchema)
             throws SQLException
     {
         conn.createStatement().executeUpdate(
@@ -146,7 +159,7 @@ public class RunsSaver
         }
     }
 
-    private static void fetchJobs(Connection conn, String owner, String repo, String destSchema, String srcSchema)
+    private static void syncJobs(Connection conn, String owner, String repo, String destSchema, String srcSchema)
             throws SQLException
     {
         conn.createStatement().executeUpdate(
@@ -187,7 +200,7 @@ public class RunsSaver
         }
     }
 
-    private static void fetchSteps(Connection conn, String owner, String repo, String destSchema, String srcSchema, int batchSize)
+    private static void syncSteps(Connection conn, String owner, String repo, String destSchema, String srcSchema, int batchSize)
             throws SQLException
     {
         conn.createStatement().executeUpdate(
@@ -196,7 +209,7 @@ public class RunsSaver
         // ALTER TABLE steps ADD PRIMARY KEY (job_id, number);
 
         if (batchSize > 2) {
-            fetchStepsBatches(conn, owner, repo, destSchema, srcSchema, batchSize);
+            syncStepsBatches(conn, owner, repo, destSchema, srcSchema, batchSize);
             return;
         }
         // if the batchSize is small, it's completely ignored and runs will be processed one by one
@@ -252,7 +265,7 @@ public class RunsSaver
         }
     }
 
-    private static void fetchStepsBatches(Connection conn, String owner, String repo, String destSchema, String srcSchema, int batchSize)
+    private static void syncStepsBatches(Connection conn, String owner, String repo, String destSchema, String srcSchema, int batchSize)
             throws SQLException
     {
         // only fetch steps from jobs from up to 2 completed runs not older than 2 months, without any job steps
@@ -302,7 +315,7 @@ public class RunsSaver
         }
     }
 
-    private static void fetchLogs(Connection conn, String owner, String repo, String destSchema, String srcSchema)
+    private static void syncLogs(Connection conn, String owner, String repo, String destSchema, String srcSchema)
             throws SQLException
     {
         conn.createStatement().executeUpdate(
