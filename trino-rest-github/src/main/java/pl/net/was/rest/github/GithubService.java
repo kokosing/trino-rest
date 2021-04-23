@@ -34,7 +34,9 @@ public interface GithubService
     Call<List<Issue>> listIssues(
             @Header("Authorization") String auth,
             @Path("owner") String owner,
-            @Path("repo") String repo);
+            @Path("repo") String repo,
+            @Query("per_page") int perPage,
+            @Query("page") int page);
 
     @Headers("accept: application/vnd.github.v3+json")
     @GET("/repos/{owner}/{repo}/actions/runs")

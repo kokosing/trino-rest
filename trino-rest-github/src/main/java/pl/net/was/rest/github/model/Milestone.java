@@ -18,17 +18,20 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class User
+public class Milestone
 {
     private final long id;
-    private final String login;
+    private final long number;
+    private final String title;
 
-    public User(
+    public Milestone(
             @JsonProperty("id") long id,
-            @JsonProperty("login") String login)
+            @JsonProperty("number") long number,
+            @JsonProperty("title") String title)
     {
         this.id = id;
-        this.login = login;
+        this.number = number;
+        this.title = title;
     }
 
     public long getId()
@@ -36,8 +39,13 @@ public class User
         return id;
     }
 
-    public String getLogin()
+    public long getNumber()
     {
-        return login;
+        return number;
+    }
+
+    public String getTitle()
+    {
+        return title;
     }
 }

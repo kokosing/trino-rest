@@ -21,6 +21,7 @@ import io.trino.spi.connector.ColumnMetadata;
 import io.trino.spi.connector.ConnectorTableMetadata;
 import io.trino.spi.connector.SchemaTableName;
 import io.trino.spi.connector.SchemaTablePrefix;
+import io.trino.spi.type.ArrayType;
 import io.trino.spi.type.TimestampWithTimeZoneType;
 import pl.net.was.rest.Rest;
 import pl.net.was.rest.github.model.Issue;
@@ -36,7 +37,9 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import static io.trino.spi.type.BigintType.BIGINT;
+import static io.trino.spi.type.BooleanType.BOOLEAN;
 import static io.trino.spi.type.VarcharType.createUnboundedVarcharType;
+import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
 import static java.util.stream.Collectors.toList;
 
 public class GithubRest
@@ -53,13 +56,142 @@ public class GithubRest
             .build()
             .create(GithubService.class);
 
-    public static final Map<String, List<ColumnMetadata>> columns = ImmutableMap.of(
-            "issues", ImmutableList.of(
+    public static final Map<String, List<ColumnMetadata>> columns = new ImmutableMap.Builder<String, List<ColumnMetadata>>()
+            .put("pulls", ImmutableList.of(
+                    new ColumnMetadata("id", BIGINT),
+                    new ColumnMetadata("url", createUnboundedVarcharType()),
+                    new ColumnMetadata("html_url", createUnboundedVarcharType()),
+                    new ColumnMetadata("diff_url", createUnboundedVarcharType()),
+                    new ColumnMetadata("path_url", createUnboundedVarcharType()),
+                    new ColumnMetadata("issue_url", createUnboundedVarcharType()),
+                    new ColumnMetadata("commits_url", createUnboundedVarcharType()),
+                    new ColumnMetadata("review_comments_url", createUnboundedVarcharType()),
+                    new ColumnMetadata("review_comment_url", createUnboundedVarcharType()),
+                    new ColumnMetadata("comments_url", createUnboundedVarcharType()),
+                    new ColumnMetadata("statuses_url", createUnboundedVarcharType()),
                     new ColumnMetadata("number", BIGINT),
                     new ColumnMetadata("state", createUnboundedVarcharType()),
-                    new ColumnMetadata("user", createUnboundedVarcharType()),
-                    new ColumnMetadata("title", createUnboundedVarcharType())),
-            "runs", ImmutableList.of(
+                    new ColumnMetadata("locked", BOOLEAN),
+                    new ColumnMetadata("title", createUnboundedVarcharType()),
+                    new ColumnMetadata("user_id", BIGINT),
+                    new ColumnMetadata("user_login", createUnboundedVarcharType()),
+                    new ColumnMetadata("body", createUnboundedVarcharType()),
+                    new ColumnMetadata("label_ids", new ArrayType(BIGINT)),
+                    new ColumnMetadata("label_names", new ArrayType(createUnboundedVarcharType())),
+                    new ColumnMetadata("milestone_id", BIGINT),
+                    new ColumnMetadata("milestone_title", createUnboundedVarcharType()),
+                    new ColumnMetadata("active_lock_reason", createUnboundedVarcharType()),
+                    new ColumnMetadata("created_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
+                    new ColumnMetadata("updated_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
+                    new ColumnMetadata("closed_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
+                    new ColumnMetadata("merged_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
+                    new ColumnMetadata("merge_commit_sha", createUnboundedVarcharType()),
+                    new ColumnMetadata("assignee_id", BIGINT),
+                    new ColumnMetadata("assignee_login", createUnboundedVarcharType()),
+                    new ColumnMetadata("requested_reviewer_ids", new ArrayType(BIGINT)),
+                    new ColumnMetadata("requested_reviewer_logins", new ArrayType(createUnboundedVarcharType())),
+                    new ColumnMetadata("head_ref", createUnboundedVarcharType()),
+                    new ColumnMetadata("head_sha", createUnboundedVarcharType()),
+                    new ColumnMetadata("base_ref", createUnboundedVarcharType()),
+                    new ColumnMetadata("base_sha", createUnboundedVarcharType()),
+                    new ColumnMetadata("author_association", createUnboundedVarcharType()),
+                    new ColumnMetadata("draft", BOOLEAN)))
+            .put("pull_commits", ImmutableList.of(
+                    new ColumnMetadata("url", createUnboundedVarcharType()),
+                    new ColumnMetadata("sha", createUnboundedVarcharType()),
+                    new ColumnMetadata("html_url", createUnboundedVarcharType()),
+                    new ColumnMetadata("comments_url", createUnboundedVarcharType()),
+                    new ColumnMetadata("commit_url", createUnboundedVarcharType()),
+                    new ColumnMetadata("commit_message", createUnboundedVarcharType()),
+                    new ColumnMetadata("commit_tree_url", createUnboundedVarcharType()),
+                    new ColumnMetadata("commit_tree_sha", createUnboundedVarcharType()),
+                    new ColumnMetadata("commit_comments_count", BIGINT),
+                    new ColumnMetadata("commit_verified", BOOLEAN),
+                    new ColumnMetadata("commit_verification_reason", createUnboundedVarcharType()),
+                    new ColumnMetadata("author_name", createUnboundedVarcharType()),
+                    new ColumnMetadata("author_email", createUnboundedVarcharType()),
+                    new ColumnMetadata("author_date", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
+                    new ColumnMetadata("author_id", BIGINT),
+                    new ColumnMetadata("author_login", createUnboundedVarcharType()),
+                    new ColumnMetadata("committer_name", createUnboundedVarcharType()),
+                    new ColumnMetadata("committer_email", createUnboundedVarcharType()),
+                    new ColumnMetadata("committer_date", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
+                    new ColumnMetadata("committer_id", BIGINT),
+                    new ColumnMetadata("committer_login", createUnboundedVarcharType()),
+                    new ColumnMetadata("parent_urls", new ArrayType(createUnboundedVarcharType())),
+                    new ColumnMetadata("parent_shas", new ArrayType(createUnboundedVarcharType()))))
+            .put("reviews", ImmutableList.of(
+                    new ColumnMetadata("id", BIGINT),
+                    new ColumnMetadata("user_id", BIGINT),
+                    new ColumnMetadata("user_login", createUnboundedVarcharType()),
+                    new ColumnMetadata("body", createUnboundedVarcharType()),
+                    new ColumnMetadata("state", createUnboundedVarcharType()),
+                    new ColumnMetadata("html_url", createUnboundedVarcharType()),
+                    new ColumnMetadata("pull_request_url", createUnboundedVarcharType()),
+                    new ColumnMetadata("submitted_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
+                    new ColumnMetadata("commit_id", createUnboundedVarcharType()),
+                    new ColumnMetadata("author_association", createUnboundedVarcharType())))
+            .put("review_comments", ImmutableList.of(
+                    new ColumnMetadata("url", createUnboundedVarcharType()),
+                    new ColumnMetadata("pull_request_review_id", BIGINT),
+                    new ColumnMetadata("id", BIGINT),
+                    new ColumnMetadata("diff_hunk", createUnboundedVarcharType()),
+                    new ColumnMetadata("path", createUnboundedVarcharType()),
+                    new ColumnMetadata("position", BIGINT),
+                    new ColumnMetadata("original_position", BIGINT),
+                    new ColumnMetadata("commit_id", createUnboundedVarcharType()),
+                    new ColumnMetadata("original_commit_id", createUnboundedVarcharType()),
+                    new ColumnMetadata("in_reply_to_id", BIGINT),
+                    new ColumnMetadata("user_id", BIGINT),
+                    new ColumnMetadata("user_login", createUnboundedVarcharType()),
+                    new ColumnMetadata("body", createUnboundedVarcharType()),
+                    new ColumnMetadata("created_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
+                    new ColumnMetadata("updated_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
+                    new ColumnMetadata("html_url", createUnboundedVarcharType()),
+                    new ColumnMetadata("pull_request_url", createUnboundedVarcharType()),
+                    new ColumnMetadata("author_association", createUnboundedVarcharType()),
+                    new ColumnMetadata("start_line", BIGINT),
+                    new ColumnMetadata("original_start_line", BIGINT),
+                    new ColumnMetadata("start_side", createUnboundedVarcharType()),
+                    new ColumnMetadata("line", BIGINT),
+                    new ColumnMetadata("original_line", BIGINT),
+                    new ColumnMetadata("side", createUnboundedVarcharType())))
+            .put("issues", ImmutableList.of(
+                    new ColumnMetadata("id", BIGINT),
+                    new ColumnMetadata("url", createUnboundedVarcharType()),
+                    new ColumnMetadata("events_url", createUnboundedVarcharType()),
+                    new ColumnMetadata("html_url", createUnboundedVarcharType()),
+                    new ColumnMetadata("number", BIGINT),
+                    new ColumnMetadata("state", createUnboundedVarcharType()),
+                    new ColumnMetadata("title", createUnboundedVarcharType()),
+                    new ColumnMetadata("body", createUnboundedVarcharType()),
+                    new ColumnMetadata("user_id", BIGINT),
+                    new ColumnMetadata("user_login", createUnboundedVarcharType()),
+                    new ColumnMetadata("label_ids", new ArrayType(BIGINT)),
+                    new ColumnMetadata("label_names", new ArrayType(createUnboundedVarcharType())),
+                    new ColumnMetadata("assignee_id", BIGINT),
+                    new ColumnMetadata("assignee_login", createUnboundedVarcharType()),
+                    new ColumnMetadata("milestone_id", BIGINT),
+                    new ColumnMetadata("milestone_title", createUnboundedVarcharType()),
+                    new ColumnMetadata("locked", BOOLEAN),
+                    new ColumnMetadata("active_lock_reason", createUnboundedVarcharType()),
+                    new ColumnMetadata("comments", BIGINT),
+                    new ColumnMetadata("closed_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
+                    new ColumnMetadata("created_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
+                    new ColumnMetadata("updated_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
+                    new ColumnMetadata("author_association", createUnboundedVarcharType())))
+            .put("issue_comments", ImmutableList.of(
+                    new ColumnMetadata("id", BIGINT),
+                    new ColumnMetadata("url", createUnboundedVarcharType()),
+                    new ColumnMetadata("html_url", createUnboundedVarcharType()),
+                    new ColumnMetadata("body", createUnboundedVarcharType()),
+                    new ColumnMetadata("user_id", BIGINT),
+                    new ColumnMetadata("user_login", createUnboundedVarcharType()),
+                    new ColumnMetadata("created_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
+                    new ColumnMetadata("updated_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
+                    new ColumnMetadata("issue_url", createUnboundedVarcharType()),
+                    new ColumnMetadata("author_association", createUnboundedVarcharType())))
+            .put("runs", ImmutableList.of(
                     new ColumnMetadata("id", BIGINT),
                     new ColumnMetadata("name", createUnboundedVarcharType()),
                     new ColumnMetadata("node_id", createUnboundedVarcharType()),
@@ -71,8 +203,8 @@ public class GithubRest
                     new ColumnMetadata("conclusion", createUnboundedVarcharType()),
                     new ColumnMetadata("workflow_id", BIGINT),
                     new ColumnMetadata("created_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
-                    new ColumnMetadata("updated_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3))),
-            "jobs", ImmutableList.of(
+                    new ColumnMetadata("updated_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3))))
+            .put("jobs", ImmutableList.of(
                     new ColumnMetadata("id", BIGINT),
                     new ColumnMetadata("run_id", BIGINT),
                     new ColumnMetadata("run_url", createUnboundedVarcharType()),
@@ -85,15 +217,15 @@ public class GithubRest
                     new ColumnMetadata("started_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
                     new ColumnMetadata("completed_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
                     new ColumnMetadata("name", createUnboundedVarcharType()),
-                    new ColumnMetadata("check_run_url", createUnboundedVarcharType())),
-            "steps", ImmutableList.of(
+                    new ColumnMetadata("check_run_url", createUnboundedVarcharType())))
+            .put("steps", ImmutableList.of(
                     new ColumnMetadata("job_id", BIGINT),
                     new ColumnMetadata("name", createUnboundedVarcharType()),
                     new ColumnMetadata("status", createUnboundedVarcharType()),
                     new ColumnMetadata("conclusion", createUnboundedVarcharType()),
                     new ColumnMetadata("number", BIGINT),
                     new ColumnMetadata("started_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
-                    new ColumnMetadata("completed_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3))));
+                    new ColumnMetadata("completed_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)))).build();
 
     public GithubRest(String token, String owner, String repo)
     {
@@ -139,37 +271,62 @@ public class GithubRest
     @Override
     public Collection<? extends List<?>> getRows(SchemaTableName schemaTableName)
     {
+        // don't implement any API that has pagination, just expose functions to fetch that data
+        // and put it into tables in other persistent dbs
+        // TODO support predicate pushdown and allow more endpoints when all required params are present
+        // TODO split manager should generate one split per page, but it has to know how many results there are
+        // TODO maybe call it with per_page=0 to get total? but also account for rate limits
         switch (schemaTableName.getTableName()) {
+            case "pulls":
+                throw new UnsupportedOperationException("Use pulls function instead");
+            case "pull_commits":
+                throw new UnsupportedOperationException("Use pull_commits function instead");
+            case "reviews":
+                throw new UnsupportedOperationException("Use reviews function instead");
+            case "review_comments":
+                throw new UnsupportedOperationException("Use review_comments function instead");
             case "issues":
+                // this is just an example and should not be used, see comments above
                 return getIssues();
+            case "issue_comments":
+                throw new UnsupportedOperationException("Use issue_comments function instead");
             case "runs":
-                // don't implement any API that has pagination, just expose functions to fetch that data
-                // and put it into tables in other persistent dbs
-                // TODO document an example how to get new data, that is add a condition to fetch new runs
-                // and loop "INSERT INTO SELECT FROM" until page is empty (inserted zero rows)
-                throw new UnsupportedOperationException("Use workflow_runs function instead");
+                throw new UnsupportedOperationException("Use runs function instead");
             case "jobs":
-                throw new UnsupportedOperationException("Use workflow_jobs function instead");
+                throw new UnsupportedOperationException("Use jobs function instead");
             case "steps":
-                throw new UnsupportedOperationException("Use workflow_steps function instead");
+                throw new UnsupportedOperationException("Use steps function instead");
         }
         return null;
     }
 
     private Collection<? extends List<?>> getIssues()
     {
-        Response<List<Issue>> execute;
-        try {
-            execute = service.listIssues("Bearer " + token, owner, repo).execute();
+        ImmutableList.Builder<List<?>> result = new ImmutableList.Builder<>();
+
+        int page = 1;
+        while (true) {
+            Response<List<Issue>> response;
+            try {
+                response = service.listIssues("Bearer " + token, owner, repo, 100, page++).execute();
+            }
+            catch (IOException e) {
+                throw Throwables.propagate(e);
+            }
+            if (response.code() == HTTP_NOT_FOUND) {
+                break;
+            }
+            if (!response.isSuccessful()) {
+                throw new IllegalStateException("Unable to read: " + response.message());
+            }
+            List<Issue> issues = response.body();
+            if (issues == null || issues.size() == 0) {
+                break;
+            }
+            result.addAll(issues.stream().map(Issue::toRow).collect(toList()));
         }
-        catch (IOException e) {
-            throw Throwables.propagate(e);
-        }
-        if (!execute.isSuccessful()) {
-            throw new IllegalStateException("Unable to read: " + execute.message());
-        }
-        List<Issue> issues = execute.body();
-        return issues.stream().map(Issue::toRow).collect(toList());
+
+        return result.build();
     }
 
     @Override

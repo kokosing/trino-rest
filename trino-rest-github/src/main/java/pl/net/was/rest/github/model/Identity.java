@@ -17,27 +17,37 @@ package pl.net.was.rest.github.model;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.time.ZonedDateTime;
+
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class User
+public class Identity
 {
-    private final long id;
-    private final String login;
+    private final String name;
+    private final String email;
+    private final ZonedDateTime date;
 
-    public User(
-            @JsonProperty("id") long id,
-            @JsonProperty("login") String login)
+    public Identity(
+            @JsonProperty("name") String name,
+            @JsonProperty("email") String email,
+            @JsonProperty("date") ZonedDateTime date)
     {
-        this.id = id;
-        this.login = login;
+        this.name = name;
+        this.email = email;
+        this.date = date;
     }
 
-    public long getId()
+    public String getName()
     {
-        return id;
+        return name;
     }
 
-    public String getLogin()
+    public String getEmail()
     {
-        return login;
+        return email;
+    }
+
+    public ZonedDateTime getDate()
+    {
+        return date;
     }
 }

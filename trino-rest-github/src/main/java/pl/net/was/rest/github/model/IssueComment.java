@@ -20,70 +20,39 @@ import com.google.common.collect.ImmutableList;
 
 import java.time.ZonedDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class Issue
+public class IssueComment
 {
     private final long id;
     private final String url;
-    private final String eventsUrl;
     private final String htmlUrl;
-    private final long number;
-    private final String state;
-    private final String title;
     private final String body;
     private final User user;
-    private final List<Label> labels;
-    private final User assignee;
-    private final Milestone milestone;
-    private final Boolean locked;
-    private final String activeLockReason;
-    private final long comments;
-    private final ZonedDateTime closedAt;
     private final ZonedDateTime createdAt;
     private final ZonedDateTime updatedAt;
+    private final String issueUrl;
     private final String authorAssociation;
 
-    public Issue(
+    public IssueComment(
             @JsonProperty("id") long id,
             @JsonProperty("url") String url,
-            @JsonProperty("events_url") String eventsUrl,
             @JsonProperty("html_url") String htmlUrl,
-            @JsonProperty("number") long number,
-            @JsonProperty("state") String state,
-            @JsonProperty("title") String title,
             @JsonProperty("body") String body,
             @JsonProperty("user") User user,
-            @JsonProperty("labels") List<Label> labels,
-            @JsonProperty("assignee") User assignee,
-            @JsonProperty("milestone") Milestone milestone,
-            @JsonProperty("locked") Boolean locked,
-            @JsonProperty("active_lock_reason") String activeLockReason,
-            @JsonProperty("comments") long comments,
-            @JsonProperty("closed_at") ZonedDateTime closedAt,
             @JsonProperty("created_at") ZonedDateTime createdAt,
             @JsonProperty("updated_at") ZonedDateTime updatedAt,
+            @JsonProperty("issue_url") String issueUrl,
             @JsonProperty("author_association") String authorAssociation)
     {
         this.id = id;
         this.url = url;
-        this.eventsUrl = eventsUrl;
         this.htmlUrl = htmlUrl;
-        this.number = number;
-        this.state = state;
-        this.title = title;
         this.body = body;
         this.user = user;
-        this.labels = labels;
-        this.assignee = assignee;
-        this.milestone = milestone;
-        this.locked = locked;
-        this.activeLockReason = activeLockReason;
-        this.comments = comments;
-        this.closedAt = closedAt;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.issueUrl = issueUrl;
         this.authorAssociation = authorAssociation;
     }
 
@@ -92,26 +61,14 @@ public class Issue
         return ImmutableList.of(
                 id,
                 url,
-                eventsUrl,
                 htmlUrl,
-                number,
-                state,
-                title,
                 body,
                 user.getId(),
                 user.getLogin(),
-                labels.stream().map(Label::getId).collect(Collectors.toList()),
-                labels.stream().map(Label::getName).collect(Collectors.toList()),
-                assignee.getId(),
-                assignee.getLogin(),
-                milestone.getId(),
-                milestone.getTitle(),
-                locked,
-                activeLockReason,
-                comments,
-                closedAt,
+                body,
                 createdAt,
                 updatedAt,
+                issueUrl,
                 authorAssociation);
     }
 }

@@ -18,26 +18,42 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class User
+public class Ref
 {
-    private final long id;
-    private final String login;
+    private final String label;
+    private final String url;
+    private final String ref;
+    private final String sha;
 
-    public User(
-            @JsonProperty("id") long id,
-            @JsonProperty("login") String login)
+    public Ref(
+            @JsonProperty("label") String label,
+            @JsonProperty("url") String url,
+            @JsonProperty("ref") String ref,
+            @JsonProperty("sha") String sha)
     {
-        this.id = id;
-        this.login = login;
+        this.label = label;
+        this.url = url;
+        this.ref = ref;
+        this.sha = sha;
     }
 
-    public long getId()
+    public String getLabel()
     {
-        return id;
+        return label;
     }
 
-    public String getLogin()
+    public String getUrl()
     {
-        return login;
+        return url;
+    }
+
+    public String getRef()
+    {
+        return ref;
+    }
+
+    public String getSha()
+    {
+        return sha;
     }
 }

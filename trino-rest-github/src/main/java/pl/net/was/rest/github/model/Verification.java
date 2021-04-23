@@ -18,26 +18,42 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class User
+public class Verification
 {
-    private final long id;
-    private final String login;
+    private final Boolean verified;
+    private final String reason;
+    private final String signature;
+    private final String payload;
 
-    public User(
-            @JsonProperty("id") long id,
-            @JsonProperty("login") String login)
+    public Verification(
+            @JsonProperty("verified") Boolean verified,
+            @JsonProperty("reason") String reason,
+            @JsonProperty("signature") String signature,
+            @JsonProperty("payload") String payload)
     {
-        this.id = id;
-        this.login = login;
+        this.verified = verified;
+        this.reason = reason;
+        this.signature = signature;
+        this.payload = payload;
     }
 
-    public long getId()
+    public Boolean getVerified()
     {
-        return id;
+        return verified;
     }
 
-    public String getLogin()
+    public String getReason()
     {
-        return login;
+        return reason;
+    }
+
+    public String getSignature()
+    {
+        return signature;
+    }
+
+    public String getPayload()
+    {
+        return payload;
     }
 }

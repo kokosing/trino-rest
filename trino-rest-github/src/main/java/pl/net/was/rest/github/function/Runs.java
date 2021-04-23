@@ -24,28 +24,26 @@ import io.trino.spi.function.SqlType;
 import io.trino.spi.type.ArrayType;
 import io.trino.spi.type.RowType;
 import pl.net.was.rest.github.GithubRest;
-import pl.net.was.rest.github.model.Job;
-import pl.net.was.rest.github.model.JobsList;
+import pl.net.was.rest.github.model.RunsList;
 import retrofit2.Response;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static io.trino.spi.type.StandardTypes.BIGINT;
+import static io.trino.spi.type.StandardTypes.INTEGER;
 import static io.trino.spi.type.StandardTypes.VARCHAR;
 import static java.lang.String.format;
 import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
 
-@ScalarFunction("workflow_jobs")
-@Description("Get workflow jobs")
-public class WorkflowJobs
+@ScalarFunction("runs")
+@Description("Get workflow runs")
+public class Runs
         extends BaseFunction
 {
-    public WorkflowJobs()
+    public Runs()
     {
-        List<RowType.Field> fields = GithubRest.columns.get("jobs")
+        List<RowType.Field> fields = GithubRest.columns.get("runs")
                 .stream()
                 .map(columnMetadata -> RowType.field(
                         columnMetadata.getName(),
@@ -60,53 +58,34 @@ public class WorkflowJobs
     // TODO can this be constructed automatically? it must match GithubRest.columns
     @SqlType("array(row(" +
             "id bigint, " +
-            "run_id bigint, " +
-            "run_url varchar, " +
+            "name varchar, " +
             "node_id varchar, " +
+            "head_branch varchar, " +
             "head_sha varchar, " +
-            "url varchar, " +
-            "html_url varchar, " +
+            "run_number bigint, " +
+            "event varchar, " +
             "status varchar, " +
             "conclusion varchar, " +
+            "workflow_id bigint, " +
             "created_at timestamp(3) with time zone, " +
-            "updated_at timestamp(3) with time zone, " +
-            "name varchar, " +
-            "check_run_url varchar" +
+            "updated_at timestamp(3) with time zone" +
             "))")
-    public Block getPage(@SqlType(VARCHAR) Slice token, @SqlType(VARCHAR) Slice owner, @SqlType(VARCHAR) Slice repo, @SqlType(BIGINT) long runId)
+    public Block getPage(@SqlType(VARCHAR) Slice token, @SqlType(VARCHAR) Slice owner, @SqlType(VARCHAR) Slice repo, @SqlType(INTEGER) long page)
             throws IOException
     {
-        // there should not be more than a few pages worth of jobs, so try to get all of them
-        List<Job> jobs = new ArrayList<>();
-        long total = Long.MAX_VALUE;
-        int page = 1;
-        while (jobs.size() < total) {
-            Response<JobsList> response = service.listJobs(
-                    token.toStringUtf8(),
-                    owner.toStringUtf8(),
-                    repo.toStringUtf8(),
-                    runId,
-                    "all",
-                    100,
-                    page++).execute();
-            if (response.code() == HTTP_NOT_FOUND) {
-                break;
-            }
-            if (!response.isSuccessful()) {
-                throw new IllegalStateException(format("Invalid response, code %d, message: %s", response.code(), response.message()));
-            }
-            JobsList jobsList = response.body();
-            if (jobsList == null) {
-                throw new IllegalStateException("Invalid response");
-            }
-
-            total = jobsList.getTotalCount();
-            List<Job> pageJobs = jobsList.getJobs();
-            if (pageJobs.size() == 0) {
-                break;
-            }
-            jobs.addAll(pageJobs);
+        Response<RunsList> response = service.listRuns(
+                token.toStringUtf8(),
+                owner.toStringUtf8(),
+                repo.toStringUtf8(),
+                100,
+                (int) page).execute();
+        if (response.code() == HTTP_NOT_FOUND) {
+            return null;
         }
-        return buildBlock(jobs);
+        if (!response.isSuccessful()) {
+            throw new IllegalStateException(format("Invalid response, code %d, message: %s", response.code(), response.message()));
+        }
+        RunsList runsList = response.body();
+        return buildBlock(runsList.getWorkflowRuns());
     }
 }

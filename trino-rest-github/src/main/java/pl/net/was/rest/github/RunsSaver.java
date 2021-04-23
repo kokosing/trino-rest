@@ -120,7 +120,7 @@ public class RunsSaver
         // save only completed runs to avoid having to update them later
         PreparedStatement statement = conn.prepareStatement(
                 "INSERT INTO " + destSchema + ".runs " +
-                        "SELECT src.* FROM unnest(workflow_runs(?, ?, ?, ?)) src " +
+                        "SELECT src.* FROM unnest(runs(?, ?, ?, ?)) src " +
                         "LEFT JOIN " + destSchema + ".runs dst ON dst.id = src.id " +
                         "WHERE dst.id IS NULL AND src.status = 'completed'");
         statement.setString(1, "Bearer " + System.getenv("GITHUB_TOKEN"));
@@ -169,7 +169,7 @@ public class RunsSaver
                         "HAVING COUNT(j.id) = 0 " +
                         "ORDER BY r.id DESC LIMIT 20" +
                         ") r " +
-                        "CROSS JOIN unnest(workflow_jobs(?, ?, ?, r.id)) src " +
+                        "CROSS JOIN unnest(jobs(?, ?, ?, r.id)) src " +
                         "LEFT JOIN " + destSchema + ".jobs dst ON (dst.run_id, dst.id) = (src.run_id, src.id) " +
                         "WHERE dst.id IS NULL");
         statement.setString(1, "Bearer " + System.getenv("GITHUB_TOKEN"));
@@ -218,7 +218,7 @@ public class RunsSaver
         String insertQuery =
                 "INSERT INTO " + destSchema + ".steps " +
                         "SELECT src.* " +
-                        "FROM unnest(workflow_steps(?, ?, ?, ?)) src " +
+                        "FROM unnest(steps(?, ?, ?, ?)) src " +
                         "LEFT JOIN " + destSchema + ".steps dst ON (dst.job_id, dst.number) = (src.job_id, src.number) " +
                         "WHERE dst.number IS NULL";
         // the LEFT JOIN used to avoid duplicate errors always fetches all steps
@@ -229,7 +229,7 @@ public class RunsSaver
         if (checkDuplicates != null && checkDuplicates.equals("false")) {
             insertQuery =
                     "INSERT INTO " + destSchema + ".steps " +
-                            "SELECT * FROM unnest(workflow_steps(?, ?, ?, ?)) src";
+                            "SELECT * FROM unnest(steps(?, ?, ?, ?)) src";
         }
         PreparedStatement insertStatement = conn.prepareStatement(insertQuery);
         insertStatement.setString(1, "Bearer " + System.getenv("GITHUB_TOKEN"));
@@ -273,7 +273,7 @@ public class RunsSaver
                 "INSERT INTO " + destSchema + ".steps " +
                         "SELECT src.* " +
                         "FROM (" + runsQuery + ") r " +
-                        "CROSS JOIN unnest(workflow_steps(?, ?, ?, r.id)) src " +
+                        "CROSS JOIN unnest(steps(?, ?, ?, r.id)) src " +
                         "LEFT JOIN " + destSchema + ".steps dst ON (dst.job_id, dst.number) = (src.job_id, src.number) " +
                         "WHERE dst.number IS NULL");
         insertStatement.setString(2, "Bearer " + System.getenv("GITHUB_TOKEN"));
@@ -313,7 +313,7 @@ public class RunsSaver
         // only fetch up to 5 job logs for completed runs not older than 2 months, without any job logs
         PreparedStatement statement = conn.prepareStatement(
                 "INSERT INTO " + destSchema + ".logs " +
-                        "SELECT j.id, workflow_job_logs(?, ?, ?, j.id) " +
+                        "SELECT j.id, job_logs(?, ?, ?, j.id) " +
                         "FROM (" +
                         "SELECT j.id " +
                         "FROM " + destSchema + ".runs r " +

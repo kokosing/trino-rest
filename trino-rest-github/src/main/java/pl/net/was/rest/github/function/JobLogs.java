@@ -29,12 +29,12 @@ import static io.trino.spi.type.StandardTypes.VARCHAR;
 import static java.lang.String.format;
 import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
 
-@ScalarFunction("workflow_job_logs")
+@ScalarFunction("job_logs")
 @Description("Get workflow job logs")
-public class WorkflowJobLogs
+public class JobLogs
         extends BaseFunction
 {
-    public WorkflowJobLogs() {}
+    public JobLogs() {}
 
     @SqlType("varchar")
     public Slice getLog(@SqlType(VARCHAR) Slice token, @SqlType(VARCHAR) Slice owner, @SqlType(VARCHAR) Slice repo, @SqlType(BIGINT) long jobId)

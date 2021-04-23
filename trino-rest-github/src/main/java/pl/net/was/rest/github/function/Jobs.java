@@ -26,7 +26,6 @@ import io.trino.spi.type.RowType;
 import pl.net.was.rest.github.GithubRest;
 import pl.net.was.rest.github.model.Job;
 import pl.net.was.rest.github.model.JobsList;
-import pl.net.was.rest.github.model.Step;
 import retrofit2.Response;
 
 import java.io.IOException;
@@ -39,14 +38,14 @@ import static io.trino.spi.type.StandardTypes.VARCHAR;
 import static java.lang.String.format;
 import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
 
-@ScalarFunction("workflow_steps")
-@Description("Get workflow steps")
-public class WorkflowSteps
+@ScalarFunction("jobs")
+@Description("Get workflow jobs")
+public class Jobs
         extends BaseFunction
 {
-    public WorkflowSteps()
+    public Jobs()
     {
-        List<RowType.Field> fields = GithubRest.columns.get("steps")
+        List<RowType.Field> fields = GithubRest.columns.get("jobs")
                 .stream()
                 .map(columnMetadata -> RowType.field(
                         columnMetadata.getName(),
@@ -60,13 +59,19 @@ public class WorkflowSteps
 
     // TODO can this be constructed automatically? it must match GithubRest.columns
     @SqlType("array(row(" +
-            "job_id bigint, " +
-            "name varchar, " +
+            "id bigint, " +
+            "run_id bigint, " +
+            "run_url varchar, " +
+            "node_id varchar, " +
+            "head_sha varchar, " +
+            "url varchar, " +
+            "html_url varchar, " +
             "status varchar, " +
             "conclusion varchar, " +
-            "number bigint, " +
             "created_at timestamp(3) with time zone, " +
-            "updated_at timestamp(3) with time zone" +
+            "updated_at timestamp(3) with time zone, " +
+            "name varchar, " +
+            "check_run_url varchar" +
             "))")
     public Block getPage(@SqlType(VARCHAR) Slice token, @SqlType(VARCHAR) Slice owner, @SqlType(VARCHAR) Slice repo, @SqlType(BIGINT) long runId)
             throws IOException
@@ -102,10 +107,6 @@ public class WorkflowSteps
             }
             jobs.addAll(pageJobs);
         }
-        List<Step> steps = jobs
-                .stream()
-                .flatMap(j -> j.getSteps().stream())
-                .collect(Collectors.toList());
-        return buildBlock(steps);
+        return buildBlock(jobs);
     }
 }
