@@ -17,12 +17,20 @@ package pl.net.was.rest.github.model;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableList;
+import io.trino.spi.block.BlockBuilder;
+import io.trino.spi.connector.ColumnMetadata;
+import pl.net.was.rest.github.GithubRest;
 
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import static io.trino.spi.type.BigintType.BIGINT;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class ReviewComment
+        extends BaseBlockWriter
 {
     private final String url;
     private final long pullRequestReviewId;
@@ -125,5 +133,37 @@ public class ReviewComment
                 line,
                 originalLine,
                 side);
+    }
+
+    @Override
+    public void writeTo(BlockBuilder rowBuilder)
+    {
+        Map<String, ColumnMetadata> columns = GithubRest.columns.get("issues").stream()
+                .collect(Collectors.toMap(ColumnMetadata::getName, columnMetadata -> columnMetadata));
+
+        writeString(rowBuilder, url);
+        BIGINT.writeLong(rowBuilder, pullRequestReviewId);
+        BIGINT.writeLong(rowBuilder, id);
+        writeString(rowBuilder, diffHunk);
+        writeString(rowBuilder, path);
+        BIGINT.writeLong(rowBuilder, position);
+        BIGINT.writeLong(rowBuilder, originalPosition);
+        writeString(rowBuilder, commitId);
+        writeString(rowBuilder, originalCommitId);
+        BIGINT.writeLong(rowBuilder, inReplyToId);
+        BIGINT.writeLong(rowBuilder, user.getId());
+        writeString(rowBuilder, user.getLogin());
+        writeString(rowBuilder, body);
+        writeTimestamp(rowBuilder, createdAt);
+        writeTimestamp(rowBuilder, updatedAt);
+        writeString(rowBuilder, htmlUrl);
+        writeString(rowBuilder, pullRequestUrl);
+        writeString(rowBuilder, authorAssociation);
+        BIGINT.writeLong(rowBuilder, startLine);
+        BIGINT.writeLong(rowBuilder, originalStartLine);
+        writeString(rowBuilder, startSide);
+        BIGINT.writeLong(rowBuilder, line);
+        BIGINT.writeLong(rowBuilder, originalLine);
+        writeString(rowBuilder, side);
     }
 }

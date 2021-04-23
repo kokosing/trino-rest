@@ -62,7 +62,7 @@ public class GithubRest
                     new ColumnMetadata("url", createUnboundedVarcharType()),
                     new ColumnMetadata("html_url", createUnboundedVarcharType()),
                     new ColumnMetadata("diff_url", createUnboundedVarcharType()),
-                    new ColumnMetadata("path_url", createUnboundedVarcharType()),
+                    new ColumnMetadata("patch_url", createUnboundedVarcharType()),
                     new ColumnMetadata("issue_url", createUnboundedVarcharType()),
                     new ColumnMetadata("commits_url", createUnboundedVarcharType()),
                     new ColumnMetadata("review_comments_url", createUnboundedVarcharType()),
@@ -229,6 +229,113 @@ public class GithubRest
 
     // TODO add tests that would verify this using getSqlType(), print the expected string so its easy to copy&paste
     // TODO consider moving to a separate class
+    public static final String PULLS_TABLE_TYPE = "array(row(" +
+            "id bigint, " +
+            "url varchar, " +
+            "html_url varchar, " +
+            "diff_url varchar, " +
+            "patch_url varchar, " +
+            "issue_url varchar, " +
+            "commits_url varchar, " +
+            "review_comments_url varchar, " +
+            "review_comment_url varchar, " +
+            "comments_url varchar, " +
+            "statuses_url varchar, " +
+            "number bigint, " +
+            "state varchar, " +
+            "locked boolean, " +
+            "title varchar, " +
+            "user_id bigint, " +
+            "user_login varchar, " +
+            "body varchar, " +
+            "label_ids array(bigint), " +
+            "label_names array(varchar), " +
+            "milestone_id bigint, " +
+            "milestone_title varchar, " +
+            "active_lock_reason varchar, " +
+            "created_at timestamp(3) with time zone, " +
+            "updated_at timestamp(3) with time zone, " +
+            "closed_at timestamp(3) with time zone, " +
+            "merged_at timestamp(3) with time zone, " +
+            "merge_commit_sha varchar, " +
+            "assignee_id bigint, " +
+            "assignee_login varchar, " +
+            "requested_reviewer_ids array(bigint), " +
+            "requested_reviewer_logins array(varchar), " +
+            "head_ref varchar, " +
+            "head_sha varchar, " +
+            "base_ref varchar, " +
+            "base_sha varchar, " +
+            "author_association varchar, " +
+            "draft boolean" +
+            "))";
+
+    public static final String PULL_COMMITS_TABLE_TYPE = "array(row(" +
+            "url varchar, " +
+            "sha varchar, " +
+            "html_url varchar, " +
+            "comments_url varchar, " +
+            "commit_url varchar, " +
+            "commit_message varchar, " +
+            "commit_tree_url varchar, " +
+            "commit_tree_sha varchar, " +
+            "commit_comments_count bigint, " +
+            "commit_verified boolean, " +
+            "commit_verification_reason varchar, " +
+            "author_name varchar, " +
+            "author_email varchar, " +
+            "author_date timestamp(3) with time zone, " +
+            "author_id bigint, " +
+            "author_login varchar, " +
+            "committer_name varchar, " +
+            "committer_email varchar, " +
+            "committer_date timestamp(3) with time zone, " +
+            "committer_id bigint, " +
+            "committer_login varchar, " +
+            "parent_urls array(varchar), " +
+            "parent_shas array(varchar)" +
+            "))";
+
+    public static final String REVIEWS_TABLE_TYPE = "array(row(" +
+            "id bigint, " +
+            "user_id bigint, " +
+            "user_login varchar, " +
+            "body varchar, " +
+            "state varchar, " +
+            "html_url varchar, " +
+            "pull_request_url varchar, " +
+            "submitted_at timestamp(3) with time zone, " +
+            "commit_id varchar, " +
+            "author_association varchar" +
+            "))";
+
+    public static final String REVIEW_COMMENTS_TABLE_TYPE = "array(row(" +
+            "url varchar, " +
+            "pull_request_review_id bigint, " +
+            "id bigint, " +
+            "diff_hunk varchar, " +
+            "path varchar, " +
+            "position bigint, " +
+            "original_position bigint, " +
+            "commit_id varchar, " +
+            "original_commit_id varchar, " +
+            "in_reply_to_id bigint, " +
+            "user_id bigint, " +
+            "user_login varchar, " +
+            "body varchar, " +
+            "created_at timestamp(3) with time zone, " +
+            "updated_at timestamp(3) with time zone, " +
+            "html_url varchar, " +
+            "pull_request_url varchar, " +
+            "author_association varchar, " +
+            "start_line bigint, " +
+            "original_start_line bigint, " +
+            "start_side varchar, " +
+            "line bigint, " +
+            "original_line bigint, " +
+            "side varchar" +
+            "))";
+
     public static final String ISSUES_TABLE_TYPE = "array(row(" +
             "id bigint, " +
             "url varchar, " +

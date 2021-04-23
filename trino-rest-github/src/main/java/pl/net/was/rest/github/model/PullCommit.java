@@ -17,11 +17,20 @@ package pl.net.was.rest.github.model;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableList;
+import io.trino.spi.block.BlockBuilder;
+import io.trino.spi.connector.ColumnMetadata;
+import pl.net.was.rest.github.GithubRest;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import static io.trino.spi.type.BigintType.BIGINT;
+import static io.trino.spi.type.BooleanType.BOOLEAN;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class PullCommit
+        extends BaseBlockWriter
 {
     private final String url;
     private final String sha;
@@ -63,5 +72,47 @@ public class PullCommit
                 author,
                 committer,
                 parents);
+    }
+
+    @Override
+    public void writeTo(BlockBuilder rowBuilder)
+    {
+        Map<String, ColumnMetadata> columns = GithubRest.columns.get("issues").stream()
+                .collect(Collectors.toMap(ColumnMetadata::getName, columnMetadata -> columnMetadata));
+
+        writeString(rowBuilder, url);
+        writeString(rowBuilder, sha);
+        writeString(rowBuilder, htmlUrl);
+        writeString(rowBuilder, commentsUrl);
+        writeString(rowBuilder, commit.getUrl());
+        writeString(rowBuilder, commit.getMessage());
+        writeString(rowBuilder, commit.getTree().getUrl());
+        writeString(rowBuilder, commit.getTree().getSha());
+        BIGINT.writeLong(rowBuilder, commit.getCommentsCount());
+        BOOLEAN.writeBoolean(rowBuilder, commit.getVerification().getVerified());
+        writeString(rowBuilder, commit.getVerification().getReason());
+        writeString(rowBuilder, commit.getAuthor().getName());
+        writeString(rowBuilder, commit.getAuthor().getEmail());
+        writeTimestamp(rowBuilder, commit.getAuthor().getDate());
+        BIGINT.writeLong(rowBuilder, author.getId());
+        writeString(rowBuilder, author.getLogin());
+        writeString(rowBuilder, commit.getCommitter().getName());
+        writeString(rowBuilder, commit.getCommitter().getEmail());
+        writeTimestamp(rowBuilder, commit.getCommitter().getDate());
+        BIGINT.writeLong(rowBuilder, committer.getId());
+        writeString(rowBuilder, committer.getLogin());
+
+        // parents array
+        BlockBuilder parentUrls = columns.get("parent_urls").getType().createBlockBuilder(null, parents.size());
+        for (Ref parent : parents) {
+            writeString(parentUrls, parent.getUrl());
+        }
+        rowBuilder.appendStructure(parentUrls.build());
+
+        BlockBuilder parentShas = columns.get("label_names").getType().createBlockBuilder(null, parents.size());
+        for (Ref parent : parents) {
+            writeString(parentShas, parent.getSha());
+        }
+        rowBuilder.appendStructure(parentShas.build());
     }
 }

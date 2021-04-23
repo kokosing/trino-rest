@@ -64,4 +64,39 @@ public class Commit
                 verification.getVerified(),
                 verification.getReason());
     }
+
+    public String getUrl()
+    {
+        return url;
+    }
+
+    public Identity getAuthor()
+    {
+        return author;
+    }
+
+    public Identity getCommitter()
+    {
+        return committer;
+    }
+
+    public String getMessage()
+    {
+        return message;
+    }
+
+    public Ref getTree()
+    {
+        return tree;
+    }
+
+    public long getCommentsCount()
+    {
+        return commentsCount;
+    }
+
+    public Verification getVerification()
+    {
+        return verification;
+    }
 }

@@ -17,12 +17,16 @@ package pl.net.was.rest.github.model;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableList;
+import io.trino.spi.block.BlockBuilder;
 
 import java.time.ZonedDateTime;
 import java.util.List;
 
+import static io.trino.spi.type.BigintType.BIGINT;
+
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Review
+        extends BaseBlockWriter
 {
     private final long id;
     private final User user;
@@ -69,5 +73,20 @@ public class Review
                 submittedAt,
                 commitId,
                 authorAssociation);
+    }
+
+    @Override
+    public void writeTo(BlockBuilder rowBuilder)
+    {
+        BIGINT.writeLong(rowBuilder, id);
+        BIGINT.writeLong(rowBuilder, user.getId());
+        writeString(rowBuilder, user.getLogin());
+        writeString(rowBuilder, body);
+        writeString(rowBuilder, state);
+        writeString(rowBuilder, htmlUrl);
+        writeString(rowBuilder, pullRequestUrl);
+        writeTimestamp(rowBuilder, submittedAt);
+        writeString(rowBuilder, commitId);
+        writeString(rowBuilder, authorAssociation);
     }
 }

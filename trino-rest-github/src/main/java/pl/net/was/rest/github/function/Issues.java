@@ -72,7 +72,7 @@ public class Issues
         if (!response.isSuccessful()) {
             throw new IllegalStateException(format("Invalid response, code %d, message: %s", response.code(), response.message()));
         }
-        List<Issue> issues = response.body();
-        return buildBlock(issues);
+        List<Issue> items = response.body();
+        return buildBlock(items);
     }
 }

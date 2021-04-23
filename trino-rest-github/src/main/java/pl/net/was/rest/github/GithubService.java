@@ -18,6 +18,10 @@ import okhttp3.ResponseBody;
 import pl.net.was.rest.github.model.Issue;
 import pl.net.was.rest.github.model.IssueComment;
 import pl.net.was.rest.github.model.JobsList;
+import pl.net.was.rest.github.model.Pull;
+import pl.net.was.rest.github.model.PullCommit;
+import pl.net.was.rest.github.model.Review;
+import pl.net.was.rest.github.model.ReviewComment;
 import pl.net.was.rest.github.model.RunsList;
 import retrofit2.Call;
 import retrofit2.http.GET;
@@ -32,7 +36,7 @@ public interface GithubService
 {
     @Headers("accept: application/vnd.github.v3+json")
     @GET("/repos/{owner}/{repo}/pulls")
-    Call<List<Issue>> listPulls(
+    Call<List<Pull>> listPulls(
             @Header("Authorization") String auth,
             @Path("owner") String owner,
             @Path("repo") String repo,
@@ -41,7 +45,7 @@ public interface GithubService
 
     @Headers("accept: application/vnd.github.v3+json")
     @GET("/repos/{owner}/{repo}/pulls/{pull_number}/commits")
-    Call<List<Issue>> listPullCommits(
+    Call<List<PullCommit>> listPullCommits(
             @Header("Authorization") String auth,
             @Path("owner") String owner,
             @Path("repo") String repo,
@@ -51,7 +55,7 @@ public interface GithubService
 
     @Headers("accept: application/vnd.github.v3+json")
     @GET("/repos/{owner}/{repo}/pulls/{pull_number}/reviews")
-    Call<List<Issue>> listPullReviews(
+    Call<List<Review>> listPullReviews(
             @Header("Authorization") String auth,
             @Path("owner") String owner,
             @Path("repo") String repo,
@@ -61,7 +65,7 @@ public interface GithubService
 
     @Headers("accept: application/vnd.github.v3+json")
     @GET("/repos/{owner}/{repo}/pulls/comments")
-    Call<List<Issue>> listReviewComments(
+    Call<List<ReviewComment>> listReviewComments(
             @Header("Authorization") String auth,
             @Path("owner") String owner,
             @Path("repo") String repo,

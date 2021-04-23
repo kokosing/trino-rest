@@ -17,13 +17,21 @@ package pl.net.was.rest.github.model;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableList;
+import io.trino.spi.block.BlockBuilder;
+import io.trino.spi.connector.ColumnMetadata;
+import pl.net.was.rest.github.GithubRest;
 
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
+
+import static io.trino.spi.type.BigintType.BIGINT;
+import static io.trino.spi.type.BooleanType.BOOLEAN;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Pull
+        extends BaseBlockWriter
 {
     private final long id;
     private final String url;
@@ -168,5 +176,76 @@ public class Pull
                 baseSha,
                 authorAssociation,
                 draft);
+    }
+
+    @Override
+    public void writeTo(BlockBuilder rowBuilder)
+    {
+        Map<String, ColumnMetadata> columns = GithubRest.columns.get("issues").stream()
+                .collect(Collectors.toMap(ColumnMetadata::getName, columnMetadata -> columnMetadata));
+
+        // TODO this should be a map of column names to value getters and types should be fetched from GithubRest.columns
+        BIGINT.writeLong(rowBuilder, id);
+        writeString(rowBuilder, url);
+        writeString(rowBuilder, htmlUrl);
+        writeString(rowBuilder, diffUrl);
+        writeString(rowBuilder, patchUrl);
+        writeString(rowBuilder, issueUrl);
+        writeString(rowBuilder, commitsUrl);
+        writeString(rowBuilder, reviewCommentsUrl);
+        writeString(rowBuilder, reviewCommentUrl);
+        writeString(rowBuilder, commentsUrl);
+        writeString(rowBuilder, statusesUrl);
+        BIGINT.writeLong(rowBuilder, number);
+        writeString(rowBuilder, state);
+        BOOLEAN.writeBoolean(rowBuilder, locked);
+        writeString(rowBuilder, title);
+        BIGINT.writeLong(rowBuilder, user.getId());
+        writeString(rowBuilder, user.getLogin());
+        writeString(rowBuilder, body);
+
+        // labels array
+        BlockBuilder labelIds = columns.get("label_ids").getType().createBlockBuilder(null, labels.size());
+        for (Label label : labels) {
+            labelIds.writeLong(label.getId());
+        }
+        rowBuilder.appendStructure(labelIds.build());
+
+        BlockBuilder labelNames = columns.get("label_names").getType().createBlockBuilder(null, labels.size());
+        for (Label label : labels) {
+            writeString(labelNames, label.getName());
+        }
+        rowBuilder.appendStructure(labelNames.build());
+
+        BIGINT.writeLong(rowBuilder, milestone.getId());
+        writeString(rowBuilder, milestone.getTitle());
+        writeString(rowBuilder, activeLockReason);
+        writeTimestamp(rowBuilder, createdAt);
+        writeTimestamp(rowBuilder, updatedAt);
+        writeTimestamp(rowBuilder, closedAt);
+        writeTimestamp(rowBuilder, mergedAt);
+        writeString(rowBuilder, mergedCommitSha);
+        BIGINT.writeLong(rowBuilder, assignee.getId());
+        writeString(rowBuilder, assignee.getLogin());
+
+        // requested reviewers
+        BlockBuilder reviewerIds = columns.get("requested_reviewer_ids").getType().createBlockBuilder(null, requestedReviewers.size());
+        for (User reviewer : requestedReviewers) {
+            reviewerIds.writeLong(reviewer.getId());
+        }
+        rowBuilder.appendStructure(reviewerIds.build());
+
+        BlockBuilder reviewerLogins = columns.get("requested_reviewer_logins").getType().createBlockBuilder(null, requestedReviewers.size());
+        for (User reviewer : requestedReviewers) {
+            writeString(reviewerLogins, reviewer.getLogin());
+        }
+        rowBuilder.appendStructure(reviewerLogins.build());
+
+        writeString(rowBuilder, headRef);
+        writeString(rowBuilder, headSha);
+        writeString(rowBuilder, baseRef);
+        writeString(rowBuilder, baseSha);
+        writeString(rowBuilder, authorAssociation);
+        BOOLEAN.writeBoolean(rowBuilder, draft);
     }
 }

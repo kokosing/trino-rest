@@ -24,27 +24,28 @@ import io.trino.spi.function.SqlType;
 import io.trino.spi.type.ArrayType;
 import io.trino.spi.type.RowType;
 import pl.net.was.rest.github.GithubRest;
-import pl.net.was.rest.github.model.IssueComment;
+import pl.net.was.rest.github.model.Review;
 import retrofit2.Response;
 
 import java.io.IOException;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static io.trino.spi.type.StandardTypes.BIGINT;
 import static io.trino.spi.type.StandardTypes.INTEGER;
 import static io.trino.spi.type.StandardTypes.VARCHAR;
 import static java.lang.String.format;
 import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
-import static pl.net.was.rest.github.GithubRest.ISSUE_COMMENTS_TABLE_TYPE;
+import static pl.net.was.rest.github.GithubRest.REVIEWS_TABLE_TYPE;
 
-@ScalarFunction("issue_comments")
-@Description("Get issue comments")
-public class IssueComments
+@ScalarFunction("reviews")
+@Description("Get pull request reviews")
+public class Reviews
         extends BaseFunction
 {
-    public IssueComments()
+    public Reviews()
     {
-        List<RowType.Field> fields = GithubRest.columns.get("issue_comments")
+        List<RowType.Field> fields = GithubRest.columns.get("reviews")
                 .stream()
                 .map(columnMetadata -> RowType.field(
                         columnMetadata.getName(),
@@ -56,14 +57,15 @@ public class IssueComments
         pageBuilder = new PageBuilder(ImmutableList.of(arrayType));
     }
 
-    @SqlType(ISSUE_COMMENTS_TABLE_TYPE)
-    public Block getPage(@SqlType(VARCHAR) Slice token, @SqlType(VARCHAR) Slice owner, @SqlType(VARCHAR) Slice repo, @SqlType(INTEGER) long page)
+    @SqlType(REVIEWS_TABLE_TYPE)
+    public Block getPage(@SqlType(VARCHAR) Slice token, @SqlType(VARCHAR) Slice owner, @SqlType(VARCHAR) Slice repo, @SqlType(BIGINT) long pullNumber, @SqlType(INTEGER) long page)
             throws IOException
     {
-        Response<List<IssueComment>> response = service.listIssueComments(
+        Response<List<Review>> response = service.listPullReviews(
                 token.toStringUtf8(),
                 owner.toStringUtf8(),
                 repo.toStringUtf8(),
+                pullNumber,
                 100,
                 (int) page).execute();
         if (response.code() == HTTP_NOT_FOUND) {
@@ -72,7 +74,7 @@ public class IssueComments
         if (!response.isSuccessful()) {
             throw new IllegalStateException(format("Invalid response, code %d, message: %s", response.code(), response.message()));
         }
-        List<IssueComment> items = response.body();
+        List<Review> items = response.body();
         return buildBlock(items);
     }
 }
