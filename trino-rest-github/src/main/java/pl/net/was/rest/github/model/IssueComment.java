@@ -17,12 +17,16 @@ package pl.net.was.rest.github.model;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableList;
+import io.trino.spi.block.BlockBuilder;
 
 import java.time.ZonedDateTime;
 import java.util.List;
 
+import static io.trino.spi.type.BigintType.BIGINT;
+
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class IssueComment
+        extends BaseBlockWriter
 {
     private final long id;
     private final String url;
@@ -65,10 +69,25 @@ public class IssueComment
                 body,
                 user.getId(),
                 user.getLogin(),
-                body,
                 createdAt,
                 updatedAt,
                 issueUrl,
                 authorAssociation);
+    }
+
+    @Override
+    public void writeTo(BlockBuilder rowBuilder)
+    {
+        // TODO this should be a map of column names to value getters and types should be fetched from GithubRest.columns
+        BIGINT.writeLong(rowBuilder, id);
+        writeString(rowBuilder, url);
+        writeString(rowBuilder, htmlUrl);
+        writeString(rowBuilder, body);
+        BIGINT.writeLong(rowBuilder, user.getId());
+        writeString(rowBuilder, user.getLogin());
+        writeTimestamp(rowBuilder, createdAt);
+        writeTimestamp(rowBuilder, updatedAt);
+        writeString(rowBuilder, issueUrl);
+        writeString(rowBuilder, authorAssociation);
     }
 }

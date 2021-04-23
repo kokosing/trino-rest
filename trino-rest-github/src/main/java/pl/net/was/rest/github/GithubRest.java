@@ -227,6 +227,47 @@ public class GithubRest
                     new ColumnMetadata("started_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
                     new ColumnMetadata("completed_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)))).build();
 
+    // TODO add tests that would verify this using getSqlType(), print the expected string so its easy to copy&paste
+    // TODO consider moving to a separate class
+    public static final String ISSUES_TABLE_TYPE = "array(row(" +
+            "id bigint, " +
+            "url varchar, " +
+            "events_url varchar, " +
+            "html_url varchar, " +
+            "number bigint, " +
+            "state varchar, " +
+            "title varchar, " +
+            "body varchar, " +
+            "user_id bigint, " +
+            "user_login varchar, " +
+            "label_ids array(bigint), " +
+            "label_names array(varchar), " +
+            "assignee_id bigint, " +
+            "assignee_login varchar, " +
+            "milestone_id bigint, " +
+            "milestone_title varchar, " +
+            "locked boolean, " +
+            "active_lock_reason varchar, " +
+            "comments bigint, " +
+            "closed_at timestamp(3) with time zone, " +
+            "created_at timestamp(3) with time zone, " +
+            "updated_at timestamp(3) with time zone, " +
+            "author_association varchar" +
+            "))";
+
+    public static final String ISSUE_COMMENTS_TABLE_TYPE = "array(row(" +
+            "id bigint, " +
+            "url varchar, " +
+            "html_url varchar, " +
+            "body varchar, " +
+            "user_id bigint, " +
+            "user_login varchar, " +
+            "created_at timestamp(3) with time zone, " +
+            "updated_at timestamp(3) with time zone, " +
+            "issue_url varchar, " +
+            "author_association varchar" +
+            "))";
+
     public GithubRest(String token, String owner, String repo)
     {
         this.token = token;
@@ -333,5 +374,13 @@ public class GithubRest
     public Consumer<List> createRowSink(SchemaTableName schemaTableName)
     {
         throw new IllegalStateException("This connector does not support write");
+    }
+
+    public static String getSqlType(String tableName)
+    {
+        return columns.get(tableName)
+                .stream()
+                .map(column -> column.getName() + " " + column.getType().getDisplayName())
+                .collect(Collectors.joining(", ", "ARRAY(ROW(", "))"));
     }
 }

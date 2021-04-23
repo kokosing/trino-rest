@@ -18,21 +18,16 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableList;
 import io.trino.spi.block.BlockBuilder;
-import io.trino.spi.type.DateTimeEncoding;
 
 import java.time.ZonedDateTime;
 import java.util.List;
 
 import static io.trino.spi.type.BigintType.BIGINT;
-import static io.trino.spi.type.TimestampWithTimeZoneType.TIMESTAMP_TZ_SECONDS;
-import static io.trino.spi.type.Timestamps.MILLISECONDS_PER_SECOND;
-import static io.trino.spi.type.Timestamps.NANOSECONDS_PER_MILLISECOND;
-import static io.trino.spi.type.Timestamps.roundDiv;
 import static io.trino.spi.type.VarcharType.VARCHAR;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Step
-        implements BlockWriter
+        extends BaseBlockWriter
 {
     private long jobId;
     private final String name;
@@ -70,45 +65,16 @@ public class Step
                 completedAt);
     }
 
+    @Override
     public void writeTo(BlockBuilder rowBuilder)
     {
         BIGINT.writeLong(rowBuilder, jobId);
         VARCHAR.writeString(rowBuilder, name);
-        if (status == null) {
-            rowBuilder.appendNull();
-        }
-        else {
-            VARCHAR.writeString(rowBuilder, status);
-        }
-        if (conclusion == null) {
-            rowBuilder.appendNull();
-        }
-        else {
-            VARCHAR.writeString(rowBuilder, conclusion);
-        }
+        writeString(rowBuilder, status);
+        writeString(rowBuilder, conclusion);
         BIGINT.writeLong(rowBuilder, number);
-        if (startedAt == null) {
-            rowBuilder.appendNull();
-        }
-        else {
-            TIMESTAMP_TZ_SECONDS.writeLong(rowBuilder, packTimestamp(startedAt));
-        }
-        if (completedAt == null) {
-            rowBuilder.appendNull();
-        }
-        else {
-            TIMESTAMP_TZ_SECONDS.writeLong(rowBuilder, packTimestamp(completedAt));
-        }
-    }
-
-    private static long packTimestamp(ZonedDateTime timestamp)
-    {
-        if (timestamp == null) {
-            return 0;
-        }
-        return DateTimeEncoding.packDateTimeWithZone(
-                timestamp.toEpochSecond() * MILLISECONDS_PER_SECOND + roundDiv(timestamp.toLocalTime().getNano(), NANOSECONDS_PER_MILLISECOND),
-                timestamp.getZone().getId());
+        writeTimestamp(rowBuilder, startedAt);
+        writeTimestamp(rowBuilder, completedAt);
     }
 
     public void setJobId(long jobId)

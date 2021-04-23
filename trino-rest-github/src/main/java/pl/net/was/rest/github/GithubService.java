@@ -16,6 +16,7 @@ package pl.net.was.rest.github;
 
 import okhttp3.ResponseBody;
 import pl.net.was.rest.github.model.Issue;
+import pl.net.was.rest.github.model.IssueComment;
 import pl.net.was.rest.github.model.JobsList;
 import pl.net.was.rest.github.model.RunsList;
 import retrofit2.Call;
@@ -30,8 +31,55 @@ import java.util.List;
 public interface GithubService
 {
     @Headers("accept: application/vnd.github.v3+json")
+    @GET("/repos/{owner}/{repo}/pulls")
+    Call<List<Issue>> listPulls(
+            @Header("Authorization") String auth,
+            @Path("owner") String owner,
+            @Path("repo") String repo,
+            @Query("per_page") int perPage,
+            @Query("page") int page);
+
+    @Headers("accept: application/vnd.github.v3+json")
+    @GET("/repos/{owner}/{repo}/pulls/{pull_number}/commits")
+    Call<List<Issue>> listPullCommits(
+            @Header("Authorization") String auth,
+            @Path("owner") String owner,
+            @Path("repo") String repo,
+            @Path("pull_number") long pullNumber,
+            @Query("per_page") int perPage,
+            @Query("page") int page);
+
+    @Headers("accept: application/vnd.github.v3+json")
+    @GET("/repos/{owner}/{repo}/pulls/{pull_number}/reviews")
+    Call<List<Issue>> listPullReviews(
+            @Header("Authorization") String auth,
+            @Path("owner") String owner,
+            @Path("repo") String repo,
+            @Path("pull_number") long pullNumber,
+            @Query("per_page") int perPage,
+            @Query("page") int page);
+
+    @Headers("accept: application/vnd.github.v3+json")
+    @GET("/repos/{owner}/{repo}/pulls/comments")
+    Call<List<Issue>> listReviewComments(
+            @Header("Authorization") String auth,
+            @Path("owner") String owner,
+            @Path("repo") String repo,
+            @Query("per_page") int perPage,
+            @Query("page") int page);
+
+    @Headers("accept: application/vnd.github.v3+json")
     @GET("/repos/{owner}/{repo}/issues")
     Call<List<Issue>> listIssues(
+            @Header("Authorization") String auth,
+            @Path("owner") String owner,
+            @Path("repo") String repo,
+            @Query("per_page") int perPage,
+            @Query("page") int page);
+
+    @Headers("accept: application/vnd.github.v3+json")
+    @GET("/repos/{owner}/{repo}/issues/comments")
+    Call<List<IssueComment>> listIssueComments(
             @Header("Authorization") String auth,
             @Path("owner") String owner,
             @Path("repo") String repo,

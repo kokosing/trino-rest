@@ -20,7 +20,6 @@ import com.google.common.collect.ImmutableList;
 
 import java.time.ZonedDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Review

@@ -17,13 +17,21 @@ package pl.net.was.rest.github.model;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableList;
+import io.trino.spi.block.BlockBuilder;
+import io.trino.spi.connector.ColumnMetadata;
+import pl.net.was.rest.github.GithubRest;
 
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
+
+import static io.trino.spi.type.BigintType.BIGINT;
+import static io.trino.spi.type.BooleanType.BOOLEAN;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Issue
+        extends BaseBlockWriter
 {
     private final long id;
     private final String url;
@@ -113,5 +121,48 @@ public class Issue
                 createdAt,
                 updatedAt,
                 authorAssociation);
+    }
+
+    @Override
+    public void writeTo(BlockBuilder rowBuilder)
+    {
+        // TODO this should be a map of column names to value getters and types should be fetched from GithubRest.columns
+        BIGINT.writeLong(rowBuilder, id);
+        writeString(rowBuilder, url);
+        writeString(rowBuilder, eventsUrl);
+        writeString(rowBuilder, htmlUrl);
+        BIGINT.writeLong(rowBuilder, number);
+        writeString(rowBuilder, state);
+        writeString(rowBuilder, title);
+        writeString(rowBuilder, body);
+        BIGINT.writeLong(rowBuilder, user.getId());
+        writeString(rowBuilder, user.getLogin());
+
+        // labels array
+        Map<String, ColumnMetadata> columns = GithubRest.columns.get("issues").stream()
+                .collect(Collectors.toMap(ColumnMetadata::getName, columnMetadata -> columnMetadata));
+        BlockBuilder labelIds = columns.get("label_ids").getType().createBlockBuilder(null, labels.size());
+        for (Label label : labels) {
+            labelIds.writeLong(label.getId());
+        }
+        rowBuilder.appendStructure(labelIds.build());
+
+        BlockBuilder labelNames = columns.get("label_names").getType().createBlockBuilder(null, labels.size());
+        for (Label label : labels) {
+            writeString(labelNames, label.getName());
+        }
+        rowBuilder.appendStructure(labelNames.build());
+
+        BIGINT.writeLong(rowBuilder, assignee.getId());
+        writeString(rowBuilder, assignee.getLogin());
+        BIGINT.writeLong(rowBuilder, milestone.getId());
+        writeString(rowBuilder, milestone.getTitle());
+        BOOLEAN.writeBoolean(rowBuilder, locked);
+        writeString(rowBuilder, activeLockReason);
+        BIGINT.writeLong(rowBuilder, comments);
+        writeTimestamp(rowBuilder, closedAt);
+        writeTimestamp(rowBuilder, createdAt);
+        writeTimestamp(rowBuilder, updatedAt);
+        writeString(rowBuilder, authorAssociation);
     }
 }
