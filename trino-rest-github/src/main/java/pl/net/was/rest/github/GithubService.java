@@ -41,7 +41,9 @@ public interface GithubService
             @Path("owner") String owner,
             @Path("repo") String repo,
             @Query("per_page") int perPage,
-            @Query("page") int page);
+            @Query("page") int page,
+            @Query("sort") String sort,
+            @Query("state") String state);
 
     @Headers("accept: application/vnd.github.v3+json")
     @GET("/repos/{owner}/{repo}/pulls/{pull_number}/commits")
@@ -70,7 +72,8 @@ public interface GithubService
             @Path("owner") String owner,
             @Path("repo") String repo,
             @Query("per_page") int perPage,
-            @Query("page") int page);
+            @Query("page") int page,
+            @Query("since") String since);
 
     @Headers("accept: application/vnd.github.v3+json")
     @GET("/repos/{owner}/{repo}/issues")
@@ -79,7 +82,8 @@ public interface GithubService
             @Path("owner") String owner,
             @Path("repo") String repo,
             @Query("per_page") int perPage,
-            @Query("page") int page);
+            @Query("page") int page,
+            @Query("since") String since);
 
     @Headers("accept: application/vnd.github.v3+json")
     @GET("/repos/{owner}/{repo}/issues/comments")
@@ -88,7 +92,8 @@ public interface GithubService
             @Path("owner") String owner,
             @Path("repo") String repo,
             @Query("per_page") int perPage,
-            @Query("page") int page);
+            @Query("page") int page,
+            @Query("since") String since);
 
     @Headers("accept: application/vnd.github.v3+json")
     @GET("/repos/{owner}/{repo}/actions/runs")

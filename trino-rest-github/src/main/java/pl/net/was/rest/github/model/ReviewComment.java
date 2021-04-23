@@ -18,13 +18,9 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableList;
 import io.trino.spi.block.BlockBuilder;
-import io.trino.spi.connector.ColumnMetadata;
-import pl.net.was.rest.github.GithubRest;
 
 import java.time.ZonedDateTime;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 import static io.trino.spi.type.BigintType.BIGINT;
 
@@ -135,9 +131,6 @@ public class ReviewComment
     @Override
     public void writeTo(BlockBuilder rowBuilder)
     {
-        Map<String, ColumnMetadata> columns = GithubRest.columns.get("issues").stream()
-                .collect(Collectors.toMap(ColumnMetadata::getName, columnMetadata -> columnMetadata));
-
         BIGINT.writeLong(rowBuilder, pullRequestReviewId);
         BIGINT.writeLong(rowBuilder, id);
         writeString(rowBuilder, diffHunk);

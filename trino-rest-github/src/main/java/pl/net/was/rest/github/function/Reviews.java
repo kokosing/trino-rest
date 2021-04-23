@@ -58,7 +58,12 @@ public class Reviews
     }
 
     @SqlType(REVIEWS_TABLE_TYPE)
-    public Block getPage(@SqlType(VARCHAR) Slice token, @SqlType(VARCHAR) Slice owner, @SqlType(VARCHAR) Slice repo, @SqlType(BIGINT) long pullNumber, @SqlType(INTEGER) long page)
+    public Block getPage(
+            @SqlType(VARCHAR) Slice token,
+            @SqlType(VARCHAR) Slice owner,
+            @SqlType(VARCHAR) Slice repo,
+            @SqlType(BIGINT) long pullNumber,
+            @SqlType(INTEGER) long page)
             throws IOException
     {
         Response<List<Review>> response = service.listPullReviews(

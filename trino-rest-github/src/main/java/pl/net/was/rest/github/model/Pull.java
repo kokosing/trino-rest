@@ -18,16 +18,14 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableList;
 import io.trino.spi.block.BlockBuilder;
-import io.trino.spi.connector.ColumnMetadata;
-import pl.net.was.rest.github.GithubRest;
 
 import java.time.ZonedDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 import static io.trino.spi.type.BigintType.BIGINT;
 import static io.trino.spi.type.BooleanType.BOOLEAN;
+import static io.trino.spi.type.VarcharType.VARCHAR;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Pull
@@ -171,9 +169,6 @@ public class Pull
     @Override
     public void writeTo(BlockBuilder rowBuilder)
     {
-        Map<String, ColumnMetadata> columns = GithubRest.columns.get("issues").stream()
-                .collect(Collectors.toMap(ColumnMetadata::getName, columnMetadata -> columnMetadata));
-
         // TODO this should be a map of column names to value getters and types should be fetched from GithubRest.columns
         BIGINT.writeLong(rowBuilder, id);
         BIGINT.writeLong(rowBuilder, number);
@@ -184,42 +179,65 @@ public class Pull
         writeString(rowBuilder, user.getLogin());
         writeString(rowBuilder, body);
 
-        // labels array
-        BlockBuilder labelIds = columns.get("label_ids").getType().createBlockBuilder(null, labels.size());
-        for (Label label : labels) {
-            labelIds.writeLong(label.getId());
+        if (labels == null) {
+            rowBuilder.appendNull();
+            rowBuilder.appendNull();
         }
-        rowBuilder.appendStructure(labelIds.build());
+        else {
+            // labels array
+            BlockBuilder labelIds = BIGINT.createBlockBuilder(null, labels.size());
+            for (Label label : labels) {
+                BIGINT.writeLong(labelIds, label.getId());
+            }
+            rowBuilder.appendStructure(labelIds.build());
 
-        BlockBuilder labelNames = columns.get("label_names").getType().createBlockBuilder(null, labels.size());
-        for (Label label : labels) {
-            writeString(labelNames, label.getName());
+            BlockBuilder labelNames = VARCHAR.createBlockBuilder(null, labels.size());
+            for (Label label : labels) {
+                writeString(labelNames, label.getName());
+            }
+            rowBuilder.appendStructure(labelNames.build());
         }
-        rowBuilder.appendStructure(labelNames.build());
 
-        BIGINT.writeLong(rowBuilder, milestone.getId());
-        writeString(rowBuilder, milestone.getTitle());
+        if (milestone == null) {
+            rowBuilder.appendNull();
+            rowBuilder.appendNull();
+        }
+        else {
+            BIGINT.writeLong(rowBuilder, milestone.getId());
+            writeString(rowBuilder, milestone.getTitle());
+        }
         writeString(rowBuilder, activeLockReason);
         writeTimestamp(rowBuilder, createdAt);
         writeTimestamp(rowBuilder, updatedAt);
         writeTimestamp(rowBuilder, closedAt);
         writeTimestamp(rowBuilder, mergedAt);
         writeString(rowBuilder, mergedCommitSha);
-        BIGINT.writeLong(rowBuilder, assignee.getId());
-        writeString(rowBuilder, assignee.getLogin());
-
-        // requested reviewers
-        BlockBuilder reviewerIds = columns.get("requested_reviewer_ids").getType().createBlockBuilder(null, requestedReviewers.size());
-        for (User reviewer : requestedReviewers) {
-            reviewerIds.writeLong(reviewer.getId());
+        if (assignee == null) {
+            rowBuilder.appendNull();
+            rowBuilder.appendNull();
         }
-        rowBuilder.appendStructure(reviewerIds.build());
-
-        BlockBuilder reviewerLogins = columns.get("requested_reviewer_logins").getType().createBlockBuilder(null, requestedReviewers.size());
-        for (User reviewer : requestedReviewers) {
-            writeString(reviewerLogins, reviewer.getLogin());
+        else {
+            BIGINT.writeLong(rowBuilder, assignee.getId());
+            writeString(rowBuilder, assignee.getLogin());
         }
-        rowBuilder.appendStructure(reviewerLogins.build());
+
+        if (requestedReviewers == null) {
+            rowBuilder.appendNull();
+            rowBuilder.appendNull();
+        }
+        else {
+            BlockBuilder reviewerIds = BIGINT.createBlockBuilder(null, requestedReviewers.size());
+            for (User reviewer : requestedReviewers) {
+                BIGINT.writeLong(reviewerIds, reviewer.getId());
+            }
+            rowBuilder.appendStructure(reviewerIds.build());
+
+            BlockBuilder reviewerLogins = VARCHAR.createBlockBuilder(null, requestedReviewers.size());
+            for (User reviewer : requestedReviewers) {
+                writeString(reviewerLogins, reviewer.getLogin());
+            }
+            rowBuilder.appendStructure(reviewerLogins.build());
+        }
 
         writeString(rowBuilder, headRef);
         writeString(rowBuilder, headSha);

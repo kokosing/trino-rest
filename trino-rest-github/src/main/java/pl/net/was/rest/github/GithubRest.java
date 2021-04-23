@@ -435,7 +435,7 @@ public class GithubRest
         while (true) {
             Response<List<Issue>> response;
             try {
-                response = service.listIssues("Bearer " + token, owner, repo, 100, page++).execute();
+                response = service.listIssues("Bearer " + token, owner, repo, 100, page++, "0000-00-00T00:00:00Z").execute();
             }
             catch (IOException e) {
                 throw Throwables.propagate(e);
