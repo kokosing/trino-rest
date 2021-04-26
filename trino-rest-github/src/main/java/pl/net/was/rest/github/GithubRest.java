@@ -88,6 +88,8 @@ public class GithubRest
                     new ColumnMetadata("draft", BOOLEAN)))
             .put("pull_commits", ImmutableList.of(
                     new ColumnMetadata("sha", createUnboundedVarcharType()),
+                    // this column is filled in from request params, it is not returned by the api
+                    new ColumnMetadata("pull_number", BIGINT),
                     new ColumnMetadata("commit_message", createUnboundedVarcharType()),
                     new ColumnMetadata("commit_tree_sha", createUnboundedVarcharType()),
                     new ColumnMetadata("commit_comments_count", BIGINT),
@@ -106,6 +108,8 @@ public class GithubRest
                     new ColumnMetadata("parent_shas", new ArrayType(createUnboundedVarcharType()))))
             .put("reviews", ImmutableList.of(
                     new ColumnMetadata("id", BIGINT),
+                    // this column is filled in from request params, it is not returned by the api
+                    new ColumnMetadata("pull_number", BIGINT),
                     new ColumnMetadata("user_id", BIGINT),
                     new ColumnMetadata("user_login", createUnboundedVarcharType()),
                     new ColumnMetadata("body", createUnboundedVarcharType()),
@@ -188,6 +192,7 @@ public class GithubRest
                     new ColumnMetadata("completed_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
                     new ColumnMetadata("name", createUnboundedVarcharType())))
             .put("steps", ImmutableList.of(
+                    // this column is filled in from request params, it is not returned by the api
                     new ColumnMetadata("job_id", BIGINT),
                     new ColumnMetadata("name", createUnboundedVarcharType()),
                     new ColumnMetadata("status", createUnboundedVarcharType()),
@@ -231,6 +236,7 @@ public class GithubRest
 
     public static final String PULL_COMMITS_TABLE_TYPE = "array(row(" +
             "sha varchar, " +
+            "pull_number bigint, " +
             "commit_message varchar, " +
             "commit_tree_sha varchar, " +
             "commit_comments_count bigint, " +
@@ -251,6 +257,7 @@ public class GithubRest
 
     public static final String REVIEWS_TABLE_TYPE = "array(row(" +
             "id bigint, " +
+            "pull_number bigint, " +
             "user_id bigint, " +
             "user_login varchar, " +
             "body varchar, " +

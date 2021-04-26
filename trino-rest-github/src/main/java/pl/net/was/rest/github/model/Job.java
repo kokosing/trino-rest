@@ -100,7 +100,6 @@ public class Job
         writeString(rowBuilder, headSha);
         writeString(rowBuilder, status);
         writeString(rowBuilder, conclusion);
-        writeString(rowBuilder, conclusion);
         writeTimestamp(rowBuilder, startedAt);
         writeTimestamp(rowBuilder, completedAt);
         writeString(rowBuilder, name);

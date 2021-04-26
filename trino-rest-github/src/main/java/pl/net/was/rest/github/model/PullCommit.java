@@ -32,6 +32,7 @@ import static io.trino.spi.type.BooleanType.BOOLEAN;
 public class PullCommit
         extends BaseBlockWriter
 {
+    private long pullNumber;
     private final String url;
     private final String sha;
     private final String htmlUrl;
@@ -65,6 +66,7 @@ public class PullCommit
     {
         return ImmutableList.of(
                 sha,
+                pullNumber,
                 commit,
                 author,
                 committer,
@@ -78,6 +80,7 @@ public class PullCommit
                 .collect(Collectors.toMap(ColumnMetadata::getName, columnMetadata -> columnMetadata));
 
         writeString(rowBuilder, sha);
+        BIGINT.writeLong(rowBuilder, pullNumber);
         writeString(rowBuilder, commit.getMessage());
         writeString(rowBuilder, commit.getTree().getSha());
         BIGINT.writeLong(rowBuilder, commit.getCommentsCount());
@@ -100,5 +103,10 @@ public class PullCommit
             writeString(parentShas, parent.getSha());
         }
         rowBuilder.appendStructure(parentShas.build());
+    }
+
+    public void setPullNumber(long pullNumber)
+    {
+        this.pullNumber = pullNumber;
     }
 }

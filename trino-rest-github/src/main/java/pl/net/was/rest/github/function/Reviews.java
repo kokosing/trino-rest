@@ -28,11 +28,11 @@ import pl.net.was.rest.github.model.Review;
 import retrofit2.Response;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import static io.trino.spi.type.StandardTypes.BIGINT;
-import static io.trino.spi.type.StandardTypes.INTEGER;
 import static io.trino.spi.type.StandardTypes.VARCHAR;
 import static java.lang.String.format;
 import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
@@ -62,24 +62,33 @@ public class Reviews
             @SqlType(VARCHAR) Slice token,
             @SqlType(VARCHAR) Slice owner,
             @SqlType(VARCHAR) Slice repo,
-            @SqlType(BIGINT) long pullNumber,
-            @SqlType(INTEGER) long page)
+            @SqlType(BIGINT) long pullNumber)
             throws IOException
     {
-        Response<List<Review>> response = service.listPullReviews(
-                token.toStringUtf8(),
-                owner.toStringUtf8(),
-                repo.toStringUtf8(),
-                pullNumber,
-                100,
-                (int) page).execute();
-        if (response.code() == HTTP_NOT_FOUND) {
-            return null;
+        // there should not be more than a few pages worth of reviews, so try to get all of them
+        List<Review> reviews = new ArrayList<>();
+        int page = 1;
+        while (true) {
+            Response<List<Review>> response = service.listPullReviews(
+                    token.toStringUtf8(),
+                    owner.toStringUtf8(),
+                    repo.toStringUtf8(),
+                    pullNumber,
+                    100,
+                    page++).execute();
+            if (response.code() == HTTP_NOT_FOUND) {
+                break;
+            }
+            if (!response.isSuccessful()) {
+                throw new IllegalStateException(format("Invalid response, code %d, message: %s", response.code(), response.message()));
+            }
+            List<Review> items = response.body();
+            if (items == null || items.size() == 0) {
+                break;
+            }
+            items.forEach(i -> i.setPullNumber(pullNumber));
+            reviews.addAll(items);
         }
-        if (!response.isSuccessful()) {
-            throw new IllegalStateException(format("Invalid response, code %d, message: %s", response.code(), response.message()));
-        }
-        List<Review> items = response.body();
-        return buildBlock(items);
+        return buildBlock(reviews);
     }
 }

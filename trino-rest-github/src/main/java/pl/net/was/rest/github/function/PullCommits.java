@@ -28,11 +28,11 @@ import pl.net.was.rest.github.model.PullCommit;
 import retrofit2.Response;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
 import static io.trino.spi.type.StandardTypes.BIGINT;
-import static io.trino.spi.type.StandardTypes.INTEGER;
 import static io.trino.spi.type.StandardTypes.VARCHAR;
 import static java.lang.String.format;
 import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
@@ -62,24 +62,33 @@ public class PullCommits
             @SqlType(VARCHAR) Slice token,
             @SqlType(VARCHAR) Slice owner,
             @SqlType(VARCHAR) Slice repo,
-            @SqlType(BIGINT) long pullNumber,
-            @SqlType(INTEGER) long page)
+            @SqlType(BIGINT) long pullNumber)
             throws IOException
     {
-        Response<List<PullCommit>> response = service.listPullCommits(
-                token.toStringUtf8(),
-                owner.toStringUtf8(),
-                repo.toStringUtf8(),
-                pullNumber,
-                100,
-                (int) page).execute();
-        if (response.code() == HTTP_NOT_FOUND) {
-            return null;
+        // there should not be more than a few pages worth of commits, so try to get all of them
+        List<PullCommit> commits = new ArrayList<>();
+        int page = 1;
+        while (true) {
+            Response<List<PullCommit>> response = service.listPullCommits(
+                    token.toStringUtf8(),
+                    owner.toStringUtf8(),
+                    repo.toStringUtf8(),
+                    pullNumber,
+                    100,
+                    page++).execute();
+            if (response.code() == HTTP_NOT_FOUND) {
+                break;
+            }
+            if (!response.isSuccessful()) {
+                throw new IllegalStateException(format("Invalid response, code %d, message: %s", response.code(), response.message()));
+            }
+            List<PullCommit> items = response.body();
+            if (items == null || items.size() == 0) {
+                break;
+            }
+            items.forEach(i -> i.setPullNumber(pullNumber));
+            commits.addAll(items);
         }
-        if (!response.isSuccessful()) {
-            throw new IllegalStateException(format("Invalid response, code %d, message: %s", response.code(), response.message()));
-        }
-        List<PullCommit> items = response.body();
-        return buildBlock(items);
+        return buildBlock(commits);
     }
 }

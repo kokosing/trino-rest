@@ -100,6 +100,8 @@ public class Sync
             //syncIssueComments(conn, owner, repo, destSchema, srcSchema);
             syncPulls(conn, owner, repo, destSchema, srcSchema);
             syncReviewComments(conn, owner, repo, destSchema, srcSchema);
+            // TODO missing pull commits
+            syncReviews(conn, owner, repo, destSchema, srcSchema);
             syncRuns(conn, owner, repo, destSchema, srcSchema);
             syncJobs(conn, owner, repo, destSchema, srcSchema);
             syncSteps(conn, owner, repo, destSchema, srcSchema, 2);
@@ -151,6 +153,8 @@ public class Sync
         // consider adding some indexes:
         // CREATE INDEX ON review_comments(id);
         // CREATE INDEX ON review_comments(user_id);
+        // CREATE INDEX ON review_comments(pull_request_review_id);
+        // CREATE INDEX ON review_comments(in_reply_to_id);
         // note that the first one is NOT a primary key, so updated records can be inserted and then removed as duplicates using a procedure
         // DELETE FROM review_comments a USING review_comments b WHERE a.updated_at < b.updated_at AND a.id = b.id;
 
@@ -200,8 +204,6 @@ public class Sync
         // note that the first one is NOT a primary key, so updated records can be inserted and then removed as duplicates using:
         // DELETE FROM pulls a USING pulls b WHERE a.updated_at < b.updated_at AND a.id = b.id;
 
-        // TODO pull commits and pull reviews don't even have a key pointing back to a pull, the data model needs to be fixed first
-
         // there's no "since" filter, but we can sort by updated_at, so keep inserting records where this is greater than max
         ResultSet result = conn.prepareStatement(
                 "SELECT COALESCE(MAX(updated_at), TIMESTAMP '0000-01-01') AS latest FROM " + destSchema + ".pulls")
@@ -227,6 +229,66 @@ public class Sync
             if (rows == 0) {
                 break;
             }
+        }
+    }
+
+    private static void syncReviews(Connection conn, String owner, String repo, String destSchema, String srcSchema)
+            throws SQLException
+    {
+        conn.createStatement().executeUpdate(
+                "CREATE TABLE IF NOT EXISTS " + destSchema + ".reviews AS SELECT * FROM " + srcSchema + ".reviews WITH NO DATA");
+        // consider adding some indexes:
+        // CREATE INDEX ON reviews(id);
+        // CREATE INDEX ON reviews(user_id);
+        // CREATE INDEX ON reviews(pull_number);
+        // CREATE INDEX ON reviews(state);
+        // note that the first one is NOT a primary key, so updated records can be inserted and then removed as duplicates using:
+        // DELETE FROM reviews a USING reviews b WHERE a.updated_at < b.updated_at AND a.id = b.id;
+
+        // only fetch steps from jobs from up to 2 completed runs not older than 2 months, without any job steps
+        String runsQuery = format(
+                "SELECT p.number " +
+                        "FROM " + destSchema + ".pulls p " +
+                        "LEFT JOIN " + destSchema + ".reviews r ON r.pull_number = p.number " +
+                        "WHERE p.number < ? " +
+                        "GROUP BY p.number " +
+                        "HAVING COUNT(r.id) = 0 " +
+                        "ORDER BY p.number DESC LIMIT %d", 30);
+        // since there's no difference between pulls without reviews and those we have not checked or yet,
+        // we need to know the last checked pull number and add a condition to fetch lesser numbers
+        PreparedStatement idStatement = conn.prepareStatement("SELECT min(p.number) FROM (" + runsQuery + ") p");
+
+        // TODO this only gets missing reviews - doesn't allow to fetch updated reviews
+        PreparedStatement insertStatement = conn.prepareStatement(
+                "INSERT INTO " + destSchema + ".reviews " +
+                        "SELECT src.* " +
+                        "FROM (" + runsQuery + ") p " +
+                        "CROSS JOIN unnest(reviews(?, ?, ?, p.number)) src " +
+                        "LEFT JOIN " + destSchema + ".reviews dst ON dst.id = src.id " +
+                        "WHERE dst.id IS NULL");
+        insertStatement.setString(2, "Bearer " + System.getenv("GITHUB_TOKEN"));
+        insertStatement.setString(3, owner);
+        insertStatement.setString(4, repo);
+
+        long previousId = Long.MAX_VALUE;
+        while (true) {
+            idStatement.setLong(1, previousId);
+            insertStatement.setLong(1, previousId);
+
+            log.info("Checking for next pulls without reviews");
+            ResultSet resultSet = idStatement.executeQuery();
+            if (!resultSet.next()) {
+                break;
+            }
+            previousId = resultSet.getLong(1);
+            if (resultSet.wasNull()) {
+                break;
+            }
+
+            log.info(format("Fetching reviews for pulls with number less than %d", previousId));
+            long startTime = System.currentTimeMillis();
+            int rows = retryExecute(insertStatement);
+            log.info(format("Inserted %d rows, took %s", rows, Duration.ofMillis(System.currentTimeMillis() - startTime)));
         }
     }
 
