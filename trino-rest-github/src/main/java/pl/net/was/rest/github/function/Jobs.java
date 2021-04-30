@@ -23,7 +23,6 @@ import io.trino.spi.function.ScalarFunction;
 import io.trino.spi.function.SqlType;
 import io.trino.spi.type.ArrayType;
 import io.trino.spi.type.RowType;
-import pl.net.was.rest.github.GithubRest;
 import pl.net.was.rest.github.model.Job;
 import pl.net.was.rest.github.model.JobsList;
 import retrofit2.Response;
@@ -31,13 +30,13 @@ import retrofit2.Response;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import static io.trino.spi.type.StandardTypes.BIGINT;
 import static io.trino.spi.type.StandardTypes.VARCHAR;
 import static java.lang.String.format;
 import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
 import static pl.net.was.rest.github.GithubRest.JOBS_TABLE_TYPE;
+import static pl.net.was.rest.github.GithubRest.getRowType;
 
 @ScalarFunction("jobs")
 @Description("Get workflow jobs")
@@ -46,14 +45,7 @@ public class Jobs
 {
     public Jobs()
     {
-        List<RowType.Field> fields = GithubRest.columns.get("jobs")
-                .stream()
-                .map(columnMetadata -> RowType.field(
-                        columnMetadata.getName(),
-                        columnMetadata.getType()))
-                .collect(Collectors.toList());
-        RowType rowType = RowType.from(fields);
-
+        RowType rowType = getRowType("jobs");
         arrayType = new ArrayType(rowType);
         pageBuilder = new PageBuilder(ImmutableList.of(arrayType));
     }

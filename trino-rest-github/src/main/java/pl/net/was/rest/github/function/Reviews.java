@@ -23,20 +23,19 @@ import io.trino.spi.function.ScalarFunction;
 import io.trino.spi.function.SqlType;
 import io.trino.spi.type.ArrayType;
 import io.trino.spi.type.RowType;
-import pl.net.was.rest.github.GithubRest;
 import pl.net.was.rest.github.model.Review;
 import retrofit2.Response;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import static io.trino.spi.type.StandardTypes.BIGINT;
 import static io.trino.spi.type.StandardTypes.VARCHAR;
 import static java.lang.String.format;
 import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
 import static pl.net.was.rest.github.GithubRest.REVIEWS_TABLE_TYPE;
+import static pl.net.was.rest.github.GithubRest.getRowType;
 
 @ScalarFunction("reviews")
 @Description("Get pull request reviews")
@@ -45,14 +44,7 @@ public class Reviews
 {
     public Reviews()
     {
-        List<RowType.Field> fields = GithubRest.columns.get("reviews")
-                .stream()
-                .map(columnMetadata -> RowType.field(
-                        columnMetadata.getName(),
-                        columnMetadata.getType()))
-                .collect(Collectors.toList());
-        RowType rowType = RowType.from(fields);
-
+        RowType rowType = getRowType("reviews");
         arrayType = new ArrayType(rowType);
         pageBuilder = new PageBuilder(ImmutableList.of(arrayType));
     }

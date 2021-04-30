@@ -21,6 +21,7 @@ import io.trino.spi.PageBuilder;
 import io.trino.spi.block.Block;
 import io.trino.spi.block.BlockBuilder;
 import io.trino.spi.type.ArrayType;
+import okhttp3.Cache;
 import okhttp3.OkHttpClient;
 import okhttp3.logging.HttpLoggingInterceptor;
 import pl.net.was.rest.github.GithubService;
@@ -28,6 +29,8 @@ import pl.net.was.rest.github.model.BlockWriter;
 import retrofit2.Retrofit;
 import retrofit2.converter.jackson.JacksonConverterFactory;
 
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -45,11 +48,18 @@ public abstract class BaseFunction
     protected ArrayType arrayType;
     protected PageBuilder pageBuilder;
 
+    protected int cacheSize = 10 * 1024 * 1024; // 10 MB
+
     protected final GithubService service;
 
     public BaseFunction()
     {
         OkHttpClient.Builder clientBuilder = new OkHttpClient.Builder();
+
+        if (cacheSize > 0) {
+            Path cacheDir = Paths.get(System.getProperty("java.io.tmpdir"), "trino-rest-cache");
+            clientBuilder.cache(new Cache(cacheDir.toFile(), cacheSize));
+        }
 
         if (getLogLevel().intValue() <= Level.FINE.intValue()) {
             HttpLoggingInterceptor interceptor = new HttpLoggingInterceptor();

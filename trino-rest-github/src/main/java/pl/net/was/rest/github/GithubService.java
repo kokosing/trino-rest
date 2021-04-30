@@ -18,8 +18,10 @@ import okhttp3.ResponseBody;
 import pl.net.was.rest.github.model.Issue;
 import pl.net.was.rest.github.model.IssueComment;
 import pl.net.was.rest.github.model.JobsList;
+import pl.net.was.rest.github.model.Organization;
 import pl.net.was.rest.github.model.Pull;
 import pl.net.was.rest.github.model.PullCommit;
+import pl.net.was.rest.github.model.Repository;
 import pl.net.was.rest.github.model.Review;
 import pl.net.was.rest.github.model.ReviewComment;
 import pl.net.was.rest.github.model.RunsList;
@@ -122,4 +124,41 @@ public interface GithubService
             @Path("owner") String owner,
             @Path("repo") String repo,
             @Path("job_id") long jobId);
+
+    @Headers("accept: application/vnd.github.v3+json")
+    @GET("/organizations")
+    Call<List<Organization>> listOrgs(
+            @Header("Authorization") String auth,
+            @Query("per_page") int perPage,
+            @Query("since") String since);
+
+    @Headers("accept: application/vnd.github.v3+json")
+    @GET("/orgs/{org}")
+    Call<Organization> getOrg(
+            @Header("Authorization") String auth,
+            @Path("org") String org);
+
+    @Headers("accept: application/vnd.github.v3+json")
+    @GET("/repositories")
+    Call<List<Repository>> listRepos(
+            @Header("Authorization") String auth,
+            @Query("since") long sinceId);
+
+    @Headers("accept: application/vnd.github.v3+json")
+    @GET("/orgs/{org}/repos")
+    Call<List<Repository>> listOrgRepos(
+            @Header("Authorization") String auth,
+            @Path("org") String org,
+            @Query("per_page") int perPage,
+            @Query("page") int page,
+            @Query("sort") String sort);
+
+    @Headers("accept: application/vnd.github.v3+json")
+    @GET("/users/{username}/repos")
+    Call<List<Repository>> listUserRepos(
+            @Header("Authorization") String auth,
+            @Path("username") String username,
+            @Query("per_page") int perPage,
+            @Query("page") int page,
+            @Query("sort") String sort);
 }

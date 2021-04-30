@@ -23,55 +23,57 @@ import io.trino.spi.function.ScalarFunction;
 import io.trino.spi.function.SqlType;
 import io.trino.spi.type.ArrayType;
 import io.trino.spi.type.RowType;
-import pl.net.was.rest.github.model.ReviewComment;
+import pl.net.was.rest.github.model.Repository;
 import retrofit2.Response;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
-import static io.trino.spi.type.StandardTypes.INTEGER;
 import static io.trino.spi.type.StandardTypes.VARCHAR;
 import static java.lang.String.format;
 import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
-import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME;
-import static pl.net.was.rest.github.GithubRest.REVIEW_COMMENTS_TABLE_TYPE;
+import static pl.net.was.rest.github.GithubRest.REPOS_TABLE_TYPE;
 import static pl.net.was.rest.github.GithubRest.getRowType;
 
-@ScalarFunction("review_comments")
-@Description("Get review comments")
-public class ReviewComments
+@ScalarFunction("org_repos")
+@Description("Get organization repositories")
+public class OrgRepos
         extends BaseFunction
 {
-    public ReviewComments()
+    public OrgRepos()
     {
-        RowType rowType = getRowType("review_comments");
+        RowType rowType = getRowType("repos");
         arrayType = new ArrayType(rowType);
         pageBuilder = new PageBuilder(ImmutableList.of(arrayType));
     }
 
-    @SqlType(REVIEW_COMMENTS_TABLE_TYPE)
-    public Block getPage(
-            @SqlType(VARCHAR) Slice token,
-            @SqlType(VARCHAR) Slice owner,
-            @SqlType(VARCHAR) Slice repo,
-            @SqlType(INTEGER) long page,
-            @SqlType("timestamp(3)") long since)
+    @SqlType(REPOS_TABLE_TYPE)
+    public Block getPage(@SqlType(VARCHAR) Slice token, @SqlType(VARCHAR) Slice org)
             throws IOException
     {
-        Response<List<ReviewComment>> response = service.listReviewComments(
-                token.toStringUtf8(),
-                owner.toStringUtf8(),
-                repo.toStringUtf8(),
-                100,
-                (int) page,
-                ISO_LOCAL_DATE_TIME.format(fromTrinoTimestamp(since)) + "Z").execute();
-        if (response.code() == HTTP_NOT_FOUND) {
-            return null;
+        // there should not be more than a few pages worth of repos, so try to get all of them
+        List<Repository> repos = new ArrayList<>();
+        int page = 1;
+        while (true) {
+            Response<List<Repository>> response = service.listOrgRepos(
+                    token.toStringUtf8(),
+                    org.toStringUtf8(),
+                    100,
+                    page++,
+                    "updated").execute();
+            if (response.code() == HTTP_NOT_FOUND) {
+                break;
+            }
+            if (!response.isSuccessful()) {
+                throw new IllegalStateException(format("Invalid response, code %d, message: %s", response.code(), response.message()));
+            }
+            List<Repository> items = response.body();
+            if (items == null || items.size() == 0) {
+                break;
+            }
+            repos.addAll(items);
         }
-        if (!response.isSuccessful()) {
-            throw new IllegalStateException(format("Invalid response, code %d, message: %s", response.code(), response.message()));
-        }
-        List<ReviewComment> items = response.body();
-        return buildBlock(items);
+        return buildBlock(repos);
     }
 }
