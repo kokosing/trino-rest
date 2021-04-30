@@ -22,6 +22,7 @@ import io.trino.spi.connector.ConnectorTableMetadata;
 import io.trino.spi.connector.SchemaTableName;
 import io.trino.spi.connector.SchemaTablePrefix;
 import io.trino.spi.type.ArrayType;
+import io.trino.spi.type.RowType;
 import io.trino.spi.type.TimestampWithTimeZoneType;
 import pl.net.was.rest.Rest;
 import pl.net.was.rest.github.model.Issue;
@@ -57,6 +58,50 @@ public class GithubRest
             .create(GithubService.class);
 
     public static final Map<String, List<ColumnMetadata>> columns = new ImmutableMap.Builder<String, List<ColumnMetadata>>()
+            .put("orgs", ImmutableList.of(
+                    new ColumnMetadata("login", createUnboundedVarcharType()),
+                    new ColumnMetadata("id", BIGINT),
+                    new ColumnMetadata("description", createUnboundedVarcharType()),
+                    new ColumnMetadata("name", createUnboundedVarcharType()),
+                    new ColumnMetadata("company", createUnboundedVarcharType()),
+                    new ColumnMetadata("blog", createUnboundedVarcharType()),
+                    new ColumnMetadata("location", createUnboundedVarcharType()),
+                    new ColumnMetadata("email", createUnboundedVarcharType()),
+                    new ColumnMetadata("twitter_username", createUnboundedVarcharType()),
+                    new ColumnMetadata("is_verified", BOOLEAN),
+                    new ColumnMetadata("has_organization_projects", BOOLEAN),
+                    new ColumnMetadata("has_repository_projects", BOOLEAN),
+                    new ColumnMetadata("public_repos", BIGINT),
+                    new ColumnMetadata("public_gists", BIGINT),
+                    new ColumnMetadata("followers", BIGINT),
+                    new ColumnMetadata("following", BIGINT),
+                    new ColumnMetadata("created_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
+                    new ColumnMetadata("updated_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
+                    new ColumnMetadata("type", createUnboundedVarcharType()),
+                    new ColumnMetadata("total_private_repos", BIGINT),
+                    new ColumnMetadata("owned_private_repos", BIGINT),
+                    new ColumnMetadata("private_gists", BIGINT),
+                    new ColumnMetadata("disk_usage", BIGINT),
+                    new ColumnMetadata("collaborators", BIGINT),
+                    new ColumnMetadata("billing_email", createUnboundedVarcharType()),
+                    new ColumnMetadata("default_repository_permission", createUnboundedVarcharType()),
+                    new ColumnMetadata("members_can_create_repositories", BOOLEAN),
+                    new ColumnMetadata("two_factor_requirement_enabled", BOOLEAN),
+                    new ColumnMetadata("members_allowed_repository_creation_type", createUnboundedVarcharType()),
+                    new ColumnMetadata("members_can_create_public_repositories", BOOLEAN),
+                    new ColumnMetadata("members_can_create_private_repositories", BOOLEAN),
+                    new ColumnMetadata("members_can_create_internal_repositories", BOOLEAN),
+                    new ColumnMetadata("members_can_create_pages", BOOLEAN)))
+            .put("repos", ImmutableList.of(
+                    new ColumnMetadata("id", BIGINT),
+                    new ColumnMetadata("name", createUnboundedVarcharType()),
+                    new ColumnMetadata("full_name", createUnboundedVarcharType()),
+                    new ColumnMetadata("owner_id", BIGINT),
+                    new ColumnMetadata("owner_login", createUnboundedVarcharType()),
+                    new ColumnMetadata("private", BOOLEAN),
+                    new ColumnMetadata("description", createUnboundedVarcharType()),
+                    new ColumnMetadata("fork", BOOLEAN),
+                    new ColumnMetadata("url", createUnboundedVarcharType())))
             .put("pulls", ImmutableList.of(
                     new ColumnMetadata("id", BIGINT),
                     new ColumnMetadata("number", BIGINT),
@@ -203,6 +248,56 @@ public class GithubRest
 
     // TODO add tests that would verify this using getSqlType(), print the expected string so its easy to copy&paste
     // TODO consider moving to a separate class
+    public static final String ORG_ROW_TYPE = "row(" +
+            "login varchar, " +
+            "id bigint, " +
+            "description varchar, " +
+            "name varchar, " +
+            "company varchar, " +
+            "blog varchar, " +
+            "location varchar, " +
+            "email varchar, " +
+            "twitter_username varchar, " +
+            "is_verified boolean, " +
+            "has_organization_projects boolean, " +
+            "has_repository_projects boolean, " +
+            "public_repos bigint, " +
+            "public_gists bigint, " +
+            "followers bigint, " +
+            "following bigint, " +
+            "created_at timestamp(3) with time zone, " +
+            "updated_at timestamp(3) with time zone, " +
+            "type varchar, " +
+            "total_private_repos bigint, " +
+            "owned_private_repos bigint, " +
+            "private_gists bigint, " +
+            "disk_usage bigint, " +
+            "collaborators bigint, " +
+            "billing_email varchar, " +
+            "default_repository_permission varchar, " +
+            "members_can_create_repositories boolean, " +
+            "two_factor_requirement_enabled boolean, " +
+            "members_allowed_repository_creation_type varchar, " +
+            "members_can_create_public_repositories boolean, " +
+            "members_can_create_private_repositories boolean, " +
+            "members_can_create_internal_repositories boolean, " +
+            "members_can_create_pages boolean" +
+            ")";
+
+    public static final String ORGS_TABLE_TYPE = "array(" + ORG_ROW_TYPE + ")";
+
+    public static final String REPOS_TABLE_TYPE = "array(row(" +
+            "id bigint, " +
+            "name varchar, " +
+            "full_name varchar, " +
+            "owner_id bigint, " +
+            "owner_login varchar, " +
+            "private boolean, " +
+            "description varchar, " +
+            "fork boolean, " +
+            "url varchar" +
+            "))";
+
     public static final String PULLS_TABLE_TYPE = "array(row(" +
             "id bigint, " +
             "number bigint, " +
@@ -411,6 +506,10 @@ public class GithubRest
         // TODO split manager should generate one split per page, but it has to know how many results there are
         // TODO maybe call it with per_page=0 to get total? but also account for rate limits
         switch (schemaTableName.getTableName()) {
+            case "orgs":
+                throw new UnsupportedOperationException("Use orgs or org functions instead");
+            case "repos":
+                throw new UnsupportedOperationException("Use repos, org_repos or user_repos functions instead");
             case "pulls":
                 throw new UnsupportedOperationException("Use pulls function instead");
             case "pull_commits":
@@ -475,5 +574,16 @@ public class GithubRest
                 .stream()
                 .map(column -> column.getName() + " " + column.getType().getDisplayName())
                 .collect(Collectors.joining(", ", "ARRAY(ROW(", "))"));
+    }
+
+    public static RowType getRowType(String tableName)
+    {
+        List<RowType.Field> fields = GithubRest.columns.get(tableName)
+                .stream()
+                .map(columnMetadata -> RowType.field(
+                        columnMetadata.getName(),
+                        columnMetadata.getType()))
+                .collect(Collectors.toList());
+        return RowType.from(fields);
     }
 }

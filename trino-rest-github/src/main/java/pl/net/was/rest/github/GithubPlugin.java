@@ -23,8 +23,12 @@ import pl.net.was.rest.github.function.IssueComments;
 import pl.net.was.rest.github.function.Issues;
 import pl.net.was.rest.github.function.JobLogs;
 import pl.net.was.rest.github.function.Jobs;
+import pl.net.was.rest.github.function.Org;
+import pl.net.was.rest.github.function.OrgRepos;
+import pl.net.was.rest.github.function.Orgs;
 import pl.net.was.rest.github.function.PullCommits;
 import pl.net.was.rest.github.function.Pulls;
+import pl.net.was.rest.github.function.Repos;
 import pl.net.was.rest.github.function.ReviewComments;
 import pl.net.was.rest.github.function.Reviews;
 import pl.net.was.rest.github.function.Runs;
@@ -50,14 +54,18 @@ public class GithubPlugin
     public Set<Class<?>> getFunctions()
     {
         return ImmutableSet.<Class<?>>builder()
+                .add(Org.class)
+                .add(Orgs.class)
+                .add(OrgRepos.class)
+                .add(Repos.class)
+                .add(Pulls.class)
+                .add(PullCommits.class)
+                .add(Reviews.class)
+                .add(ReviewComments.class)
                 .add(IssueComments.class)
                 .add(Issues.class)
                 .add(JobLogs.class)
                 .add(Jobs.class)
-                .add(PullCommits.class)
-                .add(Pulls.class)
-                .add(ReviewComments.class)
-                .add(Reviews.class)
                 .add(Runs.class)
                 .add(Steps.class)
                 .build();

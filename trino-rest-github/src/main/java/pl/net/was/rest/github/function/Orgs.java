@@ -23,47 +23,38 @@ import io.trino.spi.function.ScalarFunction;
 import io.trino.spi.function.SqlType;
 import io.trino.spi.type.ArrayType;
 import io.trino.spi.type.RowType;
-import pl.net.was.rest.github.model.ReviewComment;
+import pl.net.was.rest.github.model.Organization;
 import retrofit2.Response;
 
 import java.io.IOException;
 import java.util.List;
 
-import static io.trino.spi.type.StandardTypes.INTEGER;
 import static io.trino.spi.type.StandardTypes.VARCHAR;
 import static java.lang.String.format;
 import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME;
-import static pl.net.was.rest.github.GithubRest.REVIEW_COMMENTS_TABLE_TYPE;
+import static pl.net.was.rest.github.GithubRest.ORGS_TABLE_TYPE;
 import static pl.net.was.rest.github.GithubRest.getRowType;
 
-@ScalarFunction("review_comments")
-@Description("Get review comments")
-public class ReviewComments
+@ScalarFunction("orgs")
+@Description("Get organizations")
+public class Orgs
         extends BaseFunction
 {
-    public ReviewComments()
+    public Orgs()
     {
-        RowType rowType = getRowType("review_comments");
+        RowType rowType = getRowType("orgs");
         arrayType = new ArrayType(rowType);
         pageBuilder = new PageBuilder(ImmutableList.of(arrayType));
     }
 
-    @SqlType(REVIEW_COMMENTS_TABLE_TYPE)
-    public Block getPage(
-            @SqlType(VARCHAR) Slice token,
-            @SqlType(VARCHAR) Slice owner,
-            @SqlType(VARCHAR) Slice repo,
-            @SqlType(INTEGER) long page,
-            @SqlType("timestamp(3)") long since)
+    @SqlType(ORGS_TABLE_TYPE)
+    public Block getPage(@SqlType(VARCHAR) Slice token, @SqlType("timestamp(3)") long since)
             throws IOException
     {
-        Response<List<ReviewComment>> response = service.listReviewComments(
+        Response<List<Organization>> response = service.listOrgs(
                 token.toStringUtf8(),
-                owner.toStringUtf8(),
-                repo.toStringUtf8(),
                 100,
-                (int) page,
                 ISO_LOCAL_DATE_TIME.format(fromTrinoTimestamp(since)) + "Z").execute();
         if (response.code() == HTTP_NOT_FOUND) {
             return null;
@@ -71,7 +62,7 @@ public class ReviewComments
         if (!response.isSuccessful()) {
             throw new IllegalStateException(format("Invalid response, code %d, message: %s", response.code(), response.message()));
         }
-        List<ReviewComment> items = response.body();
+        List<Organization> items = response.body();
         return buildBlock(items);
     }
 }

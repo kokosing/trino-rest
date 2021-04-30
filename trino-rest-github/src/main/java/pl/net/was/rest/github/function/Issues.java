@@ -23,13 +23,11 @@ import io.trino.spi.function.ScalarFunction;
 import io.trino.spi.function.SqlType;
 import io.trino.spi.type.ArrayType;
 import io.trino.spi.type.RowType;
-import pl.net.was.rest.github.GithubRest;
 import pl.net.was.rest.github.model.Issue;
 import retrofit2.Response;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import static io.trino.spi.type.StandardTypes.INTEGER;
 import static io.trino.spi.type.StandardTypes.VARCHAR;
@@ -37,6 +35,7 @@ import static java.lang.String.format;
 import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 import static pl.net.was.rest.github.GithubRest.ISSUES_TABLE_TYPE;
+import static pl.net.was.rest.github.GithubRest.getRowType;
 
 @ScalarFunction("issues")
 @Description("Get issues")
@@ -45,14 +44,7 @@ public class Issues
 {
     public Issues()
     {
-        List<RowType.Field> fields = GithubRest.columns.get("issues")
-                .stream()
-                .map(columnMetadata -> RowType.field(
-                        columnMetadata.getName(),
-                        columnMetadata.getType()))
-                .collect(Collectors.toList());
-        RowType rowType = RowType.from(fields);
-
+        RowType rowType = getRowType("issues");
         arrayType = new ArrayType(rowType);
         pageBuilder = new PageBuilder(ImmutableList.of(arrayType));
     }

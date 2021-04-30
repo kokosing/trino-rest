@@ -23,55 +23,45 @@ import io.trino.spi.function.ScalarFunction;
 import io.trino.spi.function.SqlType;
 import io.trino.spi.type.ArrayType;
 import io.trino.spi.type.RowType;
-import pl.net.was.rest.github.model.ReviewComment;
+import pl.net.was.rest.github.model.Repository;
 import retrofit2.Response;
 
 import java.io.IOException;
 import java.util.List;
 
-import static io.trino.spi.type.StandardTypes.INTEGER;
+import static io.trino.spi.type.StandardTypes.BIGINT;
 import static io.trino.spi.type.StandardTypes.VARCHAR;
 import static java.lang.String.format;
 import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
-import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME;
-import static pl.net.was.rest.github.GithubRest.REVIEW_COMMENTS_TABLE_TYPE;
+import static pl.net.was.rest.github.GithubRest.REPOS_TABLE_TYPE;
 import static pl.net.was.rest.github.GithubRest.getRowType;
 
-@ScalarFunction("review_comments")
-@Description("Get review comments")
-public class ReviewComments
+@ScalarFunction("repos")
+@Description("Get public repositories")
+public class Repos
         extends BaseFunction
 {
-    public ReviewComments()
+    public Repos()
     {
-        RowType rowType = getRowType("review_comments");
+        RowType rowType = getRowType("repos");
         arrayType = new ArrayType(rowType);
         pageBuilder = new PageBuilder(ImmutableList.of(arrayType));
     }
 
-    @SqlType(REVIEW_COMMENTS_TABLE_TYPE)
-    public Block getPage(
-            @SqlType(VARCHAR) Slice token,
-            @SqlType(VARCHAR) Slice owner,
-            @SqlType(VARCHAR) Slice repo,
-            @SqlType(INTEGER) long page,
-            @SqlType("timestamp(3)") long since)
+    @SqlType(REPOS_TABLE_TYPE)
+    public Block getPage(@SqlType(VARCHAR) Slice token, @SqlType(BIGINT) long sinceId)
             throws IOException
     {
-        Response<List<ReviewComment>> response = service.listReviewComments(
+        Response<List<Repository>> response = service.listRepos(
                 token.toStringUtf8(),
-                owner.toStringUtf8(),
-                repo.toStringUtf8(),
-                100,
-                (int) page,
-                ISO_LOCAL_DATE_TIME.format(fromTrinoTimestamp(since)) + "Z").execute();
+                sinceId).execute();
         if (response.code() == HTTP_NOT_FOUND) {
             return null;
         }
         if (!response.isSuccessful()) {
             throw new IllegalStateException(format("Invalid response, code %d, message: %s", response.code(), response.message()));
         }
-        List<ReviewComment> items = response.body();
+        List<Repository> items = response.body();
         return buildBlock(items);
     }
 }
