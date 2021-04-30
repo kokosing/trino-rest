@@ -25,6 +25,7 @@ import pl.net.was.rest.github.model.Repository;
 import pl.net.was.rest.github.model.Review;
 import pl.net.was.rest.github.model.ReviewComment;
 import pl.net.was.rest.github.model.RunsList;
+import pl.net.was.rest.github.model.User;
 import retrofit2.Call;
 import retrofit2.http.GET;
 import retrofit2.http.Header;
@@ -161,4 +162,17 @@ public interface GithubService
             @Query("per_page") int perPage,
             @Query("page") int page,
             @Query("sort") String sort);
+
+    @Headers("accept: application/vnd.github.v3+json")
+    @GET("/users")
+    Call<List<User>> listUsers(
+            @Header("Authorization") String auth,
+            @Query("per_page") int perPage,
+            @Query("since") String since);
+
+    @Headers("accept: application/vnd.github.v3+json")
+    @GET("/users/{username}")
+    Call<User> getUser(
+            @Header("Authorization") String auth,
+            @Path("username") String username);
 }

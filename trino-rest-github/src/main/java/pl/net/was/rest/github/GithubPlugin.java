@@ -33,6 +33,9 @@ import pl.net.was.rest.github.function.ReviewComments;
 import pl.net.was.rest.github.function.Reviews;
 import pl.net.was.rest.github.function.Runs;
 import pl.net.was.rest.github.function.Steps;
+import pl.net.was.rest.github.function.UserGetter;
+import pl.net.was.rest.github.function.UserRepos;
+import pl.net.was.rest.github.function.Users;
 
 import java.util.Set;
 
@@ -57,6 +60,9 @@ public class GithubPlugin
                 .add(Org.class)
                 .add(Orgs.class)
                 .add(OrgRepos.class)
+                .add(Users.class)
+                .add(UserGetter.class)
+                .add(UserRepos.class)
                 .add(Repos.class)
                 .add(Pulls.class)
                 .add(PullCommits.class)

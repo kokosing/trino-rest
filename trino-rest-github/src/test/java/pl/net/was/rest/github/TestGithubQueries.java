@@ -36,8 +36,14 @@ public class TestGithubQueries
     }
 
     @Test
-    public void selectFromGeneral()
+    public void selectFromIssues()
     {
         computeActual("SELECT * FROM issues");
+    }
+
+    @Test
+    public void selectFromUser()
+    {
+        computeActual("SELECT user('invalid.token', 'nineinchnick')");
     }
 }

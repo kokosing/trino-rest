@@ -92,6 +92,27 @@ public class GithubRest
                     new ColumnMetadata("members_can_create_private_repositories", BOOLEAN),
                     new ColumnMetadata("members_can_create_internal_repositories", BOOLEAN),
                     new ColumnMetadata("members_can_create_pages", BOOLEAN)))
+            .put("users", ImmutableList.of(
+                    new ColumnMetadata("login", createUnboundedVarcharType()),
+                    new ColumnMetadata("id", BIGINT),
+                    new ColumnMetadata("avatar_url", createUnboundedVarcharType()),
+                    new ColumnMetadata("gravatar_id", createUnboundedVarcharType()),
+                    new ColumnMetadata("type", createUnboundedVarcharType()),
+                    new ColumnMetadata("site_admin", BOOLEAN),
+                    new ColumnMetadata("name", createUnboundedVarcharType()),
+                    new ColumnMetadata("company", createUnboundedVarcharType()),
+                    new ColumnMetadata("blog", createUnboundedVarcharType()),
+                    new ColumnMetadata("location", createUnboundedVarcharType()),
+                    new ColumnMetadata("email", createUnboundedVarcharType()),
+                    new ColumnMetadata("hireable", BOOLEAN),
+                    new ColumnMetadata("bio", createUnboundedVarcharType()),
+                    new ColumnMetadata("twitter_username", createUnboundedVarcharType()),
+                    new ColumnMetadata("public_repos", BIGINT),
+                    new ColumnMetadata("public_gists", BIGINT),
+                    new ColumnMetadata("followers", BIGINT),
+                    new ColumnMetadata("following", BIGINT),
+                    new ColumnMetadata("created_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
+                    new ColumnMetadata("updated_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3))))
             .put("repos", ImmutableList.of(
                     new ColumnMetadata("id", BIGINT),
                     new ColumnMetadata("name", createUnboundedVarcharType()),
@@ -285,6 +306,31 @@ public class GithubRest
             ")";
 
     public static final String ORGS_TABLE_TYPE = "array(" + ORG_ROW_TYPE + ")";
+
+    public static final String USER_ROW_TYPE = "row(" +
+            "login varchar, " +
+            "id bigint, " +
+            "avatar_url varchar, " +
+            "gravatar_id varchar, " +
+            "type varchar, " +
+            "site_admin boolean, " +
+            "name varchar, " +
+            "company varchar, " +
+            "blog varchar, " +
+            "location varchar, " +
+            "email varchar, " +
+            "hireable boolean, " +
+            "bio varchar, " +
+            "twitter_username varchar, " +
+            "public_repos bigint, " +
+            "public_gists bigint, " +
+            "followers bigint, " +
+            "following bigint, " +
+            "created_at timestamp(3) with time zone, " +
+            "updated_at timestamp(3) with time zone" +
+            ")";
+
+    public static final String USERS_TABLE_TYPE = "array(" + USER_ROW_TYPE + ")";
 
     public static final String REPOS_TABLE_TYPE = "array(row(" +
             "id bigint, " +

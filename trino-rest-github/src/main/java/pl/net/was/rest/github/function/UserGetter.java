@@ -24,7 +24,7 @@ import io.trino.spi.function.ScalarFunction;
 import io.trino.spi.function.SqlType;
 import io.trino.spi.type.RowType;
 import pl.net.was.rest.github.model.BlockWriter;
-import pl.net.was.rest.github.model.Organization;
+import pl.net.was.rest.github.model.User;
 import retrofit2.Response;
 
 import java.io.IOException;
@@ -32,36 +32,36 @@ import java.io.IOException;
 import static io.trino.spi.type.StandardTypes.VARCHAR;
 import static java.lang.String.format;
 import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
-import static pl.net.was.rest.github.GithubRest.ORG_ROW_TYPE;
+import static pl.net.was.rest.github.GithubRest.USER_ROW_TYPE;
 import static pl.net.was.rest.github.GithubRest.getRowType;
 
-@ScalarFunction("org")
-@Description("Get an organization")
-public class Org
+@ScalarFunction("user")
+@Description("Get a user")
+public class UserGetter
         extends BaseFunction
 {
     private final RowType rowType;
 
-    public Org()
+    public UserGetter()
     {
-        rowType = getRowType("orgs");
+        rowType = getRowType("users");
         pageBuilder = new PageBuilder(ImmutableList.of(rowType));
     }
 
-    @SqlType(ORG_ROW_TYPE)
-    public Block get(@SqlType(VARCHAR) Slice token, @SqlType(VARCHAR) Slice org)
+    @SqlType(USER_ROW_TYPE)
+    public Block get(@SqlType(VARCHAR) Slice token, @SqlType(VARCHAR) Slice username)
             throws IOException
     {
-        Response<Organization> response = service.getOrg(
+        Response<User> response = service.getUser(
                 token.toStringUtf8(),
-                org.toStringUtf8()).execute();
+                username.toStringUtf8()).execute();
         if (response.code() == HTTP_NOT_FOUND) {
             return null;
         }
         if (!response.isSuccessful()) {
             throw new IllegalStateException(format("Invalid response, code %d, message: %s", response.code(), response.message()));
         }
-        Organization item = response.body();
+        User item = response.body();
         return buildBlock(item);
     }
 

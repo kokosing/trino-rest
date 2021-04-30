@@ -81,6 +81,12 @@
             <version>205</version>
         </dependency>
 
+        <dependency>
+            <groupId>io.airlift</groupId>
+            <artifactId>units</artifactId>
+            <version>1.6</version>
+        </dependency>
+
         <!-- for running PageSaver -->
         <dependency>
             <groupId>io.trino</groupId>

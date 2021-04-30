@@ -16,19 +16,80 @@ package pl.net.was.rest.github.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import io.trino.spi.block.BlockBuilder;
+
+import java.time.ZonedDateTime;
+
+import static io.trino.spi.type.BigintType.BIGINT;
+import static io.trino.spi.type.BooleanType.BOOLEAN;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class User
+        extends BaseBlockWriter
 {
-    private final long id;
     private final String login;
+    private final long id;
+    private final String avatarUrl;
+    private final String gravatarId;
+    private final String type;
+    private final boolean siteAdmin;
+    private final String name;
+    private final String company;
+    private final String blog;
+    private final String location;
+    private final String email;
+    private final boolean hireable;
+    private final String bio;
+    private final String twitterUsername;
+    private final long publicRepos;
+    private final long publicGists;
+    private final long followers;
+    private final long following;
+    private final ZonedDateTime createdAt;
+    private final ZonedDateTime updatedAt;
 
     public User(
+            @JsonProperty("login") String login,
             @JsonProperty("id") long id,
-            @JsonProperty("login") String login)
+            @JsonProperty("avatar_url") String avatarUrl,
+            @JsonProperty("gravatar_id") String gravatarId,
+            @JsonProperty("type") String type,
+            @JsonProperty("site_admin") boolean siteAdmin,
+            @JsonProperty("name") String name,
+            @JsonProperty("company") String company,
+            @JsonProperty("blog") String blog,
+            @JsonProperty("location") String location,
+            @JsonProperty("email") String email,
+            @JsonProperty("hireable") boolean hireable,
+            @JsonProperty("bio") String bio,
+            @JsonProperty("twitter_username") String twitterUsername,
+            @JsonProperty("public_repos") long publicRepos,
+            @JsonProperty("public_gists") long publicGists,
+            @JsonProperty("followers") long followers,
+            @JsonProperty("following") long following,
+            @JsonProperty("created_at") ZonedDateTime createdAt,
+            @JsonProperty("updated_at") ZonedDateTime updatedAt)
     {
-        this.id = id;
         this.login = login;
+        this.id = id;
+        this.avatarUrl = avatarUrl;
+        this.gravatarId = gravatarId;
+        this.type = type;
+        this.siteAdmin = siteAdmin;
+        this.name = name;
+        this.company = company;
+        this.blog = blog;
+        this.location = location;
+        this.email = email;
+        this.hireable = hireable;
+        this.bio = bio;
+        this.twitterUsername = twitterUsername;
+        this.publicRepos = publicRepos;
+        this.publicGists = publicGists;
+        this.followers = followers;
+        this.following = following;
+        this.createdAt = createdAt;
+        this.updatedAt = updatedAt;
     }
 
     public long getId()
@@ -39,5 +100,31 @@ public class User
     public String getLogin()
     {
         return login;
+    }
+
+    @Override
+    public void writeTo(BlockBuilder rowBuilder)
+    {
+        // TODO this should be a map of column names to value getters and types should be fetched from GithubRest.columns
+        writeString(rowBuilder, login);
+        BIGINT.writeLong(rowBuilder, id);
+        writeString(rowBuilder, avatarUrl);
+        writeString(rowBuilder, gravatarId);
+        writeString(rowBuilder, type);
+        BOOLEAN.writeBoolean(rowBuilder, siteAdmin);
+        writeString(rowBuilder, name);
+        writeString(rowBuilder, company);
+        writeString(rowBuilder, blog);
+        writeString(rowBuilder, location);
+        writeString(rowBuilder, email);
+        BOOLEAN.writeBoolean(rowBuilder, hireable);
+        writeString(rowBuilder, bio);
+        writeString(rowBuilder, twitterUsername);
+        BIGINT.writeLong(rowBuilder, publicRepos);
+        BIGINT.writeLong(rowBuilder, publicGists);
+        BIGINT.writeLong(rowBuilder, followers);
+        BIGINT.writeLong(rowBuilder, following);
+        writeTimestamp(rowBuilder, createdAt);
+        writeTimestamp(rowBuilder, updatedAt);
     }
 }
