@@ -28,9 +28,17 @@ import pl.net.was.rest.github.model.BlockWriter;
 import retrofit2.Retrofit;
 import retrofit2.converter.jackson.JacksonConverterFactory;
 
+import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import static io.trino.spi.type.Timestamps.MICROSECONDS_PER_SECOND;
+import static io.trino.spi.type.Timestamps.NANOSECONDS_PER_MICROSECOND;
+import static java.lang.Math.floorDiv;
+import static java.lang.Math.floorMod;
+import static java.time.ZoneOffset.UTC;
 
 public abstract class BaseFunction
 {
@@ -94,5 +102,13 @@ public abstract class BaseFunction
         blockBuilder.closeEntry();
         pageBuilder.declarePosition();
         return arrayType.getObject(blockBuilder, blockBuilder.getPositionCount() - 1);
+    }
+
+    protected static LocalDateTime fromTrinoTimestamp(long epochMicros)
+    {
+        long epochSecond = floorDiv(epochMicros, MICROSECONDS_PER_SECOND);
+        int nanoFraction = floorMod(epochMicros, MICROSECONDS_PER_SECOND) * NANOSECONDS_PER_MICROSECOND;
+        Instant instant = Instant.ofEpochSecond(epochSecond, nanoFraction);
+        return LocalDateTime.ofInstant(instant, UTC);
     }
 }

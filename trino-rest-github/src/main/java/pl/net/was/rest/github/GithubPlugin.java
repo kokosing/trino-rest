@@ -19,8 +19,14 @@ import com.google.common.collect.ImmutableSet;
 import io.trino.spi.Plugin;
 import io.trino.spi.connector.ConnectorFactory;
 import pl.net.was.rest.RestConnectorFactory;
+import pl.net.was.rest.github.function.IssueComments;
+import pl.net.was.rest.github.function.Issues;
 import pl.net.was.rest.github.function.JobLogs;
 import pl.net.was.rest.github.function.Jobs;
+import pl.net.was.rest.github.function.PullCommits;
+import pl.net.was.rest.github.function.Pulls;
+import pl.net.was.rest.github.function.ReviewComments;
+import pl.net.was.rest.github.function.Reviews;
 import pl.net.was.rest.github.function.Runs;
 import pl.net.was.rest.github.function.Steps;
 
@@ -44,10 +50,16 @@ public class GithubPlugin
     public Set<Class<?>> getFunctions()
     {
         return ImmutableSet.<Class<?>>builder()
-                .add(Runs.class)
-                .add(Jobs.class)
-                .add(Steps.class)
+                .add(IssueComments.class)
+                .add(Issues.class)
                 .add(JobLogs.class)
+                .add(Jobs.class)
+                .add(PullCommits.class)
+                .add(Pulls.class)
+                .add(ReviewComments.class)
+                .add(Reviews.class)
+                .add(Runs.class)
+                .add(Steps.class)
                 .build();
     }
 }

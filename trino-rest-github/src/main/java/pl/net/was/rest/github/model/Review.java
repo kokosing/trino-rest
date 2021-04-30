@@ -29,6 +29,7 @@ public class Review
         extends BaseBlockWriter
 {
     private final long id;
+    private long pullNumber;
     private final User user;
     private final String body;
     private final String state;
@@ -64,6 +65,7 @@ public class Review
     {
         return ImmutableList.of(
                 id,
+                pullNumber,
                 user.getId(),
                 user.getLogin(),
                 body,
@@ -77,6 +79,7 @@ public class Review
     public void writeTo(BlockBuilder rowBuilder)
     {
         BIGINT.writeLong(rowBuilder, id);
+        BIGINT.writeLong(rowBuilder, pullNumber);
         BIGINT.writeLong(rowBuilder, user.getId());
         writeString(rowBuilder, user.getLogin());
         writeString(rowBuilder, body);
@@ -84,5 +87,10 @@ public class Review
         writeTimestamp(rowBuilder, submittedAt);
         writeString(rowBuilder, commitId);
         writeString(rowBuilder, authorAssociation);
+    }
+
+    public void setPullNumber(long pullNumber)
+    {
+        this.pullNumber = pullNumber;
     }
 }

@@ -65,7 +65,9 @@ public class Pulls
                 owner.toStringUtf8(),
                 repo.toStringUtf8(),
                 100,
-                (int) page).execute();
+                (int) page,
+                "updated",
+                "all").execute();
         if (response.code() == HTTP_NOT_FOUND) {
             return null;
         }

@@ -95,6 +95,13 @@ public class Sync
         requireNonNull(srcSchema, "TRINO_SRC_SCHEMA environmental variable must be set");
 
         try (Connection conn = DriverManager.getConnection(url, username, password)) {
+            // TODO need a way to disable some of those at runtime, some repos don't have issues enabled, etc
+            //syncIssues(conn, owner, repo, destSchema, srcSchema);
+            //syncIssueComments(conn, owner, repo, destSchema, srcSchema);
+            syncPulls(conn, owner, repo, destSchema, srcSchema);
+            syncReviewComments(conn, owner, repo, destSchema, srcSchema);
+            // TODO missing pull commits
+            syncReviews(conn, owner, repo, destSchema, srcSchema);
             syncRuns(conn, owner, repo, destSchema, srcSchema);
             syncJobs(conn, owner, repo, destSchema, srcSchema);
             syncSteps(conn, owner, repo, destSchema, srcSchema, 2);
@@ -110,14 +117,179 @@ public class Sync
     private static void syncIssues(Connection conn, String owner, String repo, String destSchema, String srcSchema)
             throws SQLException
     {
-        /*
-         TODO these steps:
-         * create if not exists temp table in mem catalog
-         * fetch one page and save into the temp table
-         * insert new
-         * update existing where update_at is newer
-         * drop temp table
-         */
+        conn.createStatement().executeUpdate(
+                "CREATE TABLE IF NOT EXISTS " + destSchema + ".issues AS SELECT * FROM " + srcSchema + ".issues WITH NO DATA");
+        // consider adding some indexes:
+        // CREATE INDEX ON issues(id);
+        // CREATE INDEX ON issues(user_id);
+        // CREATE INDEX ON issues(milestone_id);
+        // CREATE INDEX ON issues(assignee_id);
+        // CREATE INDEX ON issues(state);
+        // note that the first one is NOT a primary key, so updated records can be inserted and then removed as duplicates using a procedure
+        // DELETE FROM issues a USING issues b WHERE a.updated_at < b.updated_at AND a.id = b.id;
+
+        syncSince(conn, owner, repo, destSchema, "issues");
+    }
+
+    private static void syncIssueComments(Connection conn, String owner, String repo, String destSchema, String srcSchema)
+            throws SQLException
+    {
+        conn.createStatement().executeUpdate(
+                "CREATE TABLE IF NOT EXISTS " + destSchema + ".issue_comments AS SELECT * FROM " + srcSchema + ".issue_comments WITH NO DATA");
+        // consider adding some indexes:
+        // CREATE INDEX ON issue_comments(id);
+        // CREATE INDEX ON issue_comments(user_id);
+        // note that the first one is NOT a primary key, so updated records can be inserted and then removed as duplicates using a procedure
+        // DELETE FROM issue_comments a USING issue_comments b WHERE a.updated_at < b.updated_at AND a.id = b.id;
+
+        syncSince(conn, owner, repo, destSchema, "issue_comments");
+    }
+
+    private static void syncReviewComments(Connection conn, String owner, String repo, String destSchema, String srcSchema)
+            throws SQLException
+    {
+        conn.createStatement().executeUpdate(
+                "CREATE TABLE IF NOT EXISTS " + destSchema + ".review_comments AS SELECT * FROM " + srcSchema + ".review_comments WITH NO DATA");
+        // consider adding some indexes:
+        // CREATE INDEX ON review_comments(id);
+        // CREATE INDEX ON review_comments(user_id);
+        // CREATE INDEX ON review_comments(pull_request_review_id);
+        // CREATE INDEX ON review_comments(in_reply_to_id);
+        // note that the first one is NOT a primary key, so updated records can be inserted and then removed as duplicates using a procedure
+        // DELETE FROM review_comments a USING review_comments b WHERE a.updated_at < b.updated_at AND a.id = b.id;
+
+        syncSince(conn, owner, repo, destSchema, "review_comments");
+    }
+
+    private static void syncSince(Connection conn, String owner, String repo, String destSchema, String name)
+            throws SQLException
+    {
+        ResultSet result = conn.prepareStatement(
+                "SELECT COALESCE(MAX(updated_at), TIMESTAMP '1970-01-01') AS latest FROM " + destSchema + "." + name)
+                .executeQuery();
+        result.next();
+        String lastUpdated = result.getString(1);
+        PreparedStatement statement = conn.prepareStatement(
+                "INSERT INTO " + destSchema + "." + name + " " +
+                        "SELECT * FROM unnest(" + name + "(?, ?, ?, ?, CAST(? AS TIMESTAMP))) src");
+        statement.setString(1, "Bearer " + System.getenv("GITHUB_TOKEN"));
+        statement.setString(2, owner);
+        statement.setString(3, repo);
+        statement.setString(5, lastUpdated);
+
+        int page = 1;
+        while (true) {
+            log.info(format("Fetching page number %d", page));
+            long startTime = System.currentTimeMillis();
+            statement.setInt(4, page++);
+            int rows = retryExecute(statement);
+            log.info(format("Inserted %d rows, took %s", rows, Duration.ofMillis(System.currentTimeMillis() - startTime)));
+            if (rows == 0) {
+                break;
+            }
+        }
+    }
+
+    private static void syncPulls(Connection conn, String owner, String repo, String destSchema, String srcSchema)
+            throws SQLException
+    {
+        conn.createStatement().executeUpdate(
+                "CREATE TABLE IF NOT EXISTS " + destSchema + ".pulls AS SELECT * FROM " + srcSchema + ".pulls WITH NO DATA");
+        // consider adding some indexes:
+        // CREATE INDEX ON pulls(id);
+        // CREATE INDEX ON pulls(user_id);
+        // CREATE INDEX ON pulls(milestone_id);
+        // CREATE INDEX ON pulls(assignee_id);
+        // CREATE INDEX ON pulls(state);
+        // note that the first one is NOT a primary key, so updated records can be inserted and then removed as duplicates using:
+        // DELETE FROM pulls a USING pulls b WHERE a.updated_at < b.updated_at AND a.id = b.id;
+
+        // there's no "since" filter, but we can sort by updated_at, so keep inserting records where this is greater than max
+        ResultSet result = conn.prepareStatement(
+                "SELECT COALESCE(MAX(updated_at), TIMESTAMP '0000-01-01') AS latest FROM " + destSchema + ".pulls")
+                .executeQuery();
+        result.next();
+        String lastUpdated = result.getString(1);
+
+        PreparedStatement statement = conn.prepareStatement(
+                "INSERT INTO " + destSchema + ".pulls " +
+                        "SELECT * FROM unnest(pulls(?, ?, ?, ?)) WHERE updated_at > CAST(? AS TIMESTAMP)");
+        statement.setString(1, "Bearer " + System.getenv("GITHUB_TOKEN"));
+        statement.setString(2, owner);
+        statement.setString(3, repo);
+        statement.setString(5, lastUpdated);
+
+        int page = 1;
+        while (true) {
+            log.info(format("Fetching page number %d", page));
+            long startTime = System.currentTimeMillis();
+            statement.setInt(4, page++);
+            int rows = retryExecute(statement);
+            log.info(format("Inserted %d rows, took %s", rows, Duration.ofMillis(System.currentTimeMillis() - startTime)));
+            if (rows == 0) {
+                break;
+            }
+        }
+    }
+
+    private static void syncReviews(Connection conn, String owner, String repo, String destSchema, String srcSchema)
+            throws SQLException
+    {
+        conn.createStatement().executeUpdate(
+                "CREATE TABLE IF NOT EXISTS " + destSchema + ".reviews AS SELECT * FROM " + srcSchema + ".reviews WITH NO DATA");
+        // consider adding some indexes:
+        // CREATE INDEX ON reviews(id);
+        // CREATE INDEX ON reviews(user_id);
+        // CREATE INDEX ON reviews(pull_number);
+        // CREATE INDEX ON reviews(state);
+        // note that the first one is NOT a primary key, so updated records can be inserted and then removed as duplicates using:
+        // DELETE FROM reviews a USING reviews b WHERE a.updated_at < b.updated_at AND a.id = b.id;
+
+        // only fetch steps from jobs from up to 2 completed runs not older than 2 months, without any job steps
+        String runsQuery = format(
+                "SELECT p.number " +
+                        "FROM " + destSchema + ".pulls p " +
+                        "LEFT JOIN " + destSchema + ".reviews r ON r.pull_number = p.number " +
+                        "WHERE p.number < ? " +
+                        "GROUP BY p.number " +
+                        "HAVING COUNT(r.id) = 0 " +
+                        "ORDER BY p.number DESC LIMIT %d", 30);
+        // since there's no difference between pulls without reviews and those we have not checked or yet,
+        // we need to know the last checked pull number and add a condition to fetch lesser numbers
+        PreparedStatement idStatement = conn.prepareStatement("SELECT min(p.number) FROM (" + runsQuery + ") p");
+
+        // TODO this only gets missing reviews - doesn't allow to fetch updated reviews
+        PreparedStatement insertStatement = conn.prepareStatement(
+                "INSERT INTO " + destSchema + ".reviews " +
+                        "SELECT src.* " +
+                        "FROM (" + runsQuery + ") p " +
+                        "CROSS JOIN unnest(reviews(?, ?, ?, p.number)) src " +
+                        "LEFT JOIN " + destSchema + ".reviews dst ON dst.id = src.id " +
+                        "WHERE dst.id IS NULL");
+        insertStatement.setString(2, "Bearer " + System.getenv("GITHUB_TOKEN"));
+        insertStatement.setString(3, owner);
+        insertStatement.setString(4, repo);
+
+        long previousId = Long.MAX_VALUE;
+        while (true) {
+            idStatement.setLong(1, previousId);
+            insertStatement.setLong(1, previousId);
+
+            log.info("Checking for next pulls without reviews");
+            ResultSet resultSet = idStatement.executeQuery();
+            if (!resultSet.next()) {
+                break;
+            }
+            previousId = resultSet.getLong(1);
+            if (resultSet.wasNull()) {
+                break;
+            }
+
+            log.info(format("Fetching reviews for pulls with number less than %d", previousId));
+            long startTime = System.currentTimeMillis();
+            int rows = retryExecute(insertStatement);
+            log.info(format("Inserted %d rows, took %s", rows, Duration.ofMillis(System.currentTimeMillis() - startTime)));
+        }
     }
 
     private static void syncRuns(Connection conn, String owner, String repo, String destSchema, String srcSchema)
