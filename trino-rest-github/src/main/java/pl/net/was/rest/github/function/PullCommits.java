@@ -17,6 +17,7 @@ package pl.net.was.rest.github.function;
 import com.google.common.collect.ImmutableList;
 import io.airlift.slice.Slice;
 import io.trino.spi.PageBuilder;
+import io.trino.spi.TrinoException;
 import io.trino.spi.block.Block;
 import io.trino.spi.function.Description;
 import io.trino.spi.function.ScalarFunction;
@@ -29,7 +30,9 @@ import retrofit2.Response;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
+import static io.trino.spi.StandardErrorCode.GENERIC_INTERNAL_ERROR;
 import static io.trino.spi.type.StandardTypes.BIGINT;
 import static io.trino.spi.type.StandardTypes.VARCHAR;
 import static java.lang.String.format;
@@ -72,12 +75,14 @@ public class PullCommits
                 break;
             }
             if (!response.isSuccessful()) {
-                throw new IllegalStateException(format("Invalid response, code %d, message: %s", response.code(), response.message()));
+                throw new TrinoException(GENERIC_INTERNAL_ERROR, format("Invalid response, code %d, message: %s", response.code(), response.message()));
             }
-            List<PullCommit> items = response.body();
-            if (items == null || items.size() == 0) {
+            List<PullCommit> items = Objects.requireNonNull(response.body());
+            if (items.size() == 0) {
                 break;
             }
+            items.forEach(i -> i.setOwner(owner.toStringUtf8()));
+            items.forEach(i -> i.setRepo(repo.toStringUtf8()));
             items.forEach(i -> i.setPullNumber(pullNumber));
             commits.addAll(items);
         }

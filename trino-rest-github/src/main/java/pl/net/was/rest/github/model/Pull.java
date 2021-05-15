@@ -21,7 +21,6 @@ import io.trino.spi.block.BlockBuilder;
 
 import java.time.ZonedDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import static io.trino.spi.type.BigintType.BIGINT;
 import static io.trino.spi.type.BooleanType.BOOLEAN;
@@ -31,6 +30,8 @@ import static io.trino.spi.type.VarcharType.VARCHAR;
 public class Pull
         extends BaseBlockWriter
 {
+    private String owner;
+    private String repo;
     private final long id;
     private final String url;
     private final String htmlUrl;
@@ -133,9 +134,35 @@ public class Pull
         this.draft = draft;
     }
 
+    public void setOwner(String owner)
+    {
+        this.owner = owner;
+    }
+
+    public void setRepo(String repo)
+    {
+        this.repo = repo;
+    }
+
     public List<?> toRow()
     {
+        BlockBuilder labelIds = BIGINT.createBlockBuilder(null, labels.size());
+        BlockBuilder labelNames = VARCHAR.createBlockBuilder(null, labels.size());
+        for (Label label : labels) {
+            BIGINT.writeLong(labelIds, label.getId());
+            VARCHAR.writeString(labelNames, label.getName());
+        }
+
+        BlockBuilder requestedReviewerIds = BIGINT.createBlockBuilder(null, requestedReviewers.size());
+        BlockBuilder requestedReviewerLogins = VARCHAR.createBlockBuilder(null, requestedReviewers.size());
+        for (User requestedReviewer : requestedReviewers) {
+            BIGINT.writeLong(requestedReviewerIds, requestedReviewer.getId());
+            VARCHAR.writeString(requestedReviewerLogins, requestedReviewer.getLogin());
+        }
+
         return ImmutableList.of(
+                owner,
+                repo,
                 id,
                 number,
                 state,
@@ -144,20 +171,20 @@ public class Pull
                 user.getId(),
                 user.getLogin(),
                 body,
-                labels.stream().map(Label::getId).collect(Collectors.toList()),
-                labels.stream().map(Label::getName).collect(Collectors.toList()),
-                milestone.getId(),
-                milestone.getTitle(),
-                activeLockReason,
-                createdAt,
-                updatedAt,
-                closedAt,
-                mergedAt,
-                mergedCommitSha,
-                assignee.getId(),
-                assignee.getLogin(),
-                requestedReviewers.stream().map(User::getId).collect(Collectors.toList()),
-                requestedReviewers.stream().map(User::getLogin).collect(Collectors.toList()),
+                labelIds.build(),
+                labelNames.build(),
+                milestone != null ? milestone.getId() : 0,
+                milestone != null ? milestone.getTitle() : "",
+                activeLockReason != null ? activeLockReason : "",
+                packTimestamp(createdAt),
+                packTimestamp(updatedAt),
+                packTimestamp(closedAt),
+                packTimestamp(mergedAt),
+                mergedCommitSha != null ? mergedCommitSha : "",
+                assignee != null ? assignee.getId() : 0,
+                assignee != null ? assignee.getLogin() : "",
+                requestedReviewerIds.build(),
+                requestedReviewerLogins.build(),
                 headRef,
                 headSha,
                 baseRef,
@@ -170,6 +197,8 @@ public class Pull
     public void writeTo(BlockBuilder rowBuilder)
     {
         // TODO this should be a map of column names to value getters and types should be fetched from GithubRest.columns
+        writeString(rowBuilder, owner);
+        writeString(rowBuilder, repo);
         BIGINT.writeLong(rowBuilder, id);
         BIGINT.writeLong(rowBuilder, number);
         writeString(rowBuilder, state);

@@ -21,7 +21,6 @@ import io.trino.spi.block.BlockBuilder;
 
 import java.time.ZonedDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import static io.trino.spi.type.BigintType.BIGINT;
 import static io.trino.spi.type.BooleanType.BOOLEAN;
@@ -31,6 +30,8 @@ import static io.trino.spi.type.VarcharType.VARCHAR;
 public class Issue
         extends BaseBlockWriter
 {
+    private String owner;
+    private String repo;
     private final long id;
     private final String url;
     private final String eventsUrl;
@@ -93,28 +94,49 @@ public class Issue
         this.authorAssociation = authorAssociation;
     }
 
+    public void setOwner(String owner)
+    {
+        this.owner = owner;
+    }
+
+    public void setRepo(String repo)
+    {
+        this.repo = repo;
+    }
+
     public List<?> toRow()
     {
+        // TODO allow nulls
+
+        BlockBuilder labelIds = BIGINT.createBlockBuilder(null, labels.size());
+        BlockBuilder labelNames = VARCHAR.createBlockBuilder(null, labels.size());
+        for (Label label : labels) {
+            BIGINT.writeLong(labelIds, label.getId());
+            VARCHAR.writeString(labelNames, label.getName());
+        }
+
         return ImmutableList.of(
+                owner,
+                repo,
                 id,
                 number,
                 state,
-                title,
-                body,
+                title != null ? title : "",
+                body != null ? body : "",
                 user.getId(),
                 user.getLogin(),
-                labels.stream().map(Label::getId).collect(Collectors.toList()),
-                labels.stream().map(Label::getName).collect(Collectors.toList()),
-                assignee.getId(),
-                assignee.getLogin(),
-                milestone.getId(),
-                milestone.getTitle(),
+                labelIds.build(),
+                labelNames.build(),
+                assignee != null ? assignee.getId() : 0,
+                assignee != null ? assignee.getLogin() : "",
+                milestone != null ? milestone.getId() : 0,
+                milestone != null ? milestone.getTitle() : "",
                 locked,
-                activeLockReason,
+                activeLockReason != null ? activeLockReason : "",
                 comments,
-                closedAt,
-                createdAt,
-                updatedAt,
+                packTimestamp(closedAt),
+                packTimestamp(createdAt),
+                packTimestamp(updatedAt),
                 authorAssociation);
     }
 
@@ -122,6 +144,8 @@ public class Issue
     public void writeTo(BlockBuilder rowBuilder)
     {
         // TODO this should be a map of column names to value getters and types should be fetched from GithubRest.columns
+        writeString(rowBuilder, owner);
+        writeString(rowBuilder, repo);
         BIGINT.writeLong(rowBuilder, id);
         BIGINT.writeLong(rowBuilder, number);
         writeString(rowBuilder, state);

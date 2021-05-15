@@ -18,20 +18,19 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableList;
 import io.trino.spi.block.BlockBuilder;
-import io.trino.spi.connector.ColumnMetadata;
-import pl.net.was.rest.github.GithubRest;
 
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 import static io.trino.spi.type.BigintType.BIGINT;
 import static io.trino.spi.type.BooleanType.BOOLEAN;
+import static io.trino.spi.type.VarcharType.VARCHAR;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class PullCommit
         extends BaseBlockWriter
 {
+    private String owner;
+    private String repo;
     private long pullNumber;
     private final String url;
     private final String sha;
@@ -62,23 +61,56 @@ public class PullCommit
         this.parents = parents;
     }
 
+    public void setOwner(String owner)
+    {
+        this.owner = owner;
+    }
+
+    public void setRepo(String repo)
+    {
+        this.repo = repo;
+    }
+
+    public void setPullNumber(long pullNumber)
+    {
+        this.pullNumber = pullNumber;
+    }
+
     public List<?> toRow()
     {
+        BlockBuilder parentShas = VARCHAR.createBlockBuilder(null, parents.size());
+        for (Ref parent : parents) {
+            VARCHAR.writeString(parentShas, parent.getSha());
+        }
+
         return ImmutableList.of(
+                owner,
+                repo,
                 sha,
                 pullNumber,
-                commit,
-                author,
-                committer,
-                parents);
+                commit.getMessage(),
+                commit.getTree().getSha(),
+                commit.getCommentsCount(),
+                commit.getVerification().getVerified(),
+                commit.getVerification().getReason(),
+                commit.getAuthor().getName(),
+                commit.getAuthor().getEmail(),
+                packTimestamp(commit.getAuthor().getDate()),
+                author.getId(),
+                author.getLogin(),
+                commit.getCommitter().getName(),
+                commit.getCommitter().getEmail(),
+                packTimestamp(commit.getCommitter().getDate()),
+                committer.getId(),
+                committer.getLogin(),
+                parentShas.build());
     }
 
     @Override
     public void writeTo(BlockBuilder rowBuilder)
     {
-        Map<String, ColumnMetadata> columns = GithubRest.columns.get("issues").stream()
-                .collect(Collectors.toMap(ColumnMetadata::getName, columnMetadata -> columnMetadata));
-
+        writeString(rowBuilder, owner);
+        writeString(rowBuilder, repo);
         writeString(rowBuilder, sha);
         BIGINT.writeLong(rowBuilder, pullNumber);
         writeString(rowBuilder, commit.getMessage());
@@ -98,15 +130,10 @@ public class PullCommit
         writeString(rowBuilder, committer.getLogin());
 
         // parents array
-        BlockBuilder parentShas = columns.get("label_names").getType().createBlockBuilder(null, parents.size());
+        BlockBuilder parentShas = VARCHAR.createBlockBuilder(null, parents.size());
         for (Ref parent : parents) {
             writeString(parentShas, parent.getSha());
         }
         rowBuilder.appendStructure(parentShas.build());
-    }
-
-    public void setPullNumber(long pullNumber)
-    {
-        this.pullNumber = pullNumber;
     }
 }

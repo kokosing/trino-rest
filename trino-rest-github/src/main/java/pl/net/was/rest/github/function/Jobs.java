@@ -17,6 +17,7 @@ package pl.net.was.rest.github.function;
 import com.google.common.collect.ImmutableList;
 import io.airlift.slice.Slice;
 import io.trino.spi.PageBuilder;
+import io.trino.spi.TrinoException;
 import io.trino.spi.block.Block;
 import io.trino.spi.function.Description;
 import io.trino.spi.function.ScalarFunction;
@@ -30,7 +31,9 @@ import retrofit2.Response;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
+import static io.trino.spi.StandardErrorCode.GENERIC_INTERNAL_ERROR;
 import static io.trino.spi.type.StandardTypes.BIGINT;
 import static io.trino.spi.type.StandardTypes.VARCHAR;
 import static java.lang.String.format;
@@ -59,7 +62,7 @@ public class Jobs
         long total = Long.MAX_VALUE;
         int page = 1;
         while (jobs.size() < total) {
-            Response<JobsList> response = service.listJobs(
+            Response<JobsList> response = service.listRunJobs(
                     token.toStringUtf8(),
                     owner.toStringUtf8(),
                     repo.toStringUtf8(),
@@ -71,19 +74,17 @@ public class Jobs
                 break;
             }
             if (!response.isSuccessful()) {
-                throw new IllegalStateException(format("Invalid response, code %d, message: %s", response.code(), response.message()));
+                throw new TrinoException(GENERIC_INTERNAL_ERROR, format("Invalid response, code %d, message: %s", response.code(), response.message()));
             }
             JobsList jobsList = response.body();
-            if (jobsList == null) {
-                throw new IllegalStateException("Invalid response");
-            }
-
-            total = jobsList.getTotalCount();
-            List<Job> pageJobs = jobsList.getJobs();
-            if (pageJobs.size() == 0) {
+            total = Objects.requireNonNull(jobsList).getTotalCount();
+            List<Job> items = jobsList.getItems();
+            if (items.size() == 0) {
                 break;
             }
-            jobs.addAll(pageJobs);
+            items.forEach(i -> i.setOwner(owner.toStringUtf8()));
+            items.forEach(i -> i.setRepo(repo.toStringUtf8()));
+            jobs.addAll(items);
         }
         return buildBlock(jobs);
     }
