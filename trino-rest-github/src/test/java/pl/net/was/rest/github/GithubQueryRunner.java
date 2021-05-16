@@ -23,6 +23,7 @@ import io.trino.testing.DistributedQueryRunner;
 import io.trino.testing.QueryRunner;
 
 import static io.trino.testing.TestingSession.testSessionBuilder;
+import static java.util.Objects.requireNonNullElse;
 
 public class GithubQueryRunner
 {
@@ -41,13 +42,16 @@ public class GithubQueryRunner
                 .build();
         queryRunner.installPlugin(new GithubPlugin());
 
+        String token = requireNonNullElse(
+                System.getenv("GH_TOKEN"),
+                requireNonNullElse(
+                        System.getenv("GITHUB_TOKEN"),
+                        ""));
         queryRunner.createCatalog(
                 "github",
                 "github",
                 ImmutableMap.of(
-                        "user", "trinodb",
-                        "repo", "trino",
-                        "token", System.getenv("GITHUB_TOKEN")));
+                        "token", token));
 
         return queryRunner;
     }

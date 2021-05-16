@@ -18,7 +18,7 @@ import com.google.common.collect.ImmutableMap;
 
 import java.util.Map;
 
-public class StepFilter
+public class ArtifactFilter
         implements FilterApplier
 {
     public Map<String, FilterType> getSupportedFilters()

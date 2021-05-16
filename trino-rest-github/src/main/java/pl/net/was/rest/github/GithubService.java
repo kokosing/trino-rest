@@ -15,6 +15,7 @@
 package pl.net.was.rest.github;
 
 import okhttp3.ResponseBody;
+import pl.net.was.rest.github.model.ArtifactsList;
 import pl.net.was.rest.github.model.Issue;
 import pl.net.was.rest.github.model.IssueComment;
 import pl.net.was.rest.github.model.JobsList;
@@ -137,11 +138,38 @@ public interface GithubService
             @Path("job_id") long jobId);
 
     @Headers("accept: application/vnd.github.v3+json")
+    @GET("/repos/{owner}/{repo}/actions/artifacts")
+    Call<ArtifactsList> listArtifacts(
+            @Header("Authorization") String auth,
+            @Path("owner") String owner,
+            @Path("repo") String repo,
+            @Query("per_page") int perPage,
+            @Query("page") int page);
+
+    @Headers("accept: application/vnd.github.v3+json")
+    @GET("/repos/{owner}/{repo}/actions/runs/{run_id}/artifacts")
+    Call<ArtifactsList> listRunArtifacts(
+            @Header("Authorization") String auth,
+            @Path("owner") String owner,
+            @Path("repo") String repo,
+            @Path("run_id") long runId,
+            @Query("per_page") int perPage,
+            @Query("page") int page);
+
+    @Headers("accept: application/vnd.github.v3+json")
+    @GET("/repos/{owner}/{repo}/actions/artifacts/{artifact_id}/zip")
+    Call<ResponseBody> getArtifact(
+            @Header("Authorization") String auth,
+            @Path("owner") String owner,
+            @Path("repo") String repo,
+            @Path("artifact_id") long artifactId);
+
+    @Headers("accept: application/vnd.github.v3+json")
     @GET("/organizations")
     Call<List<Organization>> listOrgs(
             @Header("Authorization") String auth,
             @Query("per_page") int perPage,
-            @Query("since") String since);
+            @Query("since") long since);
 
     @Headers("accept: application/vnd.github.v3+json")
     @GET("/orgs/{org}")
@@ -178,7 +206,7 @@ public interface GithubService
     Call<List<User>> listUsers(
             @Header("Authorization") String auth,
             @Query("per_page") int perPage,
-            @Query("since") String since);
+            @Query("since") long since);
 
     @Headers("accept: application/vnd.github.v3+json")
     @GET("/users/{username}")

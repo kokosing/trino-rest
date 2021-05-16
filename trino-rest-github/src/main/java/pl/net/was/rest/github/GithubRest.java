@@ -36,10 +36,12 @@ import io.trino.spi.type.RowType;
 import io.trino.spi.type.TimestampWithTimeZoneType;
 import okhttp3.Cache;
 import okhttp3.OkHttpClient;
+import okhttp3.ResponseBody;
 import okhttp3.logging.HttpLoggingInterceptor;
 import pl.net.was.rest.Rest;
 import pl.net.was.rest.RestColumnHandle;
 import pl.net.was.rest.RestTableHandle;
+import pl.net.was.rest.github.filter.ArtifactFilter;
 import pl.net.was.rest.github.filter.FilterApplier;
 import pl.net.was.rest.github.filter.IssueCommentFilter;
 import pl.net.was.rest.github.filter.IssueFilter;
@@ -72,7 +74,6 @@ import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -87,15 +88,17 @@ import static io.trino.spi.type.BigintType.BIGINT;
 import static io.trino.spi.type.BooleanType.BOOLEAN;
 import static io.trino.spi.type.VarcharType.createUnboundedVarcharType;
 import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
+import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
+import static pl.net.was.rest.github.function.Artifacts.download;
 
 public class GithubRest
         implements Rest
 {
     public static final String SCHEMA_NAME = "default";
 
-    private final String token;
+    private static String token;
     private final GithubService service = getService();
 
     public static final Map<String, List<ColumnMetadata>> columns = new ImmutableMap.Builder<String, List<ColumnMetadata>>()
@@ -323,7 +326,22 @@ public class GithubRest
                     new ColumnMetadata("conclusion", createUnboundedVarcharType()),
                     new ColumnMetadata("number", BIGINT),
                     new ColumnMetadata("started_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
-                    new ColumnMetadata("completed_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)))).build();
+                    new ColumnMetadata("completed_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3))))
+            .put("artifacts", ImmutableList.of(
+                    new ColumnMetadata("owner", createUnboundedVarcharType()),
+                    new ColumnMetadata("repo", createUnboundedVarcharType()),
+                    new ColumnMetadata("run_id", BIGINT),
+                    new ColumnMetadata("id", BIGINT),
+                    new ColumnMetadata("size_in_bytes", BIGINT),
+                    new ColumnMetadata("name", createUnboundedVarcharType()),
+                    new ColumnMetadata("url", createUnboundedVarcharType()),
+                    new ColumnMetadata("archive_download_url", createUnboundedVarcharType()),
+                    new ColumnMetadata("expired", BOOLEAN),
+                    new ColumnMetadata("created_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
+                    new ColumnMetadata("expires_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
+                    new ColumnMetadata("updated_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
+                    new ColumnMetadata("contents", createUnboundedVarcharType())))
+            .build();
 
     // TODO add tests that would verify this using getSqlType(), print the expected string so its easy to copy&paste
     // TODO consider moving to a separate class
@@ -403,6 +421,8 @@ public class GithubRest
             "))";
 
     public static final String PULLS_TABLE_TYPE = "array(row(" +
+            "owner varchar, " +
+            "repo varchar, " +
             "id bigint, " +
             "number bigint, " +
             "state varchar, " +
@@ -434,6 +454,8 @@ public class GithubRest
             "))";
 
     public static final String PULL_COMMITS_TABLE_TYPE = "array(row(" +
+            "owner varchar, " +
+            "repo varchar, " +
             "sha varchar, " +
             "pull_number bigint, " +
             "commit_message varchar, " +
@@ -455,6 +477,8 @@ public class GithubRest
             "))";
 
     public static final String REVIEWS_TABLE_TYPE = "array(row(" +
+            "owner varchar, " +
+            "repo varchar, " +
             "id bigint, " +
             "pull_number bigint, " +
             "user_id bigint, " +
@@ -467,6 +491,8 @@ public class GithubRest
             "))";
 
     public static final String REVIEW_COMMENTS_TABLE_TYPE = "array(row(" +
+            "owner varchar, " +
+            "repo varchar, " +
             "pull_request_review_id bigint, " +
             "id bigint, " +
             "diff_hunk varchar, " +
@@ -528,6 +554,8 @@ public class GithubRest
             "))";
 
     public static final String RUNS_TABLE_TYPE = "array(row(" +
+            "owner varchar, " +
+            "repo varchar, " +
             "id bigint, " +
             "name varchar, " +
             "node_id varchar, " +
@@ -543,6 +571,8 @@ public class GithubRest
             "))";
 
     public static final String JOBS_TABLE_TYPE = "array(row(" +
+            "owner varchar, " +
+            "repo varchar, " +
             "id bigint, " +
             "run_id bigint, " +
             "node_id varchar, " +
@@ -555,6 +585,8 @@ public class GithubRest
             "))";
 
     public static final String STEPS_TABLE_TYPE = "array(row(" +
+            "owner varchar, " +
+            "repo varchar, " +
             "job_id bigint, " +
             "name varchar, " +
             "status varchar, " +
@@ -562,6 +594,22 @@ public class GithubRest
             "number bigint, " +
             "created_at timestamp(3) with time zone, " +
             "updated_at timestamp(3) with time zone" +
+            "))";
+
+    public static final String ARTIFACTS_TABLE_TYPE = "array(row(" +
+            "owner varchar, " +
+            "repo varchar, " +
+            "run_id bigint, " +
+            "id bigint, " +
+            "size_in_bytes bigint, " +
+            "name varchar, " +
+            "url varchar, " +
+            "archive_download_url varchar, " +
+            "expired boolean, " +
+            "created_at timestamp(3) with time zone, " +
+            "expires_at timestamp(3) with time zone, " +
+            "updated_at timestamp(3) with time zone, " +
+            "contents varchar" +
             "))";
 
     private final Map<String, Map<String, ColumnHandle>> columnHandles;
@@ -576,6 +624,7 @@ public class GithubRest
             .put("runs", new RunFilter())
             .put("jobs", new JobFilter())
             .put("steps", new StepFilter())
+            .put("artifacts", new ArtifactFilter())
             .put("orgs", new OrgFilter())
             .put("users", new UserFilter())
             .put("repos", new RepoFilter())
@@ -583,7 +632,7 @@ public class GithubRest
 
     public GithubRest(String token)
     {
-        this.token = token;
+        GithubRest.token = token;
 
         columnHandles = columns.keySet()
                 .stream()
@@ -619,6 +668,30 @@ public class GithubRest
                                 .registerModule(new JavaTimeModule())))
                 .build()
                 .create(GithubService.class);
+    }
+
+    public static String getToken()
+    {
+        return token;
+    }
+
+    public static <T> void checkServiceResponse(Response<T> response)
+    {
+        if (response.isSuccessful()) {
+            return;
+        }
+        ResponseBody error = response.errorBody();
+        String message = "Unable to read: ";
+        if (error != null) {
+            try {
+                // TODO unserialize the JSON in error
+                message += error.string();
+            }
+            catch (IOException e) {
+                // pass
+            }
+        }
+        throw new TrinoException(GENERIC_INTERNAL_ERROR, message);
     }
 
     private static Level getLogLevel()
@@ -698,6 +771,8 @@ public class GithubRest
                 return getJobs(table);
             case "steps":
                 return getSteps(table);
+            case "artifacts":
+                return getArtifacts(table);
         }
         return null;
     }
@@ -721,7 +796,6 @@ public class GithubRest
         String login = (String) filter.getFilter((RestColumnHandle) columns.get("login"), table.getConstraint());
         return getRow(() -> service.getUser("Bearer " + token, login), User::toRow);
     }
-
 
     private Collection<? extends List<?>> getRepos(RestTableHandle table)
     {
@@ -913,11 +987,9 @@ public class GithubRest
             if (response.code() == HTTP_NOT_FOUND) {
                 break;
             }
-            if (!response.isSuccessful()) {
-                throw new TrinoException(GENERIC_INTERNAL_ERROR, "Unable to read: " + response.message());
-            }
-            List<Job> items = Objects.requireNonNull(response.body()).getItems();
-            if (items == null || items.size() == 0) {
+            checkServiceResponse(response);
+            List<Job> items = requireNonNull(response.body()).getItems();
+            if (items.size() == 0) {
                 break;
             }
             items.forEach(i -> i.setOwner(owner));
@@ -933,6 +1005,32 @@ public class GithubRest
         return result.build();
     }
 
+    private Collection<? extends List<?>> getArtifacts(RestTableHandle table)
+    {
+        String tableName = table.getSchemaTableName().getTableName();
+        TupleDomain<ColumnHandle> constraint = table.getConstraint();
+        Map<String, ColumnHandle> columns = columnHandles.get(tableName);
+        FilterApplier filter = filterAppliers.get(tableName);
+
+        String owner = (String) filter.getFilter((RestColumnHandle) columns.get("owner"), constraint);
+        String repo = (String) filter.getFilter((RestColumnHandle) columns.get("repo"), constraint);
+        // TODO this needs to allow pushing down multiple run_id values and make a separate request for each
+        return getRowsFromPagesEnvelope(
+                page -> service.listArtifacts("Bearer " + token, owner, repo, 100, page),
+                item -> {
+                    item.setOwner(owner);
+                    item.setRepo(repo);
+                    try {
+                        item.setContents(download(service, token, owner, repo, item.getId()));
+                    }
+                    catch (IOException e) {
+                        // TODO how to better handle this?
+                        e.printStackTrace();
+                    }
+                    return item.toRow();
+                });
+    }
+
     private <T> Collection<? extends List<?>> getRow(Supplier<Call<T>> fetcher, Function<T, List<?>> mapper)
     {
         Response<T> response;
@@ -945,9 +1043,7 @@ public class GithubRest
         if (response.code() == HTTP_NOT_FOUND) {
             return ImmutableList.of();
         }
-        if (!response.isSuccessful()) {
-            throw new TrinoException(GENERIC_INTERNAL_ERROR, "Unable to read: " + response.message());
-        }
+        checkServiceResponse(response);
         return ImmutableList.of(mapper.apply(response.body()));
     }
 
@@ -968,11 +1064,9 @@ public class GithubRest
             if (response.code() == HTTP_NOT_FOUND) {
                 break;
             }
-            if (!response.isSuccessful()) {
-                throw new TrinoException(GENERIC_INTERNAL_ERROR, "Unable to read: " + response.message());
-            }
-            List<T> items = response.body();
-            if (items == null || items.size() == 0) {
+            checkServiceResponse(response);
+            List<T> items = requireNonNull(response.body());
+            if (items.size() == 0) {
                 break;
             }
             result.addAll(items.stream().map(mapper).collect(toList()));
@@ -998,11 +1092,9 @@ public class GithubRest
             if (response.code() == HTTP_NOT_FOUND) {
                 break;
             }
-            if (!response.isSuccessful()) {
-                throw new TrinoException(GENERIC_INTERNAL_ERROR, "Unable to read: " + response.message());
-            }
-            List<T> items = Objects.requireNonNull(response.body()).getItems();
-            if (items == null || items.size() == 0) {
+            checkServiceResponse(response);
+            List<T> items = requireNonNull(response.body()).getItems();
+            if (items.size() == 0) {
                 break;
             }
             result.addAll(items.stream().map(mapper).collect(toList()));

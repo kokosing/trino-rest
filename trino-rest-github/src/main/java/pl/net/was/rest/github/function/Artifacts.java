@@ -23,69 +23,84 @@ import io.trino.spi.function.ScalarFunction;
 import io.trino.spi.function.SqlType;
 import io.trino.spi.type.ArrayType;
 import io.trino.spi.type.RowType;
-import pl.net.was.rest.github.model.Job;
-import pl.net.was.rest.github.model.JobsList;
-import pl.net.was.rest.github.model.Step;
+import okhttp3.ResponseBody;
+import pl.net.was.rest.github.GithubService;
+import pl.net.was.rest.github.model.Artifact;
+import pl.net.was.rest.github.model.ArtifactsList;
 import retrofit2.Response;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import static io.trino.spi.type.StandardTypes.BIGINT;
 import static io.trino.spi.type.StandardTypes.VARCHAR;
 import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
 import static java.util.Objects.requireNonNull;
-import static pl.net.was.rest.github.GithubRest.STEPS_TABLE_TYPE;
+import static pl.net.was.rest.github.GithubRest.ARTIFACTS_TABLE_TYPE;
 import static pl.net.was.rest.github.GithubRest.checkServiceResponse;
 import static pl.net.was.rest.github.GithubRest.getRowType;
 
-@ScalarFunction("steps")
-@Description("Get workflow steps")
-public class Steps
+@ScalarFunction("artifacts")
+@Description("Get workflow run artifacts")
+public class Artifacts
         extends BaseFunction
 {
-    public Steps()
+    public Artifacts()
     {
-        RowType rowType = getRowType("steps");
+        RowType rowType = getRowType("artifacts");
         arrayType = new ArrayType(rowType);
         pageBuilder = new PageBuilder(ImmutableList.of(arrayType));
     }
 
-    @SqlType(STEPS_TABLE_TYPE)
+    @SqlType(ARTIFACTS_TABLE_TYPE)
     public Block getPage(@SqlType(VARCHAR) Slice owner, @SqlType(VARCHAR) Slice repo, @SqlType(BIGINT) long runId)
             throws IOException
     {
-        // there should not be more than a few pages worth of jobs, so try to get all of them
-        List<Job> jobs = new ArrayList<>();
+        // there should not be more than a few pages worth of artifacts, so try to get all of them
+        List<Artifact> result = new ArrayList<>();
         long total = Long.MAX_VALUE;
         int page = 1;
-        while (jobs.size() < total) {
-            Response<JobsList> response = service.listRunJobs(
+        while (result.size() < total) {
+            Response<ArtifactsList> response = service.listRunArtifacts(
                     "Bearer " + token,
                     owner.toStringUtf8(),
                     repo.toStringUtf8(),
                     runId,
-                    "all",
                     100,
                     page++).execute();
             if (response.code() == HTTP_NOT_FOUND) {
                 break;
             }
             checkServiceResponse(response);
-            JobsList envelope = response.body();
+            ArtifactsList envelope = response.body();
             total = requireNonNull(envelope).getTotalCount();
-            List<Job> items = envelope.getItems();
+            List<Artifact> items = envelope.getItems();
             if (items.size() == 0) {
                 break;
             }
-            jobs.addAll(items);
+            for (Artifact artifact : items) {
+                artifact.setOwner(owner.toStringUtf8());
+                artifact.setRepo(repo.toStringUtf8());
+                artifact.setRunId(runId);
+
+                artifact.setContents(download(service, token, owner.toStringUtf8(), repo.toStringUtf8(), artifact.getId()));
+            }
+            result.addAll(items);
         }
-        List<Step> steps = jobs
-                .stream()
-                .flatMap(j -> j.getSteps().stream())
-                .collect(Collectors.toList());
-        return buildBlock(steps);
+        return buildBlock(result);
+    }
+
+    public static InputStream download(GithubService service, String token, String owner, String repo, long artifactId)
+            throws IOException
+    {
+        Response<ResponseBody> response = service.getArtifact("Bearer " + token, owner, repo, artifactId).execute();
+        if (response.code() == HTTP_NOT_FOUND) {
+            return null;
+        }
+        checkServiceResponse(response);
+        ResponseBody body = requireNonNull(response.body());
+        return body.byteStream();
     }
 }

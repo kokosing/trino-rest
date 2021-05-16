@@ -17,7 +17,6 @@ package pl.net.was.rest.github.function;
 import com.google.common.collect.ImmutableList;
 import io.airlift.slice.Slice;
 import io.trino.spi.PageBuilder;
-import io.trino.spi.TrinoException;
 import io.trino.spi.block.Block;
 import io.trino.spi.function.Description;
 import io.trino.spi.function.ScalarFunction;
@@ -30,14 +29,13 @@ import retrofit2.Response;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
-import static io.trino.spi.StandardErrorCode.GENERIC_INTERNAL_ERROR;
 import static io.trino.spi.type.StandardTypes.BIGINT;
 import static io.trino.spi.type.StandardTypes.VARCHAR;
-import static java.lang.String.format;
 import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
+import static java.util.Objects.requireNonNull;
 import static pl.net.was.rest.github.GithubRest.PULL_COMMITS_TABLE_TYPE;
+import static pl.net.was.rest.github.GithubRest.checkServiceResponse;
 import static pl.net.was.rest.github.GithubRest.getRowType;
 
 @ScalarFunction("pull_commits")
@@ -54,7 +52,6 @@ public class PullCommits
 
     @SqlType(PULL_COMMITS_TABLE_TYPE)
     public Block getPage(
-            @SqlType(VARCHAR) Slice token,
             @SqlType(VARCHAR) Slice owner,
             @SqlType(VARCHAR) Slice repo,
             @SqlType(BIGINT) long pullNumber)
@@ -65,7 +62,7 @@ public class PullCommits
         int page = 1;
         while (true) {
             Response<List<PullCommit>> response = service.listPullCommits(
-                    token.toStringUtf8(),
+                    "Bearer " + token,
                     owner.toStringUtf8(),
                     repo.toStringUtf8(),
                     pullNumber,
@@ -74,10 +71,8 @@ public class PullCommits
             if (response.code() == HTTP_NOT_FOUND) {
                 break;
             }
-            if (!response.isSuccessful()) {
-                throw new TrinoException(GENERIC_INTERNAL_ERROR, format("Invalid response, code %d, message: %s", response.code(), response.message()));
-            }
-            List<PullCommit> items = Objects.requireNonNull(response.body());
+            checkServiceResponse(response);
+            List<PullCommit> items = requireNonNull(response.body());
             if (items.size() == 0) {
                 break;
             }

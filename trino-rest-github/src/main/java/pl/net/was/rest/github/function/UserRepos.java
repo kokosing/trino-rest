@@ -17,7 +17,6 @@ package pl.net.was.rest.github.function;
 import com.google.common.collect.ImmutableList;
 import io.airlift.slice.Slice;
 import io.trino.spi.PageBuilder;
-import io.trino.spi.TrinoException;
 import io.trino.spi.block.Block;
 import io.trino.spi.function.Description;
 import io.trino.spi.function.ScalarFunction;
@@ -31,11 +30,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.trino.spi.StandardErrorCode.GENERIC_INTERNAL_ERROR;
 import static io.trino.spi.type.StandardTypes.VARCHAR;
-import static java.lang.String.format;
 import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
+import static java.util.Objects.requireNonNull;
 import static pl.net.was.rest.github.GithubRest.REPOS_TABLE_TYPE;
+import static pl.net.was.rest.github.GithubRest.checkServiceResponse;
 import static pl.net.was.rest.github.GithubRest.getRowType;
 
 @ScalarFunction("user_repos")
@@ -51,7 +50,7 @@ public class UserRepos
     }
 
     @SqlType(REPOS_TABLE_TYPE)
-    public Block getPage(@SqlType(VARCHAR) Slice token, @SqlType(VARCHAR) Slice username)
+    public Block getPage(@SqlType(VARCHAR) Slice username)
             throws IOException
     {
         // there should not be more than a few pages worth of repos, so try to get all of them
@@ -59,7 +58,7 @@ public class UserRepos
         int page = 1;
         while (true) {
             Response<List<Repository>> response = service.listUserRepos(
-                    token.toStringUtf8(),
+                    "Bearer " + token,
                     username.toStringUtf8(),
                     100,
                     page++,
@@ -67,11 +66,9 @@ public class UserRepos
             if (response.code() == HTTP_NOT_FOUND) {
                 break;
             }
-            if (!response.isSuccessful()) {
-                throw new TrinoException(GENERIC_INTERNAL_ERROR, format("Invalid response, code %d, message: %s", response.code(), response.message()));
-            }
-            List<Repository> items = response.body();
-            if (items == null || items.size() == 0) {
+            checkServiceResponse(response);
+            List<Repository> items = requireNonNull(response.body());
+            if (items.size() == 0) {
                 break;
             }
             repos.addAll(items);

@@ -22,19 +22,19 @@ import java.util.List;
 import static java.util.Objects.requireNonNull;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class RunsList
-        implements Envelope<Run>
+public class ArtifactsList
+        implements Envelope<Artifact>
 {
     private final long totalCount;
-    private final List<Run> workflowRuns;
+    private final List<Artifact> artifacts;
 
-    public RunsList(
+    public ArtifactsList(
             @JsonProperty("total_count") long totalCount,
-            @JsonProperty("workflow_runs") List<Run> workflowRuns)
+            @JsonProperty("artifacts") List<Artifact> artifacts)
     {
-        requireNonNull(workflowRuns, "workflowRuns are null");
+        requireNonNull(artifacts, "artifacts are null");
         this.totalCount = totalCount;
-        this.workflowRuns = workflowRuns;
+        this.artifacts = artifacts;
     }
 
     public long getTotalCount()
@@ -42,8 +42,8 @@ public class RunsList
         return totalCount;
     }
 
-    public List<Run> getItems()
+    public List<Artifact> getItems()
     {
-        return workflowRuns;
+        return artifacts;
     }
 }

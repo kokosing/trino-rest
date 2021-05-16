@@ -17,7 +17,6 @@ package pl.net.was.rest.github.function;
 import com.google.common.collect.ImmutableList;
 import io.airlift.slice.Slice;
 import io.trino.spi.PageBuilder;
-import io.trino.spi.TrinoException;
 import io.trino.spi.block.Block;
 import io.trino.spi.function.Description;
 import io.trino.spi.function.ScalarFunction;
@@ -29,14 +28,13 @@ import retrofit2.Response;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Objects;
 
-import static io.trino.spi.StandardErrorCode.GENERIC_INTERNAL_ERROR;
 import static io.trino.spi.type.StandardTypes.INTEGER;
 import static io.trino.spi.type.StandardTypes.VARCHAR;
-import static java.lang.String.format;
 import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
+import static java.util.Objects.requireNonNull;
 import static pl.net.was.rest.github.GithubRest.PULLS_TABLE_TYPE;
+import static pl.net.was.rest.github.GithubRest.checkServiceResponse;
 import static pl.net.was.rest.github.GithubRest.getRowType;
 
 @ScalarFunction("pulls")
@@ -52,11 +50,11 @@ public class Pulls
     }
 
     @SqlType(PULLS_TABLE_TYPE)
-    public Block getPage(@SqlType(VARCHAR) Slice token, @SqlType(VARCHAR) Slice owner, @SqlType(VARCHAR) Slice repo, @SqlType(INTEGER) long page)
+    public Block getPage(@SqlType(VARCHAR) Slice owner, @SqlType(VARCHAR) Slice repo, @SqlType(INTEGER) long page)
             throws IOException
     {
         Response<List<Pull>> response = service.listPulls(
-                token.toStringUtf8(),
+                "Bearer " + token,
                 owner.toStringUtf8(),
                 repo.toStringUtf8(),
                 100,
@@ -66,10 +64,8 @@ public class Pulls
         if (response.code() == HTTP_NOT_FOUND) {
             return null;
         }
-        if (!response.isSuccessful()) {
-            throw new TrinoException(GENERIC_INTERNAL_ERROR, format("Invalid response, code %d, message: %s", response.code(), response.message()));
-        }
-        List<Pull> items = Objects.requireNonNull(response.body());
+        checkServiceResponse(response);
+        List<Pull> items = requireNonNull(response.body());
         items.forEach(i -> i.setOwner(owner.toStringUtf8()));
         items.forEach(i -> i.setRepo(repo.toStringUtf8()));
         return buildBlock(items);

@@ -32,11 +32,11 @@ public class TestGithubQueries
     public void showTables()
     {
         assertQuery("SHOW SCHEMAS FROM github", "VALUES 'default', 'information_schema'");
-        assertQuery("SHOW TABLES FROM github.default", "VALUES 'orgs', 'users', 'repos', 'issues', 'issue_comments', 'pulls', 'pull_commits', 'reviews', 'review_comments', 'runs', 'jobs', 'steps'");
+        assertQuery("SHOW TABLES FROM github.default", "VALUES 'orgs', 'users', 'repos', 'issues', 'issue_comments', 'pulls', 'pull_commits', 'reviews', 'review_comments', 'runs', 'jobs', 'steps', 'artifacts'");
     }
 
     @Test
-    public void select()
+    public void selectFromTable()
     {
         assertQuerySucceeds("SELECT * FROM orgs WHERE login = 'trinodb'");
         assertQuerySucceeds("SELECT * FROM users WHERE login = 'nineinchnick'");
@@ -50,9 +50,10 @@ public class TestGithubQueries
         assertQuerySucceeds("SELECT * FROM runs WHERE owner = 'nineinchnick' AND repo = 'trino-rest'");
         assertQuerySucceeds("SELECT * FROM jobs WHERE owner = 'nineinchnick' AND repo = 'trino-rest'");
         assertQuerySucceeds("SELECT * FROM steps WHERE owner = 'nineinchnick' AND repo = 'trino-rest'");
+        assertQuerySucceeds("SELECT * FROM artifacts WHERE owner = 'nineinchnick' AND repo = 'trino-rest'");
     }
 
-    @Test(invocationCount = 100)
+    @Test
     public void selectMissingRequired()
     {
         assertQueryFails("SELECT * FROM orgs", "Missing required constraint for login");
@@ -70,8 +71,27 @@ public class TestGithubQueries
     }
 
     @Test
-    public void selectFromUser()
+    public void selectFromFunction()
     {
-        computeActual("SELECT user('invalid.token', 'nineinchnick')");
+        assertQuerySucceeds("SELECT org('trinodb')");
+        assertQuerySucceeds("SELECT * FROM unnest(orgs(1))");
+        assertQuerySucceeds("SELECT user('nineinchnick')");
+        assertQuerySucceeds("SELECT * FROM unnest(users(1))");
+        assertQuerySucceeds("SELECT * FROM unnest(user_repos('nineinchnick'))");
+        assertQuerySucceeds("SELECT * FROM unnest(org_repos('trinodb'))");
+        assertQuerySucceeds("SELECT * FROM unnest(repos(1))");
+        assertQuerySucceeds("SELECT * FROM unnest(issues('nineinchnick', 'trino-rest', 1, timestamp '1970-01-01 00:00:00'))");
+        assertQuerySucceeds("SELECT * FROM unnest(issue_comments('nineinchnick', 'trino-rest', 1, timestamp '1970-01-01 00:00:00'))");
+        assertQuerySucceeds("SELECT * FROM unnest(pulls('nineinchnick', 'trino-rest', 1))");
+        assertQuerySucceeds("SELECT * FROM unnest(pull_commits('nineinchnick', 'trino-rest', 1))");
+        assertQuerySucceeds("SELECT * FROM unnest(reviews('nineinchnick', 'trino-rest', 1))");
+        assertQuerySucceeds("SELECT * FROM unnest(review_comments('nineinchnick', 'trino-rest', 1, timestamp '1970-01-01 00:00:00'))");
+        assertQuerySucceeds("SELECT * FROM unnest(runs('nineinchnick', 'trino-rest', 1))");
+        assertQuerySucceeds("SELECT * FROM unnest(jobs('nineinchnick', 'trino-rest', 1))");
+        assertQuerySucceeds("SELECT * FROM unnest(steps('nineinchnick', 'trino-rest', 1))");
+        // TODO figure out why this requires special permissions
+        //assertQuerySucceeds("SELECT job_logs('nineinchnick', 'trino-rest', 1)");
+        // TODO there are yet no artifacts in this repo
+        //assertQuerySucceeds("SELECT * FROM unnest(artifacts('nineinchnick', 'trino-rest', 1))");
     }
 }
