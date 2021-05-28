@@ -120,7 +120,7 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- for running PageSaver -->
+        <!-- for running Sync -->
         <dependency>
             <groupId>io.trino</groupId>
             <artifactId>trino-jdbc</artifactId>

@@ -56,12 +56,12 @@ Connect to that server using:
 docker run -it --rm --link trino trinodb/trino:353 trino --server trino:8080 --catalog github --schema default
 ```
 
-To run the `PageSaver` utility in `trino-rest-github`:
+To run the `Sync` utility in `trino-rest-github`:
 ```bash
 java -cp "trino-rest-github/target/trino-rest-github-0.2-SNAPSHOT/*" pl.net.was.rest.github.Sync
 ```
 
-Check how much data the `PageSaver` collected by running a query like:
+Check how much data the `Sync` collected by running a query like:
 ```sql
 SELECT COUNT(DISTINCT id), COUNT(*), MIN(created_at), MAX(created_at) FROM runs;
 ```

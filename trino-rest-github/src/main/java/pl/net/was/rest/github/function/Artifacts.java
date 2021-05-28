@@ -55,7 +55,10 @@ public class Artifacts
     }
 
     @SqlType(ARTIFACTS_TABLE_TYPE)
-    public Block getPage(@SqlType(VARCHAR) Slice owner, @SqlType(VARCHAR) Slice repo, @SqlType(BIGINT) long runId)
+    public Block getPage(
+            @SqlType(VARCHAR) Slice owner,
+            @SqlType(VARCHAR) Slice repo,
+            @SqlType(BIGINT) long runId)
             throws IOException
     {
         // there should not be more than a few pages worth of artifacts, so try to get all of them
