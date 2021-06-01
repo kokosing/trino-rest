@@ -24,15 +24,20 @@ import io.trino.spi.function.SqlType;
 import io.trino.spi.type.ArrayType;
 import io.trino.spi.type.RowType;
 import okhttp3.ResponseBody;
+import org.apache.tika.Tika;
 import pl.net.was.rest.github.GithubService;
 import pl.net.was.rest.github.model.Artifact;
 import pl.net.was.rest.github.model.ArtifactsList;
 import retrofit2.Response;
 
+import java.io.BufferedInputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
 import static io.trino.spi.type.StandardTypes.BIGINT;
 import static io.trino.spi.type.StandardTypes.VARCHAR;
@@ -47,6 +52,11 @@ import static pl.net.was.rest.github.GithubRest.getRowType;
 public class Artifacts
         extends BaseFunction
 {
+    // as defined in io.trino.operator.project.PageProcessor
+    private static final int MAX_PAGE_SIZE_IN_BYTES = 4 * 1024 * 1024;
+    private static final int MAX_ROW_SIZE_IN_BYTES = 100 * 1024;
+    private static final Tika tika = new Tika();
+
     public Artifacts()
     {
         RowType rowType = getRowType("artifacts");
@@ -88,22 +98,62 @@ public class Artifacts
                 artifact.setRepo(repo.toStringUtf8());
                 artifact.setRunId(runId);
 
-                artifact.setContents(download(service, token, owner.toStringUtf8(), repo.toStringUtf8(), artifact.getId()));
+                result.addAll(download(service, token, artifact));
             }
-            result.addAll(items);
         }
         return buildBlock(result);
     }
 
-    public static InputStream download(GithubService service, String token, String owner, String repo, long artifactId)
+    public static List<Artifact> download(GithubService service, String token, Artifact artifact)
             throws IOException
     {
-        Response<ResponseBody> response = service.getArtifact("Bearer " + token, owner, repo, artifactId).execute();
+        Response<ResponseBody> response = service.getArtifact(
+                "Bearer " + token,
+                artifact.getOwner(),
+                artifact.getRepo(),
+                artifact.getId()).execute();
         if (response.code() == HTTP_NOT_FOUND) {
-            return null;
+            return ImmutableList.of(artifact);
         }
         checkServiceResponse(response);
         ResponseBody body = requireNonNull(response.body());
-        return body.byteStream();
+        InputStream zipContents = body.byteStream();
+
+        ImmutableList.Builder<Artifact> result = new ImmutableList.Builder<>();
+
+        ZipInputStream zis = new ZipInputStream(zipContents);
+        ZipEntry entry;
+        while ((entry = zis.getNextEntry()) != null) {
+            if (entry.isDirectory()) {
+                continue;
+            }
+            String name = entry.getName();
+            Artifact artifactFile = artifact.clone();
+            artifactFile.setFilename(new File(name).getName());
+            artifactFile.setPath(name);
+            BufferedInputStream is = new BufferedInputStream(zis);
+            artifactFile.setMimetype(tika.detect(is, name));
+            artifactFile.setFileSizeInBytes(entry.getSize());
+            long remaining = entry.getSize();
+            if (remaining == 0) {
+                artifactFile.setPartNumber(1);
+                result.add(artifactFile);
+                continue;
+            }
+            int i = 1;
+            while (remaining > 0) {
+                Artifact chunk = artifactFile.clone();
+                byte[] contents = new byte[Math.min((int) remaining, MAX_PAGE_SIZE_IN_BYTES - MAX_ROW_SIZE_IN_BYTES)];
+                remaining -= is.readNBytes(contents, 0, contents.length);
+                chunk.setContents(contents);
+                chunk.setPartNumber(i++);
+                result.add(chunk);
+            }
+        }
+        zis.close();
+        zipContents.close();
+        body.close();
+
+        return result.build();
     }
 }

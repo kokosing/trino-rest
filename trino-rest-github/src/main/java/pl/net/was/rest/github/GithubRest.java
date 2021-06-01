@@ -56,6 +56,8 @@ import pl.net.was.rest.github.filter.RunFilter;
 import pl.net.was.rest.github.filter.StepFilter;
 import pl.net.was.rest.github.filter.UserFilter;
 import pl.net.was.rest.github.function.BaseFunction;
+import pl.net.was.rest.github.model.Artifact;
+import pl.net.was.rest.github.model.ArtifactsList;
 import pl.net.was.rest.github.model.Envelope;
 import pl.net.was.rest.github.model.Job;
 import pl.net.was.rest.github.model.JobsList;
@@ -82,11 +84,15 @@ import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static io.trino.spi.StandardErrorCode.GENERIC_INTERNAL_ERROR;
 import static io.trino.spi.type.BigintType.BIGINT;
 import static io.trino.spi.type.BooleanType.BOOLEAN;
-import static io.trino.spi.type.VarcharType.createUnboundedVarcharType;
+import static io.trino.spi.type.IntegerType.INTEGER;
+import static io.trino.spi.type.VarbinaryType.VARBINARY;
+import static io.trino.spi.type.VarcharType.VARCHAR;
+import static java.lang.String.format;
 import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
@@ -96,6 +102,7 @@ import static pl.net.was.rest.github.function.Artifacts.download;
 public class GithubRest
         implements Rest
 {
+    Logger log = Logger.getLogger(GithubRest.class.getName());
     public static final String SCHEMA_NAME = "default";
 
     private static String token;
@@ -103,15 +110,15 @@ public class GithubRest
 
     public static final Map<String, List<ColumnMetadata>> columns = new ImmutableMap.Builder<String, List<ColumnMetadata>>()
             .put("orgs", ImmutableList.of(
-                    new ColumnMetadata("login", createUnboundedVarcharType()),
+                    new ColumnMetadata("login", VARCHAR),
                     new ColumnMetadata("id", BIGINT),
-                    new ColumnMetadata("description", createUnboundedVarcharType()),
-                    new ColumnMetadata("name", createUnboundedVarcharType()),
-                    new ColumnMetadata("company", createUnboundedVarcharType()),
-                    new ColumnMetadata("blog", createUnboundedVarcharType()),
-                    new ColumnMetadata("location", createUnboundedVarcharType()),
-                    new ColumnMetadata("email", createUnboundedVarcharType()),
-                    new ColumnMetadata("twitter_username", createUnboundedVarcharType()),
+                    new ColumnMetadata("description", VARCHAR),
+                    new ColumnMetadata("name", VARCHAR),
+                    new ColumnMetadata("company", VARCHAR),
+                    new ColumnMetadata("blog", VARCHAR),
+                    new ColumnMetadata("location", VARCHAR),
+                    new ColumnMetadata("email", VARCHAR),
+                    new ColumnMetadata("twitter_username", VARCHAR),
                     new ColumnMetadata("is_verified", BOOLEAN),
                     new ColumnMetadata("has_organization_projects", BOOLEAN),
                     new ColumnMetadata("has_repository_projects", BOOLEAN),
@@ -121,36 +128,36 @@ public class GithubRest
                     new ColumnMetadata("following", BIGINT),
                     new ColumnMetadata("created_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
                     new ColumnMetadata("updated_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
-                    new ColumnMetadata("type", createUnboundedVarcharType()),
+                    new ColumnMetadata("type", VARCHAR),
                     new ColumnMetadata("total_private_repos", BIGINT),
                     new ColumnMetadata("owned_private_repos", BIGINT),
                     new ColumnMetadata("private_gists", BIGINT),
                     new ColumnMetadata("disk_usage", BIGINT),
                     new ColumnMetadata("collaborators", BIGINT),
-                    new ColumnMetadata("billing_email", createUnboundedVarcharType()),
-                    new ColumnMetadata("default_repository_permission", createUnboundedVarcharType()),
+                    new ColumnMetadata("billing_email", VARCHAR),
+                    new ColumnMetadata("default_repository_permission", VARCHAR),
                     new ColumnMetadata("members_can_create_repositories", BOOLEAN),
                     new ColumnMetadata("two_factor_requirement_enabled", BOOLEAN),
-                    new ColumnMetadata("members_allowed_repository_creation_type", createUnboundedVarcharType()),
+                    new ColumnMetadata("members_allowed_repository_creation_type", VARCHAR),
                     new ColumnMetadata("members_can_create_public_repositories", BOOLEAN),
                     new ColumnMetadata("members_can_create_private_repositories", BOOLEAN),
                     new ColumnMetadata("members_can_create_internal_repositories", BOOLEAN),
                     new ColumnMetadata("members_can_create_pages", BOOLEAN)))
             .put("users", ImmutableList.of(
-                    new ColumnMetadata("login", createUnboundedVarcharType()),
+                    new ColumnMetadata("login", VARCHAR),
                     new ColumnMetadata("id", BIGINT),
-                    new ColumnMetadata("avatar_url", createUnboundedVarcharType()),
-                    new ColumnMetadata("gravatar_id", createUnboundedVarcharType()),
-                    new ColumnMetadata("type", createUnboundedVarcharType()),
+                    new ColumnMetadata("avatar_url", VARCHAR),
+                    new ColumnMetadata("gravatar_id", VARCHAR),
+                    new ColumnMetadata("type", VARCHAR),
                     new ColumnMetadata("site_admin", BOOLEAN),
-                    new ColumnMetadata("name", createUnboundedVarcharType()),
-                    new ColumnMetadata("company", createUnboundedVarcharType()),
-                    new ColumnMetadata("blog", createUnboundedVarcharType()),
-                    new ColumnMetadata("location", createUnboundedVarcharType()),
-                    new ColumnMetadata("email", createUnboundedVarcharType()),
+                    new ColumnMetadata("name", VARCHAR),
+                    new ColumnMetadata("company", VARCHAR),
+                    new ColumnMetadata("blog", VARCHAR),
+                    new ColumnMetadata("location", VARCHAR),
+                    new ColumnMetadata("email", VARCHAR),
                     new ColumnMetadata("hireable", BOOLEAN),
-                    new ColumnMetadata("bio", createUnboundedVarcharType()),
-                    new ColumnMetadata("twitter_username", createUnboundedVarcharType()),
+                    new ColumnMetadata("bio", VARCHAR),
+                    new ColumnMetadata("twitter_username", VARCHAR),
                     new ColumnMetadata("public_repos", BIGINT),
                     new ColumnMetadata("public_gists", BIGINT),
                     new ColumnMetadata("followers", BIGINT),
@@ -159,188 +166,193 @@ public class GithubRest
                     new ColumnMetadata("updated_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3))))
             .put("repos", ImmutableList.of(
                     new ColumnMetadata("id", BIGINT),
-                    new ColumnMetadata("name", createUnboundedVarcharType()),
-                    new ColumnMetadata("full_name", createUnboundedVarcharType()),
+                    new ColumnMetadata("name", VARCHAR),
+                    new ColumnMetadata("full_name", VARCHAR),
                     new ColumnMetadata("owner_id", BIGINT),
-                    new ColumnMetadata("owner_login", createUnboundedVarcharType()),
+                    new ColumnMetadata("owner_login", VARCHAR),
                     new ColumnMetadata("private", BOOLEAN),
-                    new ColumnMetadata("description", createUnboundedVarcharType()),
+                    new ColumnMetadata("description", VARCHAR),
                     new ColumnMetadata("fork", BOOLEAN),
-                    new ColumnMetadata("url", createUnboundedVarcharType())))
+                    new ColumnMetadata("url", VARCHAR)))
             .put("pulls", ImmutableList.of(
-                    new ColumnMetadata("owner", createUnboundedVarcharType()),
-                    new ColumnMetadata("repo", createUnboundedVarcharType()),
+                    new ColumnMetadata("owner", VARCHAR),
+                    new ColumnMetadata("repo", VARCHAR),
                     new ColumnMetadata("id", BIGINT),
                     new ColumnMetadata("number", BIGINT),
-                    new ColumnMetadata("state", createUnboundedVarcharType()),
+                    new ColumnMetadata("state", VARCHAR),
                     new ColumnMetadata("locked", BOOLEAN),
-                    new ColumnMetadata("title", createUnboundedVarcharType()),
+                    new ColumnMetadata("title", VARCHAR),
                     new ColumnMetadata("user_id", BIGINT),
-                    new ColumnMetadata("user_login", createUnboundedVarcharType()),
-                    new ColumnMetadata("body", createUnboundedVarcharType()),
+                    new ColumnMetadata("user_login", VARCHAR),
+                    new ColumnMetadata("body", VARCHAR),
                     new ColumnMetadata("label_ids", new ArrayType(BIGINT)),
-                    new ColumnMetadata("label_names", new ArrayType(createUnboundedVarcharType())),
+                    new ColumnMetadata("label_names", new ArrayType(VARCHAR)),
                     new ColumnMetadata("milestone_id", BIGINT),
-                    new ColumnMetadata("milestone_title", createUnboundedVarcharType()),
-                    new ColumnMetadata("active_lock_reason", createUnboundedVarcharType()),
+                    new ColumnMetadata("milestone_title", VARCHAR),
+                    new ColumnMetadata("active_lock_reason", VARCHAR),
                     new ColumnMetadata("created_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
                     new ColumnMetadata("updated_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
                     new ColumnMetadata("closed_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
                     new ColumnMetadata("merged_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
-                    new ColumnMetadata("merge_commit_sha", createUnboundedVarcharType()),
+                    new ColumnMetadata("merge_commit_sha", VARCHAR),
                     new ColumnMetadata("assignee_id", BIGINT),
-                    new ColumnMetadata("assignee_login", createUnboundedVarcharType()),
+                    new ColumnMetadata("assignee_login", VARCHAR),
                     new ColumnMetadata("requested_reviewer_ids", new ArrayType(BIGINT)),
-                    new ColumnMetadata("requested_reviewer_logins", new ArrayType(createUnboundedVarcharType())),
-                    new ColumnMetadata("head_ref", createUnboundedVarcharType()),
-                    new ColumnMetadata("head_sha", createUnboundedVarcharType()),
-                    new ColumnMetadata("base_ref", createUnboundedVarcharType()),
-                    new ColumnMetadata("base_sha", createUnboundedVarcharType()),
-                    new ColumnMetadata("author_association", createUnboundedVarcharType()),
+                    new ColumnMetadata("requested_reviewer_logins", new ArrayType(VARCHAR)),
+                    new ColumnMetadata("head_ref", VARCHAR),
+                    new ColumnMetadata("head_sha", VARCHAR),
+                    new ColumnMetadata("base_ref", VARCHAR),
+                    new ColumnMetadata("base_sha", VARCHAR),
+                    new ColumnMetadata("author_association", VARCHAR),
                     new ColumnMetadata("draft", BOOLEAN)))
             .put("pull_commits", ImmutableList.of(
-                    new ColumnMetadata("owner", createUnboundedVarcharType()),
-                    new ColumnMetadata("repo", createUnboundedVarcharType()),
-                    new ColumnMetadata("sha", createUnboundedVarcharType()),
+                    new ColumnMetadata("owner", VARCHAR),
+                    new ColumnMetadata("repo", VARCHAR),
+                    new ColumnMetadata("sha", VARCHAR),
                     // this column is filled in from request params, it is not returned by the api
                     new ColumnMetadata("pull_number", BIGINT),
-                    new ColumnMetadata("commit_message", createUnboundedVarcharType()),
-                    new ColumnMetadata("commit_tree_sha", createUnboundedVarcharType()),
+                    new ColumnMetadata("commit_message", VARCHAR),
+                    new ColumnMetadata("commit_tree_sha", VARCHAR),
                     new ColumnMetadata("commit_comments_count", BIGINT),
                     new ColumnMetadata("commit_verified", BOOLEAN),
-                    new ColumnMetadata("commit_verification_reason", createUnboundedVarcharType()),
-                    new ColumnMetadata("author_name", createUnboundedVarcharType()),
-                    new ColumnMetadata("author_email", createUnboundedVarcharType()),
+                    new ColumnMetadata("commit_verification_reason", VARCHAR),
+                    new ColumnMetadata("author_name", VARCHAR),
+                    new ColumnMetadata("author_email", VARCHAR),
                     new ColumnMetadata("author_date", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
                     new ColumnMetadata("author_id", BIGINT),
-                    new ColumnMetadata("author_login", createUnboundedVarcharType()),
-                    new ColumnMetadata("committer_name", createUnboundedVarcharType()),
-                    new ColumnMetadata("committer_email", createUnboundedVarcharType()),
+                    new ColumnMetadata("author_login", VARCHAR),
+                    new ColumnMetadata("committer_name", VARCHAR),
+                    new ColumnMetadata("committer_email", VARCHAR),
                     new ColumnMetadata("committer_date", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
                     new ColumnMetadata("committer_id", BIGINT),
-                    new ColumnMetadata("committer_login", createUnboundedVarcharType()),
-                    new ColumnMetadata("parent_shas", new ArrayType(createUnboundedVarcharType()))))
+                    new ColumnMetadata("committer_login", VARCHAR),
+                    new ColumnMetadata("parent_shas", new ArrayType(VARCHAR))))
             .put("reviews", ImmutableList.of(
-                    new ColumnMetadata("owner", createUnboundedVarcharType()),
-                    new ColumnMetadata("repo", createUnboundedVarcharType()),
+                    new ColumnMetadata("owner", VARCHAR),
+                    new ColumnMetadata("repo", VARCHAR),
                     new ColumnMetadata("id", BIGINT),
                     // this column is filled in from request params, it is not returned by the api
                     new ColumnMetadata("pull_number", BIGINT),
                     new ColumnMetadata("user_id", BIGINT),
-                    new ColumnMetadata("user_login", createUnboundedVarcharType()),
-                    new ColumnMetadata("body", createUnboundedVarcharType()),
-                    new ColumnMetadata("state", createUnboundedVarcharType()),
+                    new ColumnMetadata("user_login", VARCHAR),
+                    new ColumnMetadata("body", VARCHAR),
+                    new ColumnMetadata("state", VARCHAR),
                     new ColumnMetadata("submitted_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
-                    new ColumnMetadata("commit_id", createUnboundedVarcharType()),
-                    new ColumnMetadata("author_association", createUnboundedVarcharType())))
+                    new ColumnMetadata("commit_id", VARCHAR),
+                    new ColumnMetadata("author_association", VARCHAR)))
             .put("review_comments", ImmutableList.of(
-                    new ColumnMetadata("owner", createUnboundedVarcharType()),
-                    new ColumnMetadata("repo", createUnboundedVarcharType()),
+                    new ColumnMetadata("owner", VARCHAR),
+                    new ColumnMetadata("repo", VARCHAR),
                     new ColumnMetadata("pull_request_review_id", BIGINT),
                     new ColumnMetadata("id", BIGINT),
-                    new ColumnMetadata("diff_hunk", createUnboundedVarcharType()),
-                    new ColumnMetadata("path", createUnboundedVarcharType()),
+                    new ColumnMetadata("diff_hunk", VARCHAR),
+                    new ColumnMetadata("path", VARCHAR),
                     new ColumnMetadata("position", BIGINT),
                     new ColumnMetadata("original_position", BIGINT),
-                    new ColumnMetadata("commit_id", createUnboundedVarcharType()),
-                    new ColumnMetadata("original_commit_id", createUnboundedVarcharType()),
+                    new ColumnMetadata("commit_id", VARCHAR),
+                    new ColumnMetadata("original_commit_id", VARCHAR),
                     new ColumnMetadata("in_reply_to_id", BIGINT),
                     new ColumnMetadata("user_id", BIGINT),
-                    new ColumnMetadata("user_login", createUnboundedVarcharType()),
-                    new ColumnMetadata("body", createUnboundedVarcharType()),
+                    new ColumnMetadata("user_login", VARCHAR),
+                    new ColumnMetadata("body", VARCHAR),
                     new ColumnMetadata("created_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
                     new ColumnMetadata("updated_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
-                    new ColumnMetadata("author_association", createUnboundedVarcharType()),
+                    new ColumnMetadata("author_association", VARCHAR),
                     new ColumnMetadata("start_line", BIGINT),
                     new ColumnMetadata("original_start_line", BIGINT),
-                    new ColumnMetadata("start_side", createUnboundedVarcharType()),
+                    new ColumnMetadata("start_side", VARCHAR),
                     new ColumnMetadata("line", BIGINT),
                     new ColumnMetadata("original_line", BIGINT),
-                    new ColumnMetadata("side", createUnboundedVarcharType())))
+                    new ColumnMetadata("side", VARCHAR)))
             .put("issues", ImmutableList.of(
-                    new ColumnMetadata("owner", createUnboundedVarcharType()),
-                    new ColumnMetadata("repo", createUnboundedVarcharType()),
+                    new ColumnMetadata("owner", VARCHAR),
+                    new ColumnMetadata("repo", VARCHAR),
                     new ColumnMetadata("id", BIGINT),
                     new ColumnMetadata("number", BIGINT),
-                    new ColumnMetadata("state", createUnboundedVarcharType()),
-                    new ColumnMetadata("title", createUnboundedVarcharType()),
-                    new ColumnMetadata("body", createUnboundedVarcharType()),
+                    new ColumnMetadata("state", VARCHAR),
+                    new ColumnMetadata("title", VARCHAR),
+                    new ColumnMetadata("body", VARCHAR),
                     new ColumnMetadata("user_id", BIGINT),
-                    new ColumnMetadata("user_login", createUnboundedVarcharType()),
+                    new ColumnMetadata("user_login", VARCHAR),
                     new ColumnMetadata("label_ids", new ArrayType(BIGINT)),
-                    new ColumnMetadata("label_names", new ArrayType(createUnboundedVarcharType())),
+                    new ColumnMetadata("label_names", new ArrayType(VARCHAR)),
                     new ColumnMetadata("assignee_id", BIGINT),
-                    new ColumnMetadata("assignee_login", createUnboundedVarcharType()),
+                    new ColumnMetadata("assignee_login", VARCHAR),
                     new ColumnMetadata("milestone_id", BIGINT),
-                    new ColumnMetadata("milestone_title", createUnboundedVarcharType()),
+                    new ColumnMetadata("milestone_title", VARCHAR),
                     new ColumnMetadata("locked", BOOLEAN),
-                    new ColumnMetadata("active_lock_reason", createUnboundedVarcharType()),
+                    new ColumnMetadata("active_lock_reason", VARCHAR),
                     new ColumnMetadata("comments", BIGINT),
                     new ColumnMetadata("closed_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
                     new ColumnMetadata("created_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
                     new ColumnMetadata("updated_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
-                    new ColumnMetadata("author_association", createUnboundedVarcharType())))
+                    new ColumnMetadata("author_association", VARCHAR)))
             .put("issue_comments", ImmutableList.of(
-                    new ColumnMetadata("owner", createUnboundedVarcharType()),
-                    new ColumnMetadata("repo", createUnboundedVarcharType()),
+                    new ColumnMetadata("owner", VARCHAR),
+                    new ColumnMetadata("repo", VARCHAR),
                     new ColumnMetadata("id", BIGINT),
-                    new ColumnMetadata("body", createUnboundedVarcharType()),
+                    new ColumnMetadata("body", VARCHAR),
                     new ColumnMetadata("user_id", BIGINT),
-                    new ColumnMetadata("user_login", createUnboundedVarcharType()),
+                    new ColumnMetadata("user_login", VARCHAR),
                     new ColumnMetadata("created_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
                     new ColumnMetadata("updated_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
-                    new ColumnMetadata("author_association", createUnboundedVarcharType())))
+                    new ColumnMetadata("author_association", VARCHAR)))
             .put("runs", ImmutableList.of(
-                    new ColumnMetadata("owner", createUnboundedVarcharType()),
-                    new ColumnMetadata("repo", createUnboundedVarcharType()),
+                    new ColumnMetadata("owner", VARCHAR),
+                    new ColumnMetadata("repo", VARCHAR),
                     new ColumnMetadata("id", BIGINT),
-                    new ColumnMetadata("name", createUnboundedVarcharType()),
-                    new ColumnMetadata("node_id", createUnboundedVarcharType()),
-                    new ColumnMetadata("head_branch", createUnboundedVarcharType()),
-                    new ColumnMetadata("head_sha", createUnboundedVarcharType()),
+                    new ColumnMetadata("name", VARCHAR),
+                    new ColumnMetadata("node_id", VARCHAR),
+                    new ColumnMetadata("head_branch", VARCHAR),
+                    new ColumnMetadata("head_sha", VARCHAR),
                     new ColumnMetadata("run_number", BIGINT),
-                    new ColumnMetadata("event", createUnboundedVarcharType()),
-                    new ColumnMetadata("status", createUnboundedVarcharType()),
-                    new ColumnMetadata("conclusion", createUnboundedVarcharType()),
+                    new ColumnMetadata("event", VARCHAR),
+                    new ColumnMetadata("status", VARCHAR),
+                    new ColumnMetadata("conclusion", VARCHAR),
                     new ColumnMetadata("workflow_id", BIGINT),
                     new ColumnMetadata("created_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
                     new ColumnMetadata("updated_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3))))
             .put("jobs", ImmutableList.of(
-                    new ColumnMetadata("owner", createUnboundedVarcharType()),
-                    new ColumnMetadata("repo", createUnboundedVarcharType()),
+                    new ColumnMetadata("owner", VARCHAR),
+                    new ColumnMetadata("repo", VARCHAR),
                     new ColumnMetadata("id", BIGINT),
                     new ColumnMetadata("run_id", BIGINT),
-                    new ColumnMetadata("node_id", createUnboundedVarcharType()),
-                    new ColumnMetadata("head_sha", createUnboundedVarcharType()),
-                    new ColumnMetadata("status", createUnboundedVarcharType()),
-                    new ColumnMetadata("conclusion", createUnboundedVarcharType()),
+                    new ColumnMetadata("node_id", VARCHAR),
+                    new ColumnMetadata("head_sha", VARCHAR),
+                    new ColumnMetadata("status", VARCHAR),
+                    new ColumnMetadata("conclusion", VARCHAR),
                     new ColumnMetadata("started_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
                     new ColumnMetadata("completed_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
-                    new ColumnMetadata("name", createUnboundedVarcharType())))
+                    new ColumnMetadata("name", VARCHAR)))
             .put("steps", ImmutableList.of(
-                    new ColumnMetadata("owner", createUnboundedVarcharType()),
-                    new ColumnMetadata("repo", createUnboundedVarcharType()),
+                    new ColumnMetadata("owner", VARCHAR),
+                    new ColumnMetadata("repo", VARCHAR),
                     new ColumnMetadata("job_id", BIGINT),
-                    new ColumnMetadata("name", createUnboundedVarcharType()),
-                    new ColumnMetadata("status", createUnboundedVarcharType()),
-                    new ColumnMetadata("conclusion", createUnboundedVarcharType()),
+                    new ColumnMetadata("name", VARCHAR),
+                    new ColumnMetadata("status", VARCHAR),
+                    new ColumnMetadata("conclusion", VARCHAR),
                     new ColumnMetadata("number", BIGINT),
                     new ColumnMetadata("started_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
                     new ColumnMetadata("completed_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3))))
             .put("artifacts", ImmutableList.of(
-                    new ColumnMetadata("owner", createUnboundedVarcharType()),
-                    new ColumnMetadata("repo", createUnboundedVarcharType()),
+                    new ColumnMetadata("owner", VARCHAR),
+                    new ColumnMetadata("repo", VARCHAR),
                     new ColumnMetadata("run_id", BIGINT),
                     new ColumnMetadata("id", BIGINT),
                     new ColumnMetadata("size_in_bytes", BIGINT),
-                    new ColumnMetadata("name", createUnboundedVarcharType()),
-                    new ColumnMetadata("url", createUnboundedVarcharType()),
-                    new ColumnMetadata("archive_download_url", createUnboundedVarcharType()),
+                    new ColumnMetadata("name", VARCHAR),
+                    new ColumnMetadata("url", VARCHAR),
+                    new ColumnMetadata("archive_download_url", VARCHAR),
                     new ColumnMetadata("expired", BOOLEAN),
                     new ColumnMetadata("created_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
                     new ColumnMetadata("expires_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
                     new ColumnMetadata("updated_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
-                    new ColumnMetadata("contents", createUnboundedVarcharType())))
+                    new ColumnMetadata("filename", VARCHAR),
+                    new ColumnMetadata("path", VARCHAR),
+                    new ColumnMetadata("mimetype", VARCHAR),
+                    new ColumnMetadata("file_size_in_bytes", BIGINT),
+                    new ColumnMetadata("part_number", INTEGER),
+                    new ColumnMetadata("contents", VARBINARY)))
             .build();
 
     // TODO add tests that would verify this using getSqlType(), print the expected string so its easy to copy&paste
@@ -609,7 +621,12 @@ public class GithubRest
             "created_at timestamp(3) with time zone, " +
             "expires_at timestamp(3) with time zone, " +
             "updated_at timestamp(3) with time zone, " +
-            "contents varchar" +
+            "filename varchar, " +
+            "path varchar, " +
+            "mimetype varchar, " +
+            "file_size_in_bytes bigint, " +
+            "part_number int, " +
+            "contents varbinary" +
             "))";
 
     private final Map<String, Map<String, ColumnHandle>> columnHandles;
@@ -940,7 +957,7 @@ public class GithubRest
                 item -> {
                     item.setOwner(owner);
                     item.setRepo(repo);
-                    return item.toRow();
+                    return Stream.of(item.toRow());
                 });
     }
 
@@ -959,7 +976,7 @@ public class GithubRest
                 item -> {
                     item.setOwner(owner);
                     item.setRepo(repo);
-                    return item.toRow();
+                    return Stream.of(item.toRow());
                 });
     }
 
@@ -1014,20 +1031,35 @@ public class GithubRest
 
         String owner = (String) filter.getFilter((RestColumnHandle) columns.get("owner"), constraint);
         String repo = (String) filter.getFilter((RestColumnHandle) columns.get("repo"), constraint);
+        Long runId = (Long) filter.getFilter((RestColumnHandle) columns.get("run_id"), constraint);
+
+        IntFunction<Call<ArtifactsList>> fetcher = page -> service.listArtifacts("Bearer " + token, owner, repo, 100, page);
+        if (runId != null) {
+            fetcher = page -> service.listRunArtifacts("Bearer " + token, owner, repo, runId, 100, page);
+        }
+        else {
+            log.warning(format("Missing filter on run_id, will try to fetch all artifacts for %s/%s", owner, repo));
+        }
         // TODO this needs to allow pushing down multiple run_id values and make a separate request for each
         return getRowsFromPagesEnvelope(
-                page -> service.listArtifacts("Bearer " + token, owner, repo, 100, page),
+                fetcher,
                 item -> {
+                    Stream.Builder<List<?>> result = Stream.builder();
                     item.setOwner(owner);
                     item.setRepo(repo);
+                    if (runId != null) {
+                        item.setRunId(runId);
+                    }
                     try {
-                        item.setContents(download(service, token, owner, repo, item.getId()));
+                        for (Artifact artifact : download(service, token, item)) {
+                            result.add(artifact.toRow());
+                        }
                     }
                     catch (IOException e) {
                         // TODO how to better handle this?
                         e.printStackTrace();
                     }
-                    return item.toRow();
+                    return result.build();
                 });
     }
 
@@ -1076,11 +1108,12 @@ public class GithubRest
     }
 
     // TODO this abomination is even worse
-    private <T, E extends Envelope<T>> Collection<? extends List<?>> getRowsFromPagesEnvelope(IntFunction<Call<E>> fetcher, Function<T, List<?>> mapper)
+    private <T, E extends Envelope<T>> Collection<? extends List<?>> getRowsFromPagesEnvelope(IntFunction<Call<E>> fetcher, Function<T, Stream<List<?>>> mapper)
     {
         ImmutableList.Builder<List<?>> result = new ImmutableList.Builder<>();
 
         int page = 1;
+        int total = 0;
         while (true) {
             Response<E> response;
             try {
@@ -1093,11 +1126,16 @@ public class GithubRest
                 break;
             }
             checkServiceResponse(response);
-            List<T> items = requireNonNull(response.body()).getItems();
+            E envelope = requireNonNull(response.body());
+            List<T> items = envelope.getItems();
             if (items.size() == 0) {
                 break;
             }
-            result.addAll(items.stream().map(mapper).collect(toList()));
+            result.addAll(items.stream().flatMap(mapper).collect(toList()));
+            total += items.size();
+            if (total >= envelope.getTotalCount()) {
+                break;
+            }
         }
 
         return result.build();

@@ -19,4 +19,6 @@ import java.util.List;
 public interface Envelope<T>
 {
     List<T> getItems();
+
+    long getTotalCount();
 }

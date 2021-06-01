@@ -14,6 +14,7 @@
 
 package pl.net.was.rest.github.model;
 
+import io.airlift.slice.Slices;
 import io.trino.spi.block.BlockBuilder;
 import io.trino.spi.type.DateTimeEncoding;
 
@@ -23,6 +24,7 @@ import static io.trino.spi.type.TimestampWithTimeZoneType.TIMESTAMP_TZ_SECONDS;
 import static io.trino.spi.type.Timestamps.MILLISECONDS_PER_SECOND;
 import static io.trino.spi.type.Timestamps.NANOSECONDS_PER_MILLISECOND;
 import static io.trino.spi.type.Timestamps.roundDiv;
+import static io.trino.spi.type.VarbinaryType.VARBINARY;
 import static io.trino.spi.type.VarcharType.VARCHAR;
 
 abstract class BaseBlockWriter
@@ -47,6 +49,15 @@ abstract class BaseBlockWriter
             return;
         }
         VARCHAR.writeString(rowBuilder, value);
+    }
+
+    protected static void writeBytes(BlockBuilder rowBuilder, byte[] value)
+    {
+        if (value == null) {
+            rowBuilder.appendNull();
+            return;
+        }
+        VARBINARY.writeSlice(rowBuilder, Slices.wrappedBuffer(value));
     }
 
     protected static void writeTimestamp(BlockBuilder rowBuilder, ZonedDateTime value)

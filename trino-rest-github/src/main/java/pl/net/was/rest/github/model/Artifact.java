@@ -16,29 +16,21 @@ package pl.net.was.rest.github.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
+import io.airlift.slice.Slices;
 import io.trino.spi.block.BlockBuilder;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.time.ZonedDateTime;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
 
 import static io.trino.spi.type.BigintType.BIGINT;
 import static io.trino.spi.type.BooleanType.BOOLEAN;
+import static io.trino.spi.type.IntegerType.INTEGER;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Artifact
         extends BaseBlockWriter
+        implements Cloneable
 {
     private String owner;
     private String repo;
@@ -52,7 +44,12 @@ public class Artifact
     private final ZonedDateTime createdAt;
     private final ZonedDateTime expiresAt;
     private final ZonedDateTime updatedAt;
-    private String contents;
+    private String filename;
+    private String path;
+    private String mimetype;
+    private long fileSizeInBytes;
+    private int partNumber;
+    private byte[] contents;
 
     public Artifact(
             @JsonProperty("id") long id,
@@ -77,6 +74,16 @@ public class Artifact
         this.updatedAt = updatedAt;
     }
 
+    public String getOwner()
+    {
+        return owner;
+    }
+
+    public String getRepo()
+    {
+        return repo;
+    }
+
     public long getId()
     {
         return id;
@@ -97,29 +104,34 @@ public class Artifact
         this.runId = runId;
     }
 
-    public void setContents(InputStream zipContents)
-            throws IOException
+    public void setFilename(String filename)
     {
-        Map<String, String> map = new HashMap<>();
+        this.filename = filename;
+    }
 
-        ZipInputStream zis = new ZipInputStream(zipContents);
-        ZipEntry entry;
-        while ((entry = zis.getNextEntry()) != null) {
-            if (entry.isDirectory()) {
-                continue;
-            }
-            // TODO how to detect binary files?
-            String text = new BufferedReader(
-                    new InputStreamReader(zis, StandardCharsets.UTF_8))
-                    .lines()
-                    .collect(Collectors.joining("\n"));
-            map.put(entry.getName(), text);
-        }
-        zis.close();
+    public void setPath(String path)
+    {
+        this.path = path;
+    }
 
-        ObjectMapper mapper = new ObjectMapper();
-        contents = mapper.writerWithDefaultPrettyPrinter()
-                .writeValueAsString(map);
+    public void setMimetype(String mimetype)
+    {
+        this.mimetype = mimetype;
+    }
+
+    public void setPartNumber(int partNumber)
+    {
+        this.partNumber = partNumber;
+    }
+
+    public void setFileSizeInBytes(long fileSizeInBytes)
+    {
+        this.fileSizeInBytes = fileSizeInBytes;
+    }
+
+    public void setContents(byte[] contents)
+    {
+        this.contents = contents;
     }
 
     public List<?> toRow()
@@ -137,7 +149,12 @@ public class Artifact
                 packTimestamp(createdAt),
                 packTimestamp(expiresAt),
                 packTimestamp(updatedAt),
-                contents != null ? contents : "");
+                filename,
+                path,
+                mimetype,
+                fileSizeInBytes,
+                partNumber,
+                Slices.wrappedBuffer(contents != null ? contents : new byte[0]));
     }
 
     @Override
@@ -156,6 +173,23 @@ public class Artifact
         writeTimestamp(rowBuilder, createdAt);
         writeTimestamp(rowBuilder, expiresAt);
         writeTimestamp(rowBuilder, updatedAt);
-        writeString(rowBuilder, contents);
+        writeString(rowBuilder, filename);
+        writeString(rowBuilder, path);
+        writeString(rowBuilder, mimetype);
+        BIGINT.writeLong(rowBuilder, fileSizeInBytes);
+        INTEGER.writeLong(rowBuilder, partNumber);
+        writeBytes(rowBuilder, contents);
+    }
+
+    @Override
+    public Artifact clone()
+    {
+        try {
+            return (Artifact) super.clone();
+        }
+        catch (CloneNotSupportedException e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 }
