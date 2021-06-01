@@ -627,7 +627,7 @@ public class Sync
             conn.createStatement().executeUpdate(
                     "CREATE TABLE IF NOT EXISTS " + destSchema + ".artifacts AS SELECT * FROM " + srcSchema + ".artifacts WITH NO DATA");
             // consider adding some indexes:
-            // ALTER TABLE artifacts ADD PRIMARY KEY (id);
+            // ALTER TABLE artifacts ADD PRIMARY KEY (id, path, part_number);
             // CREATE INDEX ON artifacts(owner, repo);
             // CREATE INDEX ON artifacts(run_id);
 
@@ -644,7 +644,7 @@ public class Sync
             String query = "INSERT INTO " + destSchema + ".artifacts " +
                     "SELECT src.* " +
                     "FROM artifacts src " +
-                    "LEFT JOIN " + destSchema + ".artifacts dst ON (dst.run_id, dst.id, dst.path) = (src.run_id, src.id, src.path) " +
+                    "LEFT JOIN " + destSchema + ".artifacts dst ON (dst.id, dst.path, dst.part_number) = (src.id, src.path, src.part_number) " +
                     "WHERE src.owner = ? AND src.repo = ? AND src.run_id = ? AND dst.id IS NULL";
             PreparedStatement insertStatement = conn.prepareStatement(query);
             insertStatement.setString(1, options.owner);

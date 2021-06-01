@@ -89,6 +89,7 @@ import java.util.stream.Stream;
 import static io.trino.spi.StandardErrorCode.GENERIC_INTERNAL_ERROR;
 import static io.trino.spi.type.BigintType.BIGINT;
 import static io.trino.spi.type.BooleanType.BOOLEAN;
+import static io.trino.spi.type.IntegerType.INTEGER;
 import static io.trino.spi.type.VarbinaryType.VARBINARY;
 import static io.trino.spi.type.VarcharType.VARCHAR;
 import static java.lang.String.format;
@@ -349,6 +350,8 @@ public class GithubRest
                     new ColumnMetadata("filename", VARCHAR),
                     new ColumnMetadata("path", VARCHAR),
                     new ColumnMetadata("mimetype", VARCHAR),
+                    new ColumnMetadata("file_size_in_bytes", BIGINT),
+                    new ColumnMetadata("part_number", INTEGER),
                     new ColumnMetadata("contents", VARBINARY)))
             .build();
 
@@ -621,6 +624,8 @@ public class GithubRest
             "filename varchar, " +
             "path varchar, " +
             "mimetype varchar, " +
+            "file_size_in_bytes bigint, " +
+            "part_number int, " +
             "contents varbinary" +
             "))";
 

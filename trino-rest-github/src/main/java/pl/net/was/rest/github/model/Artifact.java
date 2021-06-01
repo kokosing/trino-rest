@@ -25,6 +25,7 @@ import java.util.List;
 
 import static io.trino.spi.type.BigintType.BIGINT;
 import static io.trino.spi.type.BooleanType.BOOLEAN;
+import static io.trino.spi.type.IntegerType.INTEGER;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Artifact
@@ -46,6 +47,8 @@ public class Artifact
     private String filename;
     private String path;
     private String mimetype;
+    private long fileSizeInBytes;
+    private int partNumber;
     private byte[] contents;
 
     public Artifact(
@@ -116,6 +119,16 @@ public class Artifact
         this.mimetype = mimetype;
     }
 
+    public void setPartNumber(int partNumber)
+    {
+        this.partNumber = partNumber;
+    }
+
+    public void setFileSizeInBytes(long fileSizeInBytes)
+    {
+        this.fileSizeInBytes = fileSizeInBytes;
+    }
+
     public void setContents(byte[] contents)
     {
         this.contents = contents;
@@ -139,6 +152,8 @@ public class Artifact
                 filename,
                 path,
                 mimetype,
+                fileSizeInBytes,
+                partNumber,
                 Slices.wrappedBuffer(contents != null ? contents : new byte[0]));
     }
 
@@ -161,6 +176,8 @@ public class Artifact
         writeString(rowBuilder, filename);
         writeString(rowBuilder, path);
         writeString(rowBuilder, mimetype);
+        BIGINT.writeLong(rowBuilder, fileSizeInBytes);
+        INTEGER.writeLong(rowBuilder, partNumber);
         writeBytes(rowBuilder, contents);
     }
 

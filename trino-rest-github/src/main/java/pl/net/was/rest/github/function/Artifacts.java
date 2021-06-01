@@ -30,6 +30,7 @@ import pl.net.was.rest.github.model.Artifact;
 import pl.net.was.rest.github.model.ArtifactsList;
 import retrofit2.Response;
 
+import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -51,7 +52,10 @@ import static pl.net.was.rest.github.GithubRest.getRowType;
 public class Artifacts
         extends BaseFunction
 {
-    private static Tika tika = new Tika();
+    // as defined in io.trino.operator.project.PageProcessor
+    private static final int MAX_PAGE_SIZE_IN_BYTES = 4 * 1024 * 1024;
+    private static final int MAX_ROW_SIZE_IN_BYTES = 100 * 1024;
+    private static final Tika tika = new Tika();
 
     public Artifacts()
     {
@@ -124,12 +128,27 @@ public class Artifacts
                 continue;
             }
             String name = entry.getName();
-            Artifact a = artifact.clone();
-            a.setFilename(new File(name).getName());
-            a.setPath(name);
-            a.setMimetype(tika.detect(zis, name));
-            a.setContents(zis.readAllBytes());
-            result.add(a);
+            Artifact artifactFile = artifact.clone();
+            artifactFile.setFilename(new File(name).getName());
+            artifactFile.setPath(name);
+            BufferedInputStream is = new BufferedInputStream(zis);
+            artifactFile.setMimetype(tika.detect(is, name));
+            artifactFile.setFileSizeInBytes(entry.getSize());
+            long remaining = entry.getSize();
+            if (remaining == 0) {
+                artifactFile.setPartNumber(1);
+                result.add(artifactFile);
+                continue;
+            }
+            int i = 1;
+            while (remaining > 0) {
+                Artifact chunk = artifactFile.clone();
+                byte[] contents = new byte[Math.min((int) remaining, MAX_PAGE_SIZE_IN_BYTES - MAX_ROW_SIZE_IN_BYTES)];
+                remaining -= is.readNBytes(contents, 0, contents.length);
+                chunk.setContents(contents);
+                chunk.setPartNumber(i++);
+                result.add(chunk);
+            }
         }
         zis.close();
         zipContents.close();
