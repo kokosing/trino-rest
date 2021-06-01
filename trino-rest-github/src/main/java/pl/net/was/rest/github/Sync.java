@@ -25,8 +25,11 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.logging.Handler;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static java.lang.String.format;
@@ -57,6 +60,7 @@ public class Sync
                 "GITHUB_OWNER",
                 "GITHUB_REPO",
                 "SYNC_TABLES",
+                "LOG_LEVEL",
                 "TRINO_DEST_SCHEMA",
                 "TRINO_SRC_SCHEMA",
                 "TRINO_URL",
@@ -71,6 +75,7 @@ public class Sync
                 "TRINO_PASSWORD", password,
                 // notice that steps, logs and artifacts are not enabled by default
                 "SYNC_TABLES", "issues,issue_comments,pulls,reviews,review_comments,runs,jobs",
+                "LOG_LEVEL", "INFO",
                 "EMPTY_INSERT_LIMIT", "1",
                 "CHECK_STEPS_DUPLICATES", "false",
                 "CHECK_ARTIFACTS_DUPLICATES", "false");
@@ -101,6 +106,15 @@ public class Sync
             tables = defaults.get("SYNC_TABLES");
         }
         Set<String> enabledTables = new LinkedHashSet<>(Arrays.asList(tables.split(",")));
+
+        Level level = Level.parse(Optional.ofNullable(System.getenv("LOG_LEVEL")).orElse("INFO"));
+        Logger root = Logger.getLogger("");
+        for (Handler h : root.getHandlers()) {
+            h.setLevel(level);
+        }
+        log.setLevel(level);
+        root.setLevel(level);
+        Logger.getLogger("jdk.internal").setLevel(Level.INFO);
 
         requireNonNull(owner, "GITHUB_OWNER environmental variable must be set");
         requireNonNull(repo, "GITHUB_REPO environmental variable must be set");
@@ -617,33 +631,43 @@ public class Sync
             // CREATE INDEX ON artifacts(owner, repo);
             // CREATE INDEX ON artifacts(run_id);
 
-            // only fetch artifacts for up to 5 completed runs not older than 2 months, without any artifacts
-            PreparedStatement statement = conn.prepareStatement(
-                    "INSERT INTO " + destSchema + ".artifacts " +
-                            "SELECT src.* " +
-                            "FROM (" +
-                            "SELECT r.id " +
-                            "FROM " + destSchema + ".runs r " +
-                            "LEFT JOIN " + destSchema + ".artifacts a ON a.run_id = r.id " +
-                            "WHERE r.status = 'completed' AND r.created_at > NOW() - INTERVAL '2' MONTH " +
-                            "GROUP BY r.id " +
-                            "HAVING COUNT(a.id) = 0 " +
-                            "ORDER BY r.id DESC LIMIT 5" +
-                            ") r " +
-                            "CROSS JOIN unnest(artifacts(?, ?, r.id)) src " +
-                            "LEFT JOIN " + destSchema + ".artifacts dst ON (dst.run_id, dst.id) = (src.run_id, src.id) " +
-                            "WHERE dst.id IS NULL");
-            statement.setString(1, options.owner);
-            statement.setString(2, options.repo);
+            // TODO because dynamic filtering is not supported yet, CROSS JOIN LATERAL between runs and artifacts would not push down filter on run_id
+            String runsQuery = "SELECT r.id " +
+                    "FROM " + destSchema + ".runs r " +
+                    "LEFT JOIN " + destSchema + ".artifacts a ON a.run_id = r.id " +
+                    "WHERE r.status = 'completed' AND r.created_at > NOW() - INTERVAL '2' MONTH AND r.id < ? " +
+                    "GROUP BY r.id " +
+                    "HAVING COUNT(a.id) = 0 " +
+                    "ORDER BY r.id DESC LIMIT 1";
+            PreparedStatement idStatement = conn.prepareStatement("SELECT min(r.id) FROM (" + runsQuery + ") r");
 
+            String query = "INSERT INTO " + destSchema + ".artifacts " +
+                    "SELECT src.* " +
+                    "FROM artifacts src " +
+                    "LEFT JOIN " + destSchema + ".artifacts dst ON (dst.run_id, dst.id, dst.path) = (src.run_id, src.id, src.path) " +
+                    "WHERE src.owner = ? AND src.repo = ? AND src.run_id = ? AND dst.id IS NULL";
+            PreparedStatement insertStatement = conn.prepareStatement(query);
+            insertStatement.setString(1, options.owner);
+            insertStatement.setString(2, options.repo);
+
+            long previousId = Long.MAX_VALUE;
             while (true) {
-                log.info("Fetching artifacts");
-                long startTime = System.currentTimeMillis();
-                int rows = retryExecute(statement);
-                log.info(format("Inserted %d rows, took %s", rows, Duration.ofMillis(System.currentTimeMillis() - startTime)));
-                if (rows == 0) {
+                idStatement.setLong(1, previousId);
+                log.info("Checking for next runs with jobs without artifacts");
+                ResultSet resultSet = idStatement.executeQuery();
+                if (!resultSet.next()) {
                     break;
                 }
+                previousId = resultSet.getLong(1);
+                if (resultSet.wasNull()) {
+                    break;
+                }
+
+                insertStatement.setLong(3, previousId);
+                log.info("Fetching artifacts");
+                long startTime = System.currentTimeMillis();
+                int rows = retryExecute(insertStatement);
+                log.info(format("Inserted %d rows, took %s", rows, Duration.ofMillis(System.currentTimeMillis() - startTime)));
             }
         }
         catch (Exception e) {
@@ -664,20 +688,22 @@ public class Sync
             // CREATE INDEX ON logs(owner, repo);
 
             // only fetch up to 5 job logs for completed runs not older than 2 months, without any job logs
-            PreparedStatement statement = conn.prepareStatement(
-                    "INSERT INTO " + destSchema + ".logs " +
-                            "SELECT j.id, job_logs(?, ?, j.id) " +
-                            "FROM (" +
-                            "SELECT j.id " +
-                            "FROM " + destSchema + ".runs r " +
-                            "JOIN " + destSchema + ".jobs j ON j.run_id = r.id " +
-                            "LEFT JOIN " + destSchema + ".logs l ON l.job_id = j.id " +
-                            "WHERE r.status = 'completed' AND r.conclusion IS DISTINCT FROM 'success' AND r.created_at > NOW() - INTERVAL '2' MONTH " +
-                            "AND j.conclusion IS DISTINCT FROM 'success' " +
-                            "GROUP BY j.id " +
-                            "HAVING COUNT(l.job_id) = 0 " +
-                            "ORDER BY j.id DESC LIMIT 5" +
-                            ") j");
+
+            String query = "INSERT INTO " + destSchema + ".logs " +
+                    "SELECT j.id, job_logs(?, ?, j.id) " +
+                    "FROM (" +
+                    "SELECT j.id " +
+                    "FROM " + destSchema + ".runs r " +
+                    "JOIN " + destSchema + ".jobs j ON j.run_id = r.id " +
+                    "LEFT JOIN " + destSchema + ".logs l ON l.job_id = j.id " +
+                    "WHERE r.status = 'completed' AND r.conclusion IS DISTINCT FROM 'success' AND r.created_at > NOW() - INTERVAL '2' MONTH " +
+                    "AND j.conclusion IS DISTINCT FROM 'success' " +
+                    "GROUP BY j.id " +
+                    "HAVING COUNT(l.job_id) = 0 " +
+                    "ORDER BY j.id DESC LIMIT 5" +
+                    ") j";
+            log.fine(format("Executing query: %s", query));
+            PreparedStatement statement = conn.prepareStatement(query);
             statement.setString(1, options.owner);
             statement.setString(2, options.repo);
 

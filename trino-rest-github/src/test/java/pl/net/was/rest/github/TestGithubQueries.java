@@ -68,6 +68,7 @@ public class TestGithubQueries
         assertQueryFails("SELECT * FROM runs", "Missing required constraint for owner");
         assertQueryFails("SELECT * FROM jobs", "Missing required constraint for owner");
         assertQueryFails("SELECT * FROM steps", "Missing required constraint for owner");
+        assertQueryFails("SELECT * FROM artifacts", "Missing required constraint for owner");
     }
 
     @Test
@@ -89,6 +90,7 @@ public class TestGithubQueries
         assertQuerySucceeds("SELECT * FROM unnest(runs('nineinchnick', 'trino-rest', 1))");
         assertQuerySucceeds("SELECT * FROM unnest(jobs('nineinchnick', 'trino-rest', 1))");
         assertQuerySucceeds("SELECT * FROM unnest(steps('nineinchnick', 'trino-rest', 1))");
+        assertQuerySucceeds("SELECT * FROM unnest(artifacts('nineinchnick', 'trino-rest', 1))");
         // TODO figure out why this requires special permissions
         //assertQuerySucceeds("SELECT job_logs('nineinchnick', 'trino-rest', 1)");
         // TODO there are yet no artifacts in this repo

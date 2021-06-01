@@ -33,6 +33,7 @@ import java.time.ZonedDateTime;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.logging.Logger;
 
 import static io.trino.spi.StandardErrorCode.INVALID_ROW_FILTER;
 import static io.trino.spi.type.DateTimeEncoding.unpackMillisUtc;
@@ -41,11 +42,14 @@ import static io.trino.spi.type.Timestamps.MILLISECONDS_PER_SECOND;
 import static io.trino.spi.type.Timestamps.NANOSECONDS_PER_MILLISECOND;
 import static java.lang.Math.floorDiv;
 import static java.lang.Math.floorMod;
+import static java.lang.String.format;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 import static pl.net.was.rest.github.filter.FilterType.EQUAL;
 
 public interface FilterApplier
 {
+    Logger log = Logger.getLogger(FilterApplier.class.getName());
+
     Map<String, FilterType> getSupportedFilters();
 
     default Optional<ConstraintApplicationResult<ConnectorTableHandle>> applyFilter(RestTableHandle table, Map<String, ColumnHandle> columns, Map<String, FilterType> supportedColumnFilters, TupleDomain<ColumnHandle> constraint)
@@ -104,6 +108,7 @@ public interface FilterApplier
         //noinspection OptionalGetWithoutIsPresent
         Domain domain = constraint.getDomains().get().get(column);
         if (domain == null) {
+            log.info(format("Missing filter on %s", column.getName()));
             return null;
         }
         TupleDomain<ColumnHandle> newConstraint = constraint.filter(
@@ -111,6 +116,7 @@ public interface FilterApplier
         if (!domain.getType().isOrderable()) {
             if (!domain.isSingleValue()) {
                 // none of the upstream filters supports multiple values
+                log.warning(format("Not pushing down filter on %s because it's not a single value: %s", column.getName(), domain));
                 return null;
             }
             return newConstraint;
@@ -120,6 +126,7 @@ public interface FilterApplier
                 // normalize the constraint into a low-bound range
                 Range span = domain.getValues().getRanges().getSpan();
                 if (span.isLowUnbounded()) {
+                    log.warning(format("Not pushing down filter on %s because it does not have a lower bound: %s", column.getName(), domain));
                     return null;
                 }
                 newConstraint = TupleDomain.withColumnDomains(Map.of(
@@ -134,6 +141,7 @@ public interface FilterApplier
             case EQUAL:
                 if (!domain.isSingleValue()) {
                     // none of the upstream filters supports multiple values
+                    log.warning(format("Not pushing down filter on %s because it's not a single value: %s", column.getName(), domain));
                     return null;
                 }
                 break;
@@ -189,6 +197,7 @@ public interface FilterApplier
                 }
                 return domain.getSingleValue();
             case "run_id":
+            case "job_id":
                 if (domain == null) {
                     return null;
                 }

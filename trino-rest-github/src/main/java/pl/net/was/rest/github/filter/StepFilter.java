@@ -26,6 +26,6 @@ public class StepFilter
         return ImmutableMap.of(
                 "owner", FilterType.EQUAL,
                 "repo", FilterType.EQUAL,
-                "run_id", FilterType.EQUAL);
+                "job_id", FilterType.EQUAL);
     }
 }
