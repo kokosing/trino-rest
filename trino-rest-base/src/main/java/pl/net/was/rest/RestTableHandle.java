@@ -25,15 +25,18 @@ public class RestTableHandle
         implements ConnectorTableHandle
 {
     private final SchemaTableName schemaTableName;
-    private TupleDomain<ColumnHandle> constraint;
+    private final TupleDomain<ColumnHandle> constraint;
+    private final int limit;
 
     @JsonCreator
     public RestTableHandle(
             @JsonProperty("schemaTableName") SchemaTableName schemaTableName,
-            @JsonProperty("constraint") TupleDomain<ColumnHandle> constraint)
+            @JsonProperty("constraint") TupleDomain<ColumnHandle> constraint,
+            @JsonProperty("limit") int limit)
     {
         this.schemaTableName = schemaTableName;
         this.constraint = constraint;
+        this.limit = limit;
     }
 
     @JsonProperty("schemaTableName")
@@ -48,8 +51,9 @@ public class RestTableHandle
         return constraint;
     }
 
-    public void setConstraint(TupleDomain<ColumnHandle> constraint)
+    @JsonProperty("limit")
+    public int getLimit()
     {
-        this.constraint = constraint;
+        return limit;
     }
 }

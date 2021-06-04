@@ -14,14 +14,18 @@
 
 package pl.net.was.rest;
 
+import io.trino.spi.connector.ColumnHandle;
 import io.trino.spi.connector.ColumnMetadata;
 import io.trino.spi.connector.ConnectorSession;
 import io.trino.spi.connector.ConnectorTableHandle;
 import io.trino.spi.connector.ConnectorTableMetadata;
 import io.trino.spi.connector.Constraint;
 import io.trino.spi.connector.ConstraintApplicationResult;
+import io.trino.spi.connector.LimitApplicationResult;
 import io.trino.spi.connector.SchemaTableName;
 import io.trino.spi.connector.SchemaTablePrefix;
+import io.trino.spi.connector.SortItem;
+import io.trino.spi.connector.TopNApplicationResult;
 import io.trino.spi.type.Type;
 
 import java.util.Collection;
@@ -60,7 +64,28 @@ public interface Rest
                 .collect(toList());
     }
 
-    default Optional<ConstraintApplicationResult<ConnectorTableHandle>> applyFilter(ConnectorSession session, ConnectorTableHandle handle, Constraint constraint)
+    default Optional<LimitApplicationResult<ConnectorTableHandle>> applyLimit(
+            ConnectorSession session,
+            ConnectorTableHandle handle,
+            long limit)
+    {
+        return Optional.empty();
+    }
+
+    default Optional<TopNApplicationResult<ConnectorTableHandle>> applyTopN(
+            ConnectorSession session,
+            ConnectorTableHandle handle,
+            long topNCount,
+            List<SortItem> sortItems,
+            Map<String, ColumnHandle> assignments)
+    {
+        return Optional.empty();
+    }
+
+    default Optional<ConstraintApplicationResult<ConnectorTableHandle>> applyFilter(
+            ConnectorSession session,
+            ConnectorTableHandle handle,
+            Constraint constraint)
     {
         return Optional.empty();
     }

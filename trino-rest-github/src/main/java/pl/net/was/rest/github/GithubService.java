@@ -120,16 +120,6 @@ public interface GithubService
             @Query("page") int page);
 
     @Headers("accept: application/vnd.github.v3+json")
-    @GET("/repos/{owner}/{repo}/actions/runs/{run_id}/jobs")
-    Call<JobsList> listJobs(
-            @Header("Authorization") String auth,
-            @Path("owner") String owner,
-            @Path("repo") String repo,
-            @Query("filter") String filter,
-            @Query("per_page") int perPage,
-            @Query("page") int page);
-
-    @Headers("accept: application/vnd.github.v3+json")
     @GET("/repos/{owner}/{repo}/actions/jobs/{job_id}/logs")
     Call<ResponseBody> jobLogs(
             @Header("Authorization") String auth,

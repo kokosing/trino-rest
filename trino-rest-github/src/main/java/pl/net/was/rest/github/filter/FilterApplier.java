@@ -52,7 +52,11 @@ public interface FilterApplier
 
     Map<String, FilterType> getSupportedFilters();
 
-    default Optional<ConstraintApplicationResult<ConnectorTableHandle>> applyFilter(RestTableHandle table, Map<String, ColumnHandle> columns, Map<String, FilterType> supportedColumnFilters, TupleDomain<ColumnHandle> constraint)
+    default Optional<ConstraintApplicationResult<ConnectorTableHandle>> applyFilter(
+            RestTableHandle table,
+            Map<String, ColumnHandle> columns,
+            Map<String, FilterType> supportedColumnFilters,
+            TupleDomain<ColumnHandle> constraint)
     {
         // the only reason not to use isNone is so the linter doesn't complain about not checking an Optional
         if (constraint.isAll() || constraint.getDomains().isEmpty()) {
@@ -99,7 +103,8 @@ public interface FilterApplier
         return Optional.of(new ConstraintApplicationResult<>(
                 new RestTableHandle(
                         table.getSchemaTableName(),
-                        currentConstraint),
+                        currentConstraint,
+                        table.getLimit()),
                 constraint));
     }
 

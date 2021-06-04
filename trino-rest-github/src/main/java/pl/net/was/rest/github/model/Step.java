@@ -31,6 +31,7 @@ public class Step
 {
     private String owner;
     private String repo;
+    private long runId;
     private long jobId;
     private final String name;
     private final String status;
@@ -65,6 +66,11 @@ public class Step
         this.repo = repo;
     }
 
+    public void setRunId(long runId)
+    {
+        this.runId = runId;
+    }
+
     public void setJobId(long jobId)
     {
         this.jobId = jobId;
@@ -75,6 +81,7 @@ public class Step
         return ImmutableList.of(
                 owner,
                 repo,
+                runId,
                 jobId,
                 name,
                 status != null ? status : "",
@@ -89,6 +96,7 @@ public class Step
     {
         writeString(rowBuilder, owner);
         writeString(rowBuilder, repo);
+        BIGINT.writeLong(rowBuilder, runId);
         BIGINT.writeLong(rowBuilder, jobId);
         VARCHAR.writeString(rowBuilder, name);
         writeString(rowBuilder, status);

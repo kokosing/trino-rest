@@ -26,8 +26,11 @@ import io.trino.spi.connector.ConnectorTableMetadata;
 import io.trino.spi.connector.ConnectorTableProperties;
 import io.trino.spi.connector.Constraint;
 import io.trino.spi.connector.ConstraintApplicationResult;
+import io.trino.spi.connector.LimitApplicationResult;
 import io.trino.spi.connector.SchemaTableName;
 import io.trino.spi.connector.SchemaTablePrefix;
+import io.trino.spi.connector.SortItem;
+import io.trino.spi.connector.TopNApplicationResult;
 import io.trino.spi.predicate.TupleDomain;
 import io.trino.spi.statistics.ComputedStatistics;
 
@@ -58,7 +61,7 @@ public class RestMetadata
     public ConnectorTableHandle getTableHandle(ConnectorSession connectorSession, SchemaTableName schemaTableName)
     {
         if (rest.listTables().contains(schemaTableName)) {
-            return new RestTableHandle(schemaTableName, TupleDomain.none());
+            return new RestTableHandle(schemaTableName, TupleDomain.none(), Integer.MAX_VALUE);
         }
         return null;
     }
@@ -116,13 +119,40 @@ public class RestMetadata
     }
 
     @Override
-    public Optional<ConnectorOutputMetadata> finishInsert(ConnectorSession session, ConnectorInsertTableHandle insertHandle, Collection<Slice> fragments, Collection<ComputedStatistics> computedStatistics)
+    public Optional<ConnectorOutputMetadata> finishInsert(
+            ConnectorSession session,
+            ConnectorInsertTableHandle insertHandle,
+            Collection<Slice> fragments,
+            Collection<ComputedStatistics> computedStatistics)
     {
         return Optional.empty();
     }
 
     @Override
-    public Optional<ConstraintApplicationResult<ConnectorTableHandle>> applyFilter(ConnectorSession session, ConnectorTableHandle handle, Constraint constraint)
+    public Optional<LimitApplicationResult<ConnectorTableHandle>> applyLimit(
+            ConnectorSession session,
+            ConnectorTableHandle handle,
+            long limit)
+    {
+        return rest.applyLimit(session, handle, limit);
+    }
+
+    @Override
+    public Optional<TopNApplicationResult<ConnectorTableHandle>> applyTopN(
+            ConnectorSession session,
+            ConnectorTableHandle handle,
+            long topNCount,
+            List<SortItem> sortItems,
+            Map<String, ColumnHandle> assignments)
+    {
+        return rest.applyTopN(session, handle, topNCount, sortItems, assignments);
+    }
+
+    @Override
+    public Optional<ConstraintApplicationResult<ConnectorTableHandle>> applyFilter(
+            ConnectorSession session,
+            ConnectorTableHandle handle,
+            Constraint constraint)
     {
         return rest.applyFilter(session, handle, constraint);
     }

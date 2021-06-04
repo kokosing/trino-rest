@@ -74,6 +74,7 @@ public class Job
         this.completedAt = completedAt;
         this.name = name;
         steps.forEach(s -> s.setJobId(id));
+        steps.forEach(s -> s.setRunId(runId));
         this.steps = steps;
         this.checkRunUrl = checkRunUrl;
     }
