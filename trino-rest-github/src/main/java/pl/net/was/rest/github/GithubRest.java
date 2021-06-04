@@ -666,7 +666,7 @@ public class GithubRest
     {
         OkHttpClient.Builder clientBuilder = new OkHttpClient.Builder();
 
-        // TODO make configurable?
+        // TODO make configurable? https://github.com/nineinchnick/trino-rest/issues/22
         Path cacheDir = Paths.get(System.getProperty("java.io.tmpdir"), "trino-rest-cache");
         clientBuilder.cache(new Cache(cacheDir.toFile(), 10 * 1024 * 1024));
 
@@ -701,7 +701,7 @@ public class GithubRest
         String message = "Unable to read: ";
         if (error != null) {
             try {
-                // TODO unserialize the JSON in error
+                // TODO unserialize the JSON in error: https://github.com/nineinchnick/trino-rest/issues/33
                 message += error.string();
             }
             catch (IOException e) {
@@ -835,7 +835,7 @@ public class GithubRest
 
         String owner = (String) filter.getFilter((RestColumnHandle) columns.get("owner"), constraint);
         String repo = (String) filter.getFilter((RestColumnHandle) columns.get("repo"), constraint);
-        // TODO allow filtering by state (many, comma separated, or all)
+        // TODO allow filtering by state (many, comma separated, or all), requires https://github.com/nineinchnick/trino-rest/issues/30
         return getRowsFromPages(
                 page -> service.listPulls("Bearer " + token, owner, repo, 100, page, "updated", "all"),
                 item -> {
@@ -855,7 +855,7 @@ public class GithubRest
         String owner = (String) filter.getFilter((RestColumnHandle) columns.get("owner"), constraint);
         String repo = (String) filter.getFilter((RestColumnHandle) columns.get("repo"), constraint);
         long pullNumber = (long) filter.getFilter((RestColumnHandle) columns.get("pull_number"), constraint);
-        // TODO allow filtering by state (many, comma separated, or all)
+        // TODO allow filtering by state (many, comma separated, or all), requires https://github.com/nineinchnick/trino-rest/issues/30
         return getRowsFromPages(
                 page -> service.listPullCommits("Bearer " + token, owner, repo, pullNumber, 100, page),
                 item -> {
@@ -970,7 +970,7 @@ public class GithubRest
 
         String owner = (String) filter.getFilter((RestColumnHandle) columns.get("owner"), constraint);
         String repo = (String) filter.getFilter((RestColumnHandle) columns.get("repo"), constraint);
-        // TODO this needs to allow pushing down multiple run_id values and make a separate request for each
+        // TODO this needs to allow pushing down multiple run_id values and make a separate request for each: https://github.com/nineinchnick/trino-rest/issues/30
         return getRowsFromPagesEnvelope(
                 page -> service.listJobs("Bearer " + token, owner, repo, "all", 100, page),
                 item -> {
@@ -1040,7 +1040,7 @@ public class GithubRest
         else {
             log.warning(format("Missing filter on run_id, will try to fetch all artifacts for %s/%s", owner, repo));
         }
-        // TODO this needs to allow pushing down multiple run_id values and make a separate request for each
+        // TODO this needs to allow pushing down multiple run_id values and make a separate request for each: https://github.com/nineinchnick/trino-rest/issues/30
         return getRowsFromPagesEnvelope(
                 fetcher,
                 item -> {
@@ -1056,8 +1056,7 @@ public class GithubRest
                         }
                     }
                     catch (IOException e) {
-                        // TODO how to better handle this?
-                        e.printStackTrace();
+                        throw new RuntimeException(e);
                     }
                     return result.build();
                 });
