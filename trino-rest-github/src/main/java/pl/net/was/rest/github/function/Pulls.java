@@ -60,6 +60,7 @@ public class Pulls
                 100,
                 (int) page,
                 "updated",
+                "asc",
                 "all").execute();
         if (response.code() == HTTP_NOT_FOUND) {
             return null;

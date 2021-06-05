@@ -199,9 +199,11 @@ public class Repository
         BIGINT.writeLong(rowBuilder, openIssuesCount);
         BOOLEAN.writeBoolean(rowBuilder, isTemplate);
 
-        BlockBuilder topics = VARCHAR.createBlockBuilder(null, this.topics.length);
-        for (String topic : this.topics) {
-            VARCHAR.writeString(topics, topic);
+        BlockBuilder topics = VARCHAR.createBlockBuilder(null, this.topics != null ? this.topics.length : 0);
+        if (this.topics != null) {
+            for (String topic : this.topics) {
+                VARCHAR.writeString(topics, topic);
+            }
         }
         rowBuilder.appendStructure(topics.build());
         BOOLEAN.writeBoolean(rowBuilder, hasIssues);
@@ -225,7 +227,9 @@ public class Repository
                 BOOLEAN.writeBoolean(builder, permission.getValue());
             }
             permissions.closeEntry();
+            rowBuilder.appendStructure(mapType.getObject(permissions, 0));
+        } else {
+            rowBuilder.appendNull();
         }
-        rowBuilder.appendStructure(mapType.getObject(permissions, 0));
     }
 }

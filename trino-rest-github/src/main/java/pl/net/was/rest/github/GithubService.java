@@ -47,6 +47,7 @@ public interface GithubService
             @Query("per_page") int perPage,
             @Query("page") int page,
             @Query("sort") String sort,
+            @Query("direction") String direction,
             @Query("state") String state);
 
     @Headers("accept: application/vnd.github.v3+json")
@@ -77,6 +78,8 @@ public interface GithubService
             @Path("repo") String repo,
             @Query("per_page") int perPage,
             @Query("page") int page,
+            @Query("sort") String sort,
+            @Query("direction") String direction,
             @Query("since") String since);
 
     @Headers("accept: application/vnd.github.v3+json")
@@ -87,6 +90,8 @@ public interface GithubService
             @Path("repo") String repo,
             @Query("per_page") int perPage,
             @Query("page") int page,
+            @Query("sort") String sort,
+            @Query("direction") String direction,
             @Query("since") String since);
 
     @Headers("accept: application/vnd.github.v3+json")
@@ -97,6 +102,8 @@ public interface GithubService
             @Path("repo") String repo,
             @Query("per_page") int perPage,
             @Query("page") int page,
+            @Query("sort") String sort,
+            @Query("direction") String direction,
             @Query("since") String since);
 
     @Headers("accept: application/vnd.github.v3+json")
@@ -180,7 +187,8 @@ public interface GithubService
             @Path("org") String org,
             @Query("per_page") int perPage,
             @Query("page") int page,
-            @Query("sort") String sort);
+            @Query("sort") String sort,
+            @Query("direction") String direction);
 
     @Headers("accept: application/vnd.github.v3+json")
     @GET("/users/{username}/repos")
@@ -189,7 +197,8 @@ public interface GithubService
             @Path("username") String username,
             @Query("per_page") int perPage,
             @Query("page") int page,
-            @Query("sort") String sort);
+            @Query("sort") String sort,
+            @Query("direction") String direction);
 
     @Headers("accept: application/vnd.github.v3+json")
     @GET("/users")

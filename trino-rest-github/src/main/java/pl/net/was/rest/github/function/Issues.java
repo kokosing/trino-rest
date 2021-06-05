@@ -64,6 +64,8 @@ public class Issues
                 repo.toStringUtf8(),
                 100,
                 (int) page,
+                "updated",
+                "asc",
                 ISO_LOCAL_DATE_TIME.format(fromTrinoTimestamp(since)) + "Z").execute();
         if (response.code() == HTTP_NOT_FOUND) {
             return null;

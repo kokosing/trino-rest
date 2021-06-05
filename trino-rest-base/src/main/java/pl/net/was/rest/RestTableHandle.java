@@ -19,7 +19,11 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import io.trino.spi.connector.ColumnHandle;
 import io.trino.spi.connector.ConnectorTableHandle;
 import io.trino.spi.connector.SchemaTableName;
+import io.trino.spi.connector.SortItem;
 import io.trino.spi.predicate.TupleDomain;
+
+import java.util.List;
+import java.util.Optional;
 
 public class RestTableHandle
         implements ConnectorTableHandle
@@ -27,16 +31,19 @@ public class RestTableHandle
     private final SchemaTableName schemaTableName;
     private final TupleDomain<ColumnHandle> constraint;
     private final int limit;
+    private final List<SortItem> sortOrder;
 
     @JsonCreator
     public RestTableHandle(
             @JsonProperty("schemaTableName") SchemaTableName schemaTableName,
             @JsonProperty("constraint") TupleDomain<ColumnHandle> constraint,
-            @JsonProperty("limit") int limit)
+            @JsonProperty("limit") int limit,
+            @JsonProperty("sortOrder") List<SortItem> sortOrder)
     {
         this.schemaTableName = schemaTableName;
         this.constraint = constraint;
         this.limit = limit;
+        this.sortOrder = sortOrder;
     }
 
     @JsonProperty("schemaTableName")
@@ -55,5 +62,11 @@ public class RestTableHandle
     public int getLimit()
     {
         return limit;
+    }
+
+    @JsonProperty("sortOrder")
+    public Optional<List<SortItem>> getSortOrder()
+    {
+        return sortOrder == null ? Optional.empty() : Optional.of(sortOrder);
     }
 }

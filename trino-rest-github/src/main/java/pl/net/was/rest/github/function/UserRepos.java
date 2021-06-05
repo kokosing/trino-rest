@@ -62,7 +62,8 @@ public class UserRepos
                     username.toStringUtf8(),
                     100,
                     page++,
-                    "updated").execute();
+                    "updated",
+                    "asc").execute();
             if (response.code() == HTTP_NOT_FOUND) {
                 break;
             }

@@ -17,7 +17,6 @@ package pl.net.was.rest.github;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import io.trino.spi.TrinoException;
@@ -32,6 +31,7 @@ import io.trino.spi.connector.LimitApplicationResult;
 import io.trino.spi.connector.SchemaTableName;
 import io.trino.spi.connector.SchemaTablePrefix;
 import io.trino.spi.connector.SortItem;
+import io.trino.spi.connector.SortOrder;
 import io.trino.spi.connector.TopNApplicationResult;
 import io.trino.spi.predicate.TupleDomain;
 import io.trino.spi.type.ArrayType;
@@ -91,7 +91,9 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static com.google.common.base.Verify.verify;
 import static io.trino.spi.StandardErrorCode.GENERIC_INTERNAL_ERROR;
+import static io.trino.spi.StandardErrorCode.INVALID_ORDER_BY;
 import static io.trino.spi.StandardErrorCode.INVALID_ROW_FILTER;
 import static io.trino.spi.type.BigintType.BIGINT;
 import static io.trino.spi.type.BooleanType.BOOLEAN;
@@ -116,8 +118,8 @@ public class GithubRest
     private static String token;
     private final GithubService service = getService();
 
-    public static final Map<String, List<ColumnMetadata>> columns = new ImmutableMap.Builder<String, List<ColumnMetadata>>()
-            .put("orgs", ImmutableList.of(
+    public static final Map<GithubTable, List<ColumnMetadata>> columns = new ImmutableMap.Builder<GithubTable, List<ColumnMetadata>>()
+            .put(GithubTable.ORGS, ImmutableList.of(
                     new ColumnMetadata("login", VARCHAR),
                     new ColumnMetadata("id", BIGINT),
                     new ColumnMetadata("description", VARCHAR),
@@ -151,7 +153,7 @@ public class GithubRest
                     new ColumnMetadata("members_can_create_private_repositories", BOOLEAN),
                     new ColumnMetadata("members_can_create_internal_repositories", BOOLEAN),
                     new ColumnMetadata("members_can_create_pages", BOOLEAN)))
-            .put("users", ImmutableList.of(
+            .put(GithubTable.USERS, ImmutableList.of(
                     new ColumnMetadata("login", VARCHAR),
                     new ColumnMetadata("id", BIGINT),
                     new ColumnMetadata("avatar_url", VARCHAR),
@@ -172,7 +174,7 @@ public class GithubRest
                     new ColumnMetadata("following", BIGINT),
                     new ColumnMetadata("created_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
                     new ColumnMetadata("updated_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3))))
-            .put("repos", ImmutableList.of(
+            .put(GithubTable.REPOS, ImmutableList.of(
                     new ColumnMetadata("id", BIGINT),
                     new ColumnMetadata("name", VARCHAR),
                     new ColumnMetadata("full_name", VARCHAR),
@@ -203,7 +205,7 @@ public class GithubRest
                     new ColumnMetadata("created_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
                     new ColumnMetadata("updated_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
                     new ColumnMetadata("permissions", new MapType(VARCHAR, BOOLEAN, new TypeOperators()))))
-            .put("pulls", ImmutableList.of(
+            .put(GithubTable.PULLS, ImmutableList.of(
                     new ColumnMetadata("owner", VARCHAR),
                     new ColumnMetadata("repo", VARCHAR),
                     new ColumnMetadata("id", BIGINT),
@@ -234,7 +236,7 @@ public class GithubRest
                     new ColumnMetadata("base_sha", VARCHAR),
                     new ColumnMetadata("author_association", VARCHAR),
                     new ColumnMetadata("draft", BOOLEAN)))
-            .put("pull_commits", ImmutableList.of(
+            .put(GithubTable.PULL_COMMITS, ImmutableList.of(
                     new ColumnMetadata("owner", VARCHAR),
                     new ColumnMetadata("repo", VARCHAR),
                     new ColumnMetadata("sha", VARCHAR),
@@ -256,7 +258,7 @@ public class GithubRest
                     new ColumnMetadata("committer_id", BIGINT),
                     new ColumnMetadata("committer_login", VARCHAR),
                     new ColumnMetadata("parent_shas", new ArrayType(VARCHAR))))
-            .put("reviews", ImmutableList.of(
+            .put(GithubTable.REVIEWS, ImmutableList.of(
                     new ColumnMetadata("owner", VARCHAR),
                     new ColumnMetadata("repo", VARCHAR),
                     new ColumnMetadata("id", BIGINT),
@@ -269,7 +271,7 @@ public class GithubRest
                     new ColumnMetadata("submitted_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
                     new ColumnMetadata("commit_id", VARCHAR),
                     new ColumnMetadata("author_association", VARCHAR)))
-            .put("review_comments", ImmutableList.of(
+            .put(GithubTable.REVIEW_COMMENTS, ImmutableList.of(
                     new ColumnMetadata("owner", VARCHAR),
                     new ColumnMetadata("repo", VARCHAR),
                     new ColumnMetadata("pull_request_review_id", BIGINT),
@@ -293,7 +295,7 @@ public class GithubRest
                     new ColumnMetadata("line", BIGINT),
                     new ColumnMetadata("original_line", BIGINT),
                     new ColumnMetadata("side", VARCHAR)))
-            .put("issues", ImmutableList.of(
+            .put(GithubTable.ISSUES, ImmutableList.of(
                     new ColumnMetadata("owner", VARCHAR),
                     new ColumnMetadata("repo", VARCHAR),
                     new ColumnMetadata("id", BIGINT),
@@ -316,7 +318,7 @@ public class GithubRest
                     new ColumnMetadata("created_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
                     new ColumnMetadata("updated_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
                     new ColumnMetadata("author_association", VARCHAR)))
-            .put("issue_comments", ImmutableList.of(
+            .put(GithubTable.ISSUE_COMMENTS, ImmutableList.of(
                     new ColumnMetadata("owner", VARCHAR),
                     new ColumnMetadata("repo", VARCHAR),
                     new ColumnMetadata("id", BIGINT),
@@ -326,7 +328,7 @@ public class GithubRest
                     new ColumnMetadata("created_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
                     new ColumnMetadata("updated_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
                     new ColumnMetadata("author_association", VARCHAR)))
-            .put("runs", ImmutableList.of(
+            .put(GithubTable.RUNS, ImmutableList.of(
                     new ColumnMetadata("owner", VARCHAR),
                     new ColumnMetadata("repo", VARCHAR),
                     new ColumnMetadata("id", BIGINT),
@@ -341,7 +343,7 @@ public class GithubRest
                     new ColumnMetadata("workflow_id", BIGINT),
                     new ColumnMetadata("created_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
                     new ColumnMetadata("updated_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3))))
-            .put("jobs", ImmutableList.of(
+            .put(GithubTable.JOBS, ImmutableList.of(
                     new ColumnMetadata("owner", VARCHAR),
                     new ColumnMetadata("repo", VARCHAR),
                     new ColumnMetadata("id", BIGINT),
@@ -353,7 +355,7 @@ public class GithubRest
                     new ColumnMetadata("started_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
                     new ColumnMetadata("completed_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
                     new ColumnMetadata("name", VARCHAR)))
-            .put("steps", ImmutableList.of(
+            .put(GithubTable.STEPS, ImmutableList.of(
                     new ColumnMetadata("owner", VARCHAR),
                     new ColumnMetadata("repo", VARCHAR),
                     new ColumnMetadata("run_id", BIGINT),
@@ -364,7 +366,7 @@ public class GithubRest
                     new ColumnMetadata("number", BIGINT),
                     new ColumnMetadata("started_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
                     new ColumnMetadata("completed_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3))))
-            .put("artifacts", ImmutableList.of(
+            .put(GithubTable.ARTIFACTS, ImmutableList.of(
                     new ColumnMetadata("owner", VARCHAR),
                     new ColumnMetadata("repo", VARCHAR),
                     new ColumnMetadata("run_id", BIGINT),
@@ -383,6 +385,71 @@ public class GithubRest
                     new ColumnMetadata("file_size_in_bytes", BIGINT),
                     new ColumnMetadata("part_number", INTEGER),
                     new ColumnMetadata("contents", VARBINARY)))
+            .build();
+
+    private final Map<GithubTable, Function<RestTableHandle, Collection<? extends List<?>>>> rowGetters = new ImmutableMap.Builder<GithubTable, Function<RestTableHandle, Collection<? extends List<?>>>>()
+            .put(GithubTable.ORGS, this::getOrgs)
+            .put(GithubTable.USERS, this::getUsers)
+            .put(GithubTable.REPOS, this::getRepos)
+            .put(GithubTable.PULLS, this::getPulls)
+            .put(GithubTable.PULL_COMMITS, this::getPullCommits)
+            .put(GithubTable.REVIEWS, this::getReviews)
+            .put(GithubTable.REVIEW_COMMENTS, this::getReviewComments)
+            .put(GithubTable.ISSUES, this::getIssues)
+            .put(GithubTable.ISSUE_COMMENTS, this::getIssueComments)
+            .put(GithubTable.RUNS, this::getRuns)
+            .put(GithubTable.JOBS, this::getJobs)
+            .put(GithubTable.STEPS, this::getSteps)
+            .put(GithubTable.ARTIFACTS, this::getArtifacts)
+            .build();
+
+    // The first sortItem is the default
+    private final Map<GithubTable, List<SortItem>> supportedTableSort = new ImmutableMap.Builder<GithubTable, List<SortItem>>()
+            .put(GithubTable.ORGS, ImmutableList.of(
+                    new SortItem("created_at", SortOrder.ASC_NULLS_LAST)))
+            .put(GithubTable.REPOS, ImmutableList.of(
+                    new SortItem("full_name", SortOrder.ASC_NULLS_LAST),
+                    new SortItem("full_name", SortOrder.DESC_NULLS_LAST),
+                    new SortItem("created_at", SortOrder.DESC_NULLS_LAST),
+                    new SortItem("created_at", SortOrder.ASC_NULLS_LAST),
+                    new SortItem("updated_at", SortOrder.DESC_NULLS_LAST),
+                    new SortItem("updated_at", SortOrder.ASC_NULLS_LAST),
+                    new SortItem("pushed_at", SortOrder.ASC_NULLS_LAST),
+                    new SortItem("pushed_at", SortOrder.DESC_NULLS_LAST)))
+            .put(GithubTable.PULLS, ImmutableList.of(
+                    new SortItem("created_at", SortOrder.DESC_NULLS_LAST),
+                    new SortItem("created_at", SortOrder.ASC_NULLS_LAST),
+                    new SortItem("updated_at", SortOrder.ASC_NULLS_LAST),
+                    new SortItem("updated_at", SortOrder.DESC_NULLS_LAST)))
+            .put(GithubTable.PULL_COMMITS, ImmutableList.of(
+                    new SortItem("created_at", SortOrder.ASC_NULLS_LAST)))
+            .put(GithubTable.REVIEWS, ImmutableList.of(
+                    new SortItem("created_at", SortOrder.ASC_NULLS_LAST)))
+            .put(GithubTable.REVIEW_COMMENTS, ImmutableList.of(
+                    new SortItem("id", SortOrder.ASC_NULLS_LAST),
+                    new SortItem("id", SortOrder.DESC_NULLS_LAST),
+                    new SortItem("created_at", SortOrder.DESC_NULLS_LAST),
+                    new SortItem("created_at", SortOrder.ASC_NULLS_LAST)))
+            .put(GithubTable.ISSUES, ImmutableList.of(
+                    new SortItem("created_at", SortOrder.DESC_NULLS_LAST),
+                    new SortItem("created_at", SortOrder.ASC_NULLS_LAST),
+                    new SortItem("updated_at", SortOrder.DESC_NULLS_LAST),
+                    new SortItem("updated_at", SortOrder.ASC_NULLS_LAST),
+                    new SortItem("comments", SortOrder.DESC_NULLS_LAST),
+                    new SortItem("comments", SortOrder.ASC_NULLS_LAST)))
+            .put(GithubTable.ISSUE_COMMENTS, ImmutableList.of(
+                    new SortItem("id", SortOrder.ASC_NULLS_LAST),
+                    new SortItem("id", SortOrder.DESC_NULLS_LAST),
+                    new SortItem("created_at", SortOrder.ASC_NULLS_LAST),
+                    new SortItem("created_at", SortOrder.DESC_NULLS_LAST)))
+            .put(GithubTable.RUNS, ImmutableList.of(
+                    new SortItem("created_at", SortOrder.DESC_NULLS_LAST)))
+            .put(GithubTable.JOBS, ImmutableList.of(
+                    new SortItem("started_at", SortOrder.ASC_NULLS_LAST)))
+            .put(GithubTable.STEPS, ImmutableList.of(
+                    new SortItem("job_id", SortOrder.ASC_NULLS_LAST)))
+            .put(GithubTable.ARTIFACTS, ImmutableList.of(
+                    new SortItem("id", SortOrder.ASC_NULLS_LAST)))
             .build();
 
     // TODO add tests that would verify this using getSqlType(), print the expected string so its easy to copy&paste
@@ -677,26 +744,26 @@ public class GithubRest
             "path varchar, " +
             "mimetype varchar, " +
             "file_size_in_bytes bigint, " +
-            "part_number int, " +
+            "part_number integer, " +
             "contents varbinary" +
             "))";
 
-    private final Map<String, Map<String, ColumnHandle>> columnHandles;
+    private final Map<GithubTable, Map<String, ColumnHandle>> columnHandles;
 
-    private final Map<String, ? extends FilterApplier> filterAppliers = new ImmutableMap.Builder<String, FilterApplier>()
-            .put("pulls", new PullFilter())
-            .put("pull_commits", new PullCommitFilter())
-            .put("reviews", new ReviewFilter())
-            .put("review_comments", new ReviewCommentFilter())
-            .put("issues", new IssueFilter())
-            .put("issue_comments", new IssueCommentFilter())
-            .put("runs", new RunFilter())
-            .put("jobs", new JobFilter())
-            .put("steps", new StepFilter())
-            .put("artifacts", new ArtifactFilter())
-            .put("orgs", new OrgFilter())
-            .put("users", new UserFilter())
-            .put("repos", new RepoFilter())
+    private final Map<GithubTable, ? extends FilterApplier> filterAppliers = new ImmutableMap.Builder<GithubTable, FilterApplier>()
+            .put(GithubTable.PULLS, new PullFilter())
+            .put(GithubTable.PULL_COMMITS, new PullCommitFilter())
+            .put(GithubTable.REVIEWS, new ReviewFilter())
+            .put(GithubTable.REVIEW_COMMENTS, new ReviewCommentFilter())
+            .put(GithubTable.ISSUES, new IssueFilter())
+            .put(GithubTable.ISSUE_COMMENTS, new IssueCommentFilter())
+            .put(GithubTable.RUNS, new RunFilter())
+            .put(GithubTable.JOBS, new JobFilter())
+            .put(GithubTable.STEPS, new StepFilter())
+            .put(GithubTable.ARTIFACTS, new ArtifactFilter())
+            .put(GithubTable.ORGS, new OrgFilter())
+            .put(GithubTable.USERS, new UserFilter())
+            .put(GithubTable.REPOS, new RepoFilter())
             .build();
 
     public GithubRest(String token)
@@ -781,9 +848,10 @@ public class GithubRest
     @Override
     public ConnectorTableMetadata getTableMetadata(SchemaTableName schemaTableName)
     {
+        GithubTable tableName = GithubTable.valueOf(schemaTableName);
         return new ConnectorTableMetadata(
                 schemaTableName,
-                columns.get(schemaTableName.getTableName()));
+                columns.get(tableName));
     }
 
     @Override
@@ -798,7 +866,7 @@ public class GithubRest
         return columns
                 .keySet()
                 .stream()
-                .map(name -> new SchemaTableName(SCHEMA_NAME, name))
+                .map(table -> new SchemaTableName(SCHEMA_NAME, table.getName()))
                 .collect(toList());
     }
 
@@ -808,42 +876,15 @@ public class GithubRest
         return columns.entrySet()
                 .stream()
                 .collect(Collectors.toMap(
-                        e -> new SchemaTableName(schemaTablePrefix.getSchema().orElse(""), e.getKey()),
+                        e -> new SchemaTableName(schemaTablePrefix.getSchema().orElse(""), e.getKey().getName()),
                         Map.Entry::getValue));
     }
 
     @Override
     public Collection<? extends List<?>> getRows(RestTableHandle table)
     {
-        switch (table.getSchemaTableName().getTableName()) {
-            case "orgs":
-                return getOrgs(table);
-            case "users":
-                return getUsers(table);
-            case "repos":
-                return getRepos(table);
-            case "pulls":
-                return getPulls(table);
-            case "pull_commits":
-                return getPullCommits(table);
-            case "reviews":
-                return getReviews(table);
-            case "review_comments":
-                return getReviewComments(table);
-            case "issues":
-                return getIssues(table);
-            case "issue_comments":
-                return getIssueComments(table);
-            case "runs":
-                return getRuns(table);
-            case "jobs":
-                return getJobs(table);
-            case "steps":
-                return getSteps(table);
-            case "artifacts":
-                return getArtifacts(table);
-        }
-        return null;
+        GithubTable tableName = GithubTable.valueOf(table);
+        return rowGetters.get(tableName).apply(table);
     }
 
     private Collection<? extends List<?>> getOrgs(RestTableHandle table)
@@ -851,7 +892,7 @@ public class GithubRest
         if (table.getLimit() == 0) {
             return ImmutableList.of();
         }
-        String tableName = table.getSchemaTableName().getTableName();
+        GithubTable tableName = GithubTable.valueOf(table);
         Map<String, ColumnHandle> columns = columnHandles.get(tableName);
         FilterApplier filter = filterAppliers.get(tableName);
 
@@ -864,7 +905,7 @@ public class GithubRest
         if (table.getLimit() == 0) {
             return ImmutableList.of();
         }
-        String tableName = table.getSchemaTableName().getTableName();
+        GithubTable tableName = GithubTable.valueOf(table);
         Map<String, ColumnHandle> columns = columnHandles.get(tableName);
         FilterApplier filter = filterAppliers.get(tableName);
 
@@ -874,20 +915,27 @@ public class GithubRest
 
     private Collection<? extends List<?>> getRepos(RestTableHandle table)
     {
-        String tableName = table.getSchemaTableName().getTableName();
+        GithubTable tableName = GithubTable.valueOf(table);
         Map<String, ColumnHandle> columns = columnHandles.get(tableName);
         FilterApplier filter = filterAppliers.get(tableName);
 
         String owner = (String) filter.getFilter((RestColumnHandle) columns.get("owner_login"), table.getConstraint());
+        SortItem sortOrder = getSortItem(table);
         return getRowsFromPages(
-                page -> service.listUserRepos("Bearer " + token, owner, PER_PAGE, page, "full_name"),
+                page -> service.listUserRepos(
+                        "Bearer " + token,
+                        owner,
+                        PER_PAGE,
+                        page,
+                        sortOrder.getName(),
+                        sortOrder.getSortOrder().isAscending() ? "asc" : "desc"),
                 Repository::toRow,
                 table.getLimit());
     }
 
     private Collection<? extends List<?>> getPulls(RestTableHandle table)
     {
-        String tableName = table.getSchemaTableName().getTableName();
+        GithubTable tableName = GithubTable.valueOf(table);
         TupleDomain<ColumnHandle> constraint = table.getConstraint();
         Map<String, ColumnHandle> columns = columnHandles.get(tableName);
         FilterApplier filter = filterAppliers.get(tableName);
@@ -895,8 +943,17 @@ public class GithubRest
         String owner = (String) filter.getFilter((RestColumnHandle) columns.get("owner"), constraint);
         String repo = (String) filter.getFilter((RestColumnHandle) columns.get("repo"), constraint);
         // TODO allow filtering by state (many, comma separated, or all), requires https://github.com/nineinchnick/trino-rest/issues/30
+        SortItem sortOrder = getSortItem(table);
         return getRowsFromPages(
-                page -> service.listPulls("Bearer " + token, owner, repo, PER_PAGE, page, "created", "all"),
+                page -> service.listPulls(
+                        "Bearer " + token,
+                        owner,
+                        repo,
+                        PER_PAGE,
+                        page,
+                        sortOrder.getName(),
+                        sortOrder.getSortOrder().isAscending() ? "asc" : "desc",
+                        "all"),
                 item -> {
                     item.setOwner(owner);
                     item.setRepo(repo);
@@ -905,9 +962,25 @@ public class GithubRest
                 table.getLimit());
     }
 
+    private SortItem getSortItem(RestTableHandle table)
+    {
+        GithubTable tableName = GithubTable.valueOf(table);
+        List<SortItem> sortOrder = table.getSortOrder().orElseGet(() -> supportedTableSort.get(tableName));
+        String sortName = sortOrder.get(0).getName();
+        switch (sortOrder.get(0).getName()) {
+            case "created_at":
+                sortName = "created";
+                break;
+            case "updated_at":
+                sortName = "updated";
+                break;
+        }
+        return new SortItem(sortName, sortOrder.get(0).getSortOrder());
+    }
+
     private Collection<? extends List<?>> getPullCommits(RestTableHandle table)
     {
-        String tableName = table.getSchemaTableName().getTableName();
+        GithubTable tableName = GithubTable.valueOf(table);
         TupleDomain<ColumnHandle> constraint = table.getConstraint();
         Map<String, ColumnHandle> columns = columnHandles.get(tableName);
         FilterApplier filter = filterAppliers.get(tableName);
@@ -929,7 +1002,7 @@ public class GithubRest
 
     private Collection<? extends List<?>> getReviews(RestTableHandle table)
     {
-        String tableName = table.getSchemaTableName().getTableName();
+        GithubTable tableName = GithubTable.valueOf(table);
         TupleDomain<ColumnHandle> constraint = table.getConstraint();
         Map<String, ColumnHandle> columns = columnHandles.get(tableName);
         FilterApplier filter = filterAppliers.get(tableName);
@@ -949,7 +1022,7 @@ public class GithubRest
 
     private Collection<? extends List<?>> getReviewComments(RestTableHandle table)
     {
-        String tableName = table.getSchemaTableName().getTableName();
+        GithubTable tableName = GithubTable.valueOf(table);
         TupleDomain<ColumnHandle> constraint = table.getConstraint();
         Map<String, ColumnHandle> columns = columnHandles.get(tableName);
         FilterApplier filter = filterAppliers.get(tableName);
@@ -958,8 +1031,17 @@ public class GithubRest
         String repo = (String) filter.getFilter((RestColumnHandle) columns.get("repo"), constraint);
         String since = (String) filter.getFilter((RestColumnHandle) columns.get("updated_at"), constraint);
         // TODO allow filtering by pull number, this would require using a different endpoint
+        SortItem sortOrder = getSortItem(table);
         return getRowsFromPages(
-                page -> service.listReviewComments("Bearer " + token, owner, repo, PER_PAGE, page, since),
+                page -> service.listReviewComments(
+                        "Bearer " + token,
+                        owner,
+                        repo,
+                        PER_PAGE,
+                        page,
+                        sortOrder.getName(),
+                        sortOrder.getSortOrder().isAscending() ? "asc" : "desc",
+                        since),
                 item -> {
                     item.setOwner(owner);
                     item.setRepo(repo);
@@ -970,7 +1052,7 @@ public class GithubRest
 
     private Collection<? extends List<?>> getIssues(RestTableHandle table)
     {
-        String tableName = table.getSchemaTableName().getTableName();
+        GithubTable tableName = GithubTable.valueOf(table);
         TupleDomain<ColumnHandle> constraint = table.getConstraint();
         Map<String, ColumnHandle> columns = columnHandles.get(tableName);
         FilterApplier filter = filterAppliers.get(tableName);
@@ -978,8 +1060,17 @@ public class GithubRest
         String owner = (String) filter.getFilter((RestColumnHandle) columns.get("owner"), constraint);
         String repo = (String) filter.getFilter((RestColumnHandle) columns.get("repo"), constraint);
         String since = (String) filter.getFilter((RestColumnHandle) columns.get("updated_at"), constraint);
+        SortItem sortOrder = getSortItem(table);
         return getRowsFromPages(
-                page -> service.listIssues("Bearer " + token, owner, repo, PER_PAGE, page, since),
+                page -> service.listIssues(
+                        "Bearer " + token,
+                        owner,
+                        repo,
+                        PER_PAGE,
+                        page,
+                        sortOrder.getName(),
+                        sortOrder.getSortOrder().isAscending() ? "asc" : "desc",
+                        since),
                 item -> {
                     item.setOwner(owner);
                     item.setRepo(repo);
@@ -990,7 +1081,7 @@ public class GithubRest
 
     private Collection<? extends List<?>> getIssueComments(RestTableHandle table)
     {
-        String tableName = table.getSchemaTableName().getTableName();
+        GithubTable tableName = GithubTable.valueOf(table);
         TupleDomain<ColumnHandle> constraint = table.getConstraint();
         Map<String, ColumnHandle> columns = columnHandles.get(tableName);
         FilterApplier filter = filterAppliers.get(tableName);
@@ -998,8 +1089,17 @@ public class GithubRest
         String owner = (String) filter.getFilter((RestColumnHandle) columns.get("owner"), constraint);
         String repo = (String) filter.getFilter((RestColumnHandle) columns.get("repo"), constraint);
         String since = (String) filter.getFilter((RestColumnHandle) columns.get("updated_at"), constraint);
+        SortItem sortOrder = getSortItem(table);
         return getRowsFromPages(
-                page -> service.listIssueComments("Bearer " + token, owner, repo, PER_PAGE, page, since),
+                page -> service.listIssueComments(
+                        "Bearer " + token,
+                        owner,
+                        repo,
+                        PER_PAGE,
+                        page,
+                        sortOrder.getName(),
+                        sortOrder.getSortOrder().isAscending() ? "asc" : "desc",
+                        since),
                 item -> {
                     item.setOwner(owner);
                     item.setRepo(repo);
@@ -1010,7 +1110,7 @@ public class GithubRest
 
     private Collection<? extends List<?>> getRuns(RestTableHandle table)
     {
-        String tableName = table.getSchemaTableName().getTableName();
+        GithubTable tableName = GithubTable.valueOf(table);
         TupleDomain<ColumnHandle> constraint = table.getConstraint();
         Map<String, ColumnHandle> columns = columnHandles.get(tableName);
         FilterApplier filter = filterAppliers.get(tableName);
@@ -1029,7 +1129,7 @@ public class GithubRest
 
     private Collection<? extends List<?>> getJobs(RestTableHandle table)
     {
-        String tableName = table.getSchemaTableName().getTableName();
+        GithubTable tableName = GithubTable.valueOf(table);
         TupleDomain<ColumnHandle> constraint = table.getConstraint();
         Map<String, ColumnHandle> columns = columnHandles.get(tableName);
         FilterApplier filter = filterAppliers.get(tableName);
@@ -1053,7 +1153,7 @@ public class GithubRest
 
     private Collection<? extends List<?>> getSteps(RestTableHandle table)
     {
-        String tableName = table.getSchemaTableName().getTableName();
+        GithubTable tableName = GithubTable.valueOf(table);
         TupleDomain<ColumnHandle> constraint = table.getConstraint();
         Map<String, ColumnHandle> columns = columnHandles.get(tableName);
         FilterApplier filter = filterAppliers.get(tableName);
@@ -1074,7 +1174,7 @@ public class GithubRest
                 response = service.listRunJobs("Bearer " + token, owner, repo, runId, "all", PER_PAGE, page++).execute();
             }
             catch (IOException e) {
-                throw Throwables.propagate(e);
+                throw new RuntimeException(e);
             }
             if (response.code() == HTTP_NOT_FOUND) {
                 break;
@@ -1111,7 +1211,7 @@ public class GithubRest
 
     private Collection<? extends List<?>> getArtifacts(RestTableHandle table)
     {
-        String tableName = table.getSchemaTableName().getTableName();
+        GithubTable tableName = GithubTable.valueOf(table);
         TupleDomain<ColumnHandle> constraint = table.getConstraint();
         Map<String, ColumnHandle> columns = columnHandles.get(tableName);
         FilterApplier filter = filterAppliers.get(tableName);
@@ -1157,7 +1257,7 @@ public class GithubRest
             response = fetcher.get().execute();
         }
         catch (IOException e) {
-            throw Throwables.propagate(e);
+            throw new RuntimeException(e);
         }
         if (response.code() == HTTP_NOT_FOUND) {
             return ImmutableList.of();
@@ -1179,7 +1279,7 @@ public class GithubRest
                 response = fetcher.apply(page++).execute();
             }
             catch (IOException e) {
-                throw Throwables.propagate(e);
+                throw new RuntimeException(e);
             }
             if (response.code() == HTTP_NOT_FOUND) {
                 break;
@@ -1217,7 +1317,7 @@ public class GithubRest
                 response = fetcher.apply(page++).execute();
             }
             catch (IOException e) {
-                throw Throwables.propagate(e);
+                throw new RuntimeException(e);
             }
             if (response.code() == HTTP_NOT_FOUND) {
                 break;
@@ -1252,7 +1352,7 @@ public class GithubRest
 
     public static String getSqlType(String tableName)
     {
-        return columns.get(tableName)
+        return columns.get(GithubTable.valueOf(tableName.toUpperCase()))
                 .stream()
                 .map(column -> column.getName() + " " + column.getType().getDisplayName())
                 .collect(Collectors.joining(", ", "ARRAY(ROW(", "))"));
@@ -1260,7 +1360,7 @@ public class GithubRest
 
     public static RowType getRowType(String tableName)
     {
-        List<RowType.Field> fields = GithubRest.columns.get(tableName)
+        List<RowType.Field> fields = GithubRest.columns.get(GithubTable.valueOf(tableName.toUpperCase()))
                 .stream()
                 .map(columnMetadata -> RowType.field(
                         columnMetadata.getName(),
@@ -1280,35 +1380,51 @@ public class GithubRest
                 new RestTableHandle(
                         restTable.getSchemaTableName(),
                         restTable.getConstraint(),
-                        (int) Math.min(limit, Integer.MAX_VALUE)),
+                        (int) Math.min(limit, Integer.MAX_VALUE),
+                        restTable.getSortOrder().isPresent() ? restTable.getSortOrder().get() : null),
                 true));
     }
 
     @Override
     public Optional<TopNApplicationResult<ConnectorTableHandle>> applyTopN(
             ConnectorSession session,
-            ConnectorTableHandle handle,
+            ConnectorTableHandle table,
             long topNCount,
             List<SortItem> sortItems,
             Map<String, ColumnHandle> assignments)
     {
-        // TODO this can be applied, if sortItems match either default sorting, or supported sorting
-        // new JdbcSortItem(((JdbcColumnHandle) assignments.get(sortItem.getName())), sortItem.getSortOrder())
-        /*
-        orgs: created_at asc
-        repos: full_name asc, created_at desc, updated_at desc, pushed_at desc
-        pulls: created desc, updated asc
-        pull_commits: created asc
-        reviews: created asc
-        review_comments: created asc
-        issues: created desc, updated desc, comments desc
-        issue_comments: created asc
-        runs: created desc
-        jobs: started_at asc
-        steps: job_id asc AND started_at desc
-        artifacts: created desc
-         */
-        return Optional.empty();
+        verify(!sortItems.isEmpty(), "sortItems are empty");
+        RestTableHandle restTable = (RestTableHandle) table;
+        GithubTable tableName = GithubTable.valueOf(restTable);
+        List<SortItem> supportedItems = supportedTableSort.get(tableName);
+        if (supportedItems == null) {
+            return Optional.empty();
+        }
+
+        if (!supportedItems.contains(sortItems.get(0))) {
+            throw new TrinoException(INVALID_ORDER_BY,
+                    format("When using LIMIT or FETCH, first expression in ORDER BY must be one of: %s",
+                            supportedItems
+                                    .stream()
+                                    .map(s -> s.getName() + " " + s.getSortOrder().toString())
+                                    .collect(Collectors.joining(", "))));
+        }
+
+        int limit = (int) Math.min(topNCount, Integer.MAX_VALUE);
+        sortItems = sortItems.subList(0, 1);
+        if (restTable.getSortOrder().isPresent()) {
+            if (restTable.getLimit() == limit && restTable.getSortOrder().equals(Optional.of(sortItems))) {
+                return Optional.empty();
+            }
+        }
+
+        RestTableHandle sortedTableHandle = new RestTableHandle(
+                restTable.getSchemaTableName(),
+                restTable.getConstraint(),
+                limit,
+                sortItems);
+
+        return Optional.of(new TopNApplicationResult<>(sortedTableHandle, true));
     }
 
     @Override
@@ -1318,7 +1434,7 @@ public class GithubRest
             Constraint constraint)
     {
         RestTableHandle restTable = (RestTableHandle) table;
-        String tableName = restTable.getSchemaTableName().getTableName();
+        GithubTable tableName = GithubTable.valueOf(restTable);
 
         FilterApplier filterApplier = filterAppliers.get(tableName);
         if (filterApplier == null) {

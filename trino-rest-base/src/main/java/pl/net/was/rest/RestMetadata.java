@@ -61,7 +61,7 @@ public class RestMetadata
     public ConnectorTableHandle getTableHandle(ConnectorSession connectorSession, SchemaTableName schemaTableName)
     {
         if (rest.listTables().contains(schemaTableName)) {
-            return new RestTableHandle(schemaTableName, TupleDomain.none(), Integer.MAX_VALUE);
+            return new RestTableHandle(schemaTableName, TupleDomain.none(), Integer.MAX_VALUE, null);
         }
         return null;
     }

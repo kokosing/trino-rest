@@ -104,7 +104,8 @@ public interface FilterApplier
                 new RestTableHandle(
                         table.getSchemaTableName(),
                         currentConstraint,
-                        table.getLimit()),
+                        table.getLimit(),
+                        table.getSortOrder().isPresent() ? table.getSortOrder().get() : null),
                 constraint));
     }
 
