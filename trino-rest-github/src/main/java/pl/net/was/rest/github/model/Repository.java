@@ -228,7 +228,8 @@ public class Repository
             }
             permissions.closeEntry();
             rowBuilder.appendStructure(mapType.getObject(permissions, 0));
-        } else {
+        }
+        else {
             rowBuilder.appendNull();
         }
     }

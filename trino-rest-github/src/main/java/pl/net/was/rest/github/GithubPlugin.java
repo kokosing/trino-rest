@@ -37,7 +37,6 @@ import pl.net.was.rest.github.function.Steps;
 import pl.net.was.rest.github.function.UserGetter;
 import pl.net.was.rest.github.function.UserRepos;
 import pl.net.was.rest.github.function.Users;
-import pl.net.was.rest.github.function.Xml;
 
 import java.util.Set;
 
@@ -75,7 +74,6 @@ public class GithubPlugin
                 .add(Runs.class)
                 .add(Steps.class)
                 .add(Artifacts.class)
-                .add(Xml.class)
                 .build();
     }
 }

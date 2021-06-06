@@ -113,7 +113,7 @@ public class GithubRest
     Logger log = Logger.getLogger(GithubRest.class.getName());
     public static final String SCHEMA_NAME = "default";
 
-    private final int PER_PAGE = 100;
+    private static final int PER_PAGE = 100;
 
     private static String token;
     private final GithubService service = getService();
