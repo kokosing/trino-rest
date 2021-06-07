@@ -25,7 +25,10 @@ public class Ims
 {
     private final List<Im> ims;
 
-    public Ims(@JsonProperty("ok") boolean ok, @JsonProperty("error") String error, @JsonProperty("ims") List<Im> ims)
+    public Ims(
+            @JsonProperty("ok") boolean ok,
+            @JsonProperty("error") String error,
+            @JsonProperty("channels") List<Im> ims)
     {
         super(ok, error);
         this.ims = ims;

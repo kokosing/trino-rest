@@ -27,12 +27,8 @@
  */
 package pl.net.was.rest.twitter;
 
-import com.google.common.collect.ImmutableMap;
-import io.trino.Session;
 import io.trino.testing.AbstractTestQueryFramework;
-import io.trino.testing.DistributedQueryRunner;
 import io.trino.testing.QueryRunner;
-import io.trino.testing.TestingSession;
 import org.testng.annotations.Test;
 
 public class TestTwitterQueries
@@ -42,26 +38,7 @@ public class TestTwitterQueries
     protected QueryRunner createQueryRunner()
             throws Exception
     {
-        Session defaultSession = TestingSession.testSessionBuilder()
-                .setCatalog("twitter")
-                .setSchema("default")
-                .build();
-
-        QueryRunner queryRunner = DistributedQueryRunner.builder(defaultSession)
-                .setNodeCount(1)
-                .build();
-        queryRunner.installPlugin(new TwitterPlugin());
-
-        queryRunner.createCatalog(
-                "twitter",
-                "twitter",
-                ImmutableMap.of(
-                        "customer_key", System.getenv("TWITTER_CUSTOMER_KEY"),
-                        "customer_secret", System.getenv("TWITTER_CUSTOMER_SECRET"),
-                        "token", System.getenv("TWITTER_TOKEN"),
-                        "secret", System.getenv("TWITTER_SECRET")));
-
-        return queryRunner;
+        return TwitterQueryRunner.createQueryRunner();
     }
 
     @Test

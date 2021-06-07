@@ -14,9 +14,6 @@
 
 package pl.net.was.rest.github;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import io.trino.spi.TrinoException;
@@ -39,10 +36,7 @@ import io.trino.spi.type.MapType;
 import io.trino.spi.type.RowType;
 import io.trino.spi.type.TimestampWithTimeZoneType;
 import io.trino.spi.type.TypeOperators;
-import okhttp3.Cache;
-import okhttp3.OkHttpClient;
 import okhttp3.ResponseBody;
-import okhttp3.logging.HttpLoggingInterceptor;
 import pl.net.was.rest.Rest;
 import pl.net.was.rest.RestColumnHandle;
 import pl.net.was.rest.RestConfig;
@@ -61,7 +55,6 @@ import pl.net.was.rest.github.filter.ReviewFilter;
 import pl.net.was.rest.github.filter.RunFilter;
 import pl.net.was.rest.github.filter.StepFilter;
 import pl.net.was.rest.github.filter.UserFilter;
-import pl.net.was.rest.github.function.BaseFunction;
 import pl.net.was.rest.github.model.Artifact;
 import pl.net.was.rest.github.model.ArtifactsList;
 import pl.net.was.rest.github.model.Envelope;
@@ -73,14 +66,10 @@ import pl.net.was.rest.github.model.Step;
 import pl.net.was.rest.github.model.User;
 import retrofit2.Call;
 import retrofit2.Response;
-import retrofit2.Retrofit;
-import retrofit2.converter.jackson.JacksonConverterFactory;
 
 import javax.inject.Inject;
 
 import java.io.IOException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -89,7 +78,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -108,6 +96,7 @@ import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
+import static pl.net.was.rest.RestModule.getService;
 import static pl.net.was.rest.github.function.Artifacts.download;
 
 public class GithubRest
@@ -119,7 +108,7 @@ public class GithubRest
     private static final int PER_PAGE = 100;
 
     private static String token;
-    private final GithubService service = getService();
+    private final GithubService service = getService(GithubService.class, "https://api.github.com/");
 
     public static final Map<GithubTable, List<ColumnMetadata>> columns = new ImmutableMap.Builder<GithubTable, List<ColumnMetadata>>()
             .put(GithubTable.ORGS, ImmutableList.of(
@@ -786,31 +775,6 @@ public class GithubRest
                                         column -> new RestColumnHandle(column.getName(), column.getType())))));
     }
 
-    public static GithubService getService()
-    {
-        OkHttpClient.Builder clientBuilder = new OkHttpClient.Builder();
-
-        // TODO make configurable? https://github.com/nineinchnick/trino-rest/issues/22
-        Path cacheDir = Paths.get(System.getProperty("java.io.tmpdir"), "trino-rest-cache");
-        clientBuilder.cache(new Cache(cacheDir.toFile(), 10 * 1024 * 1024));
-
-        if (getLogLevel().intValue() <= Level.FINE.intValue()) {
-            HttpLoggingInterceptor interceptor = new HttpLoggingInterceptor();
-            interceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
-            clientBuilder.addInterceptor(interceptor);
-        }
-
-        return new Retrofit.Builder()
-                .baseUrl("https://api.github.com/")
-                .client(clientBuilder.build())
-                .addConverterFactory(JacksonConverterFactory.create(
-                        new ObjectMapper()
-                                .registerModule(new Jdk8Module())
-                                .registerModule(new JavaTimeModule())))
-                .build()
-                .create(GithubService.class);
-    }
-
     public static String getToken()
     {
         return token;
@@ -833,21 +797,6 @@ public class GithubRest
             }
         }
         throw new TrinoException(GENERIC_INTERNAL_ERROR, message);
-    }
-
-    private static Level getLogLevel()
-    {
-        String loggerName = BaseFunction.class.getName();
-        Logger logger = Logger.getLogger(loggerName);
-        Level level = logger.getLevel();
-        while (level == null) {
-            Logger parent = logger.getParent();
-            if (parent == null) {
-                return Level.OFF;
-            }
-            level = parent.getLevel();
-        }
-        return level;
     }
 
     @Override

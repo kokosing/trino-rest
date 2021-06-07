@@ -32,8 +32,6 @@ import pl.net.was.rest.slack.model.SlackResponse;
 import pl.net.was.rest.slack.model.User;
 import pl.net.was.rest.slack.model.Users;
 import pl.net.was.rest.slack.rest.SlackService;
-import retrofit2.Retrofit;
-import retrofit2.converter.jackson.JacksonConverterFactory;
 
 import javax.inject.Inject;
 
@@ -49,6 +47,7 @@ import static java.util.Objects.requireNonNull;
 import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
+import static pl.net.was.rest.RestModule.getService;
 
 public class SlackRest
         implements Rest
@@ -56,16 +55,12 @@ public class SlackRest
     private static final String CHANNEL_SCHEMA = "channel";
     private static final String IM_SCHEMA = "im";
 
-    private final SlackService service = new Retrofit.Builder()
-            .baseUrl("https://slack.com/api/")
-            .addConverterFactory(JacksonConverterFactory.create())
-            .build()
-            .create(SlackService.class);
+    private final SlackService service = getService(SlackService.class, "https://slack.com/api/");
 
     private final Map<String, Channel> channels;
     private final Map<String, User> users;
     private final Map<String, Im> ims;
-    private final String token;
+    private final String auth;
 
     private final List<ColumnMetadata> columns = ImmutableList.of(
             new ColumnMetadata("type", createUnboundedVarcharType()),
@@ -76,9 +71,9 @@ public class SlackRest
     public SlackRest(RestConfig config)
     {
         requireNonNull(config, "config is null");
-        this.token = config.getToken();
+        this.auth = "Bearer " + config.getToken();
         try {
-            Channels channels = service.listChannels(token).execute().body();
+            Channels channels = service.listChannels(auth).execute().body();
             if (channels.getError() != null) {
                 throw new IllegalStateException("Error during communication with slack: " + channels.getError());
             }
@@ -86,14 +81,14 @@ public class SlackRest
                     .filter(Channel::isMember)
                     .collect(toMap(Channel::getName, identity()));
 
-            Users users = service.listUsers(token).execute().body();
+            Users users = service.listUsers(auth).execute().body();
             if (users.getError() != null) {
                 throw new IllegalStateException("Error during communication with slack: " + channels.getError());
             }
             this.users = users.getUsers().stream()
                     .collect(toMap(User::getName, identity()));
 
-            Ims ims = service.listIms(token).execute().body();
+            Ims ims = service.listIms(auth).execute().body();
             if (ims.getError() != null) {
                 throw new IllegalStateException("Error during communication with slack: " + channels.getError());
             }
@@ -161,12 +156,12 @@ public class SlackRest
         String schemaName = schemaTableName.getSchemaName();
         try {
             if (CHANNEL_SCHEMA.equalsIgnoreCase(schemaName)) {
-                return service.channelHistory(token, getChannelId(schemaTableName))
+                return service.channelHistory(auth, getChannelId(schemaTableName))
                         .execute()
                         .body();
             }
             if (IM_SCHEMA.equalsIgnoreCase(schemaName)) {
-                return service.imHistory(token, getChannelId(schemaTableName))
+                return service.imHistory(auth, getChannelId(schemaTableName))
                         .execute()
                         .body();
             }
@@ -196,7 +191,7 @@ public class SlackRest
     {
         return list -> {
             try {
-                SlackResponse body = service.postMessage(token, getChannelId(schemaTableName), (String) list.get(2)).execute().body();
+                SlackResponse body = service.postMessage(auth, getChannelId(schemaTableName), (String) list.get(2)).execute().body();
                 if (body.getError() != null) {
                     throw new IllegalStateException("Unable to write to '" + schemaTableName + "' dues: " + body.getError());
                 }

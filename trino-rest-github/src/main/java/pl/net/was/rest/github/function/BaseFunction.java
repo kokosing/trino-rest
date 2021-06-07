@@ -31,6 +31,7 @@ import static io.trino.spi.type.Timestamps.NANOSECONDS_PER_MICROSECOND;
 import static java.lang.Math.floorDiv;
 import static java.lang.Math.floorMod;
 import static java.time.ZoneOffset.UTC;
+import static pl.net.was.rest.RestModule.getService;
 
 public abstract class BaseFunction
 {
@@ -42,7 +43,7 @@ public abstract class BaseFunction
 
     public BaseFunction()
     {
-        service = GithubRest.getService();
+        service = getService(GithubService.class, "https://api.github.com/");
         token = GithubRest.getToken();
     }
 

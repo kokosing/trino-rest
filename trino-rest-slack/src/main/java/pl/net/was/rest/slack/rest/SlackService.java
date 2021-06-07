@@ -21,36 +21,37 @@ import pl.net.was.rest.slack.model.SlackResponse;
 import pl.net.was.rest.slack.model.Users;
 import retrofit2.Call;
 import retrofit2.http.GET;
+import retrofit2.http.Header;
 import retrofit2.http.POST;
 import retrofit2.http.Query;
 
 public interface SlackService
 {
-    @GET("channels.list")
+    @GET("conversations.list?types=public_channel")
     Call<Channels> listChannels(
-            @Query("token") String token);
+            @Header("Authorization") String auth);
 
-    @GET("channels.history")
+    @GET("conversations.history?types=public_channel")
     Call<History> channelHistory(
-            @Query("token") String token,
+            @Header("Authorization") String auth,
             @Query("channel") String channel);
 
     @POST("chat.postMessage")
     Call<SlackResponse> postMessage(
-            @Query("token") String token,
+            @Header("Authorization") String auth,
             @Query("channel") String channel,
             @Query("text") String text);
 
     @GET("users.list")
     Call<Users> listUsers(
-            @Query("token") String token);
+            @Header("Authorization") String auth);
 
-    @GET("im.list")
+    @GET("conversations.list?types=im")
     Call<Ims> listIms(
-            @Query("token") String token);
+            @Header("Authorization") String auth);
 
-    @GET("im.history")
+    @GET("conversations.history?types=im")
     Call<History> imHistory(
-            @Query("token") String token,
+            @Header("Authorization") String auth,
             @Query("channel") String channel);
 }

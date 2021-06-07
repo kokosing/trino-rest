@@ -14,15 +14,14 @@
 
 package pl.net.was.rest.twitter.rest;
 
-import okhttp3.OkHttpClient;
 import pl.net.was.rest.twitter.model.SearchResult;
 import retrofit2.Call;
-import retrofit2.Retrofit;
-import retrofit2.converter.jackson.JacksonConverterFactory;
 import retrofit2.http.GET;
 import retrofit2.http.Query;
 import se.akerfeldt.okhttp.signpost.OkHttpOAuthConsumer;
 import se.akerfeldt.okhttp.signpost.SigningInterceptor;
+
+import static pl.net.was.rest.RestModule.getService;
 
 public interface TwitterService
 {
@@ -31,16 +30,7 @@ public interface TwitterService
         OkHttpOAuthConsumer consumer = new OkHttpOAuthConsumer(consumerKey, consumerSecret);
         consumer.setTokenWithSecret(token, secret);
 
-        OkHttpClient client = new OkHttpClient.Builder()
-                .addInterceptor(new SigningInterceptor(consumer))
-                .build();
-
-        return new Retrofit.Builder()
-                .baseUrl("https://api.twitter.com/1.1/")
-                .addConverterFactory(JacksonConverterFactory.create())
-                .client(client)
-                .build()
-                .create(TwitterService.class);
+        return getService(TwitterService.class, "https://api.twitter.com/1.1/", new SigningInterceptor(consumer));
     }
 
     @GET("search/tweets.json")

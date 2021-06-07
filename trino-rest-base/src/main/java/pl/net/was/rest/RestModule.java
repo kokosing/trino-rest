@@ -14,11 +14,25 @@
 
 package pl.net.was.rest;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.google.inject.Binder;
 import com.google.inject.Module;
 import com.google.inject.Scopes;
 import io.trino.spi.NodeManager;
 import io.trino.spi.type.TypeManager;
+import okhttp3.Cache;
+import okhttp3.Interceptor;
+import okhttp3.OkHttpClient;
+import okhttp3.logging.HttpLoggingInterceptor;
+import retrofit2.Retrofit;
+import retrofit2.converter.jackson.JacksonConverterFactory;
+
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import static io.airlift.configuration.ConfigBinder.configBinder;
 import static java.util.Objects.requireNonNull;
@@ -49,5 +63,49 @@ public class RestModule
         binder.bind(RestSplitManager.class).in(Scopes.SINGLETON);
         binder.bind(RestRecordSetProvider.class).in(Scopes.SINGLETON);
         configBinder(binder).bindConfig(RestConfig.class);
+    }
+
+    public static <T> T getService(Class<T> type, String URL, Interceptor... interceptors)
+    {
+        OkHttpClient.Builder clientBuilder = new OkHttpClient.Builder();
+
+        // TODO make configurable? https://github.com/nineinchnick/trino-rest/issues/22
+        Path cacheDir = Paths.get(System.getProperty("java.io.tmpdir"), "trino-rest-cache");
+        clientBuilder.cache(new Cache(cacheDir.toFile(), 10 * 1024 * 1024));
+
+        if (getLogLevel().intValue() <= Level.FINE.intValue()) {
+            HttpLoggingInterceptor interceptor = new HttpLoggingInterceptor();
+            interceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
+            clientBuilder.addInterceptor(interceptor);
+        }
+
+        for (Interceptor interceptor : interceptors) {
+            clientBuilder.addInterceptor(interceptor);
+        }
+
+        return new Retrofit.Builder()
+                .baseUrl(URL)
+                .client(clientBuilder.build())
+                .addConverterFactory(JacksonConverterFactory.create(
+                        new ObjectMapper()
+                                .registerModule(new Jdk8Module())
+                                .registerModule(new JavaTimeModule())))
+                .build()
+                .create(type);
+    }
+
+    private static Level getLogLevel()
+    {
+        String loggerName = Rest.class.getName();
+        Logger logger = Logger.getLogger(loggerName);
+        Level level = logger.getLevel();
+        while (level == null) {
+            Logger parent = logger.getParent();
+            if (parent == null) {
+                return Level.OFF;
+            }
+            level = parent.getLevel();
+        }
+        return level;
     }
 }
