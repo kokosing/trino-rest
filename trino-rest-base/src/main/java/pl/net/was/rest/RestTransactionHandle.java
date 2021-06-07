@@ -14,24 +14,10 @@
 
 package pl.net.was.rest;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import io.trino.spi.connector.ConnectorTransactionHandle;
 
-public class RestTransactionHandle
+public enum RestTransactionHandle
         implements ConnectorTransactionHandle
 {
-    private final int id;
-
-    @JsonCreator
-    public RestTransactionHandle(@JsonProperty("id") int id)
-    {
-        this.id = id;
-    }
-
-    @JsonProperty("id")
-    public int getId()
-    {
-        return id;
-    }
+    INSTANCE
 }

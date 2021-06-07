@@ -26,6 +26,8 @@ import io.trino.spi.connector.InMemoryRecordSet;
 import io.trino.spi.connector.RecordSet;
 import io.trino.spi.type.Type;
 
+import javax.inject.Inject;
+
 import java.util.Collection;
 import java.util.List;
 
@@ -36,6 +38,7 @@ public class RestRecordSetProvider
 {
     private final Rest rest;
 
+    @Inject
     public RestRecordSetProvider(Rest rest)
     {
         this.rest = rest;

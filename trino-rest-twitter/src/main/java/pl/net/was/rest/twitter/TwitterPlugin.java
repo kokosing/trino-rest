@@ -27,10 +27,6 @@ public class TwitterPlugin
     {
         return ImmutableList.of(new RestConnectorFactory(
                 "twitter",
-                config -> new TwitterRest(
-                        config.get("customer_key"),
-                        config.get("customer_secret"),
-                        config.get("token"),
-                        config.get("secret"))));
+                TwitterRest.class));
     }
 }

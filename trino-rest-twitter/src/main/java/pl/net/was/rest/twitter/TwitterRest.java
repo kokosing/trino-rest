@@ -22,11 +22,14 @@ import io.trino.spi.connector.ConnectorTableMetadata;
 import io.trino.spi.connector.SchemaTableName;
 import io.trino.spi.connector.SchemaTablePrefix;
 import pl.net.was.rest.Rest;
+import pl.net.was.rest.RestConfig;
 import pl.net.was.rest.RestTableHandle;
 import pl.net.was.rest.twitter.model.SearchResult;
 import pl.net.was.rest.twitter.model.Status;
 import pl.net.was.rest.twitter.rest.TwitterService;
 import retrofit2.Response;
+
+import javax.inject.Inject;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -37,6 +40,7 @@ import java.util.function.Consumer;
 import static io.trino.spi.type.BigintType.BIGINT;
 import static io.trino.spi.type.VarcharType.createUnboundedVarcharType;
 import static java.util.Arrays.asList;
+import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
 
 public class TwitterRest
@@ -53,9 +57,15 @@ public class TwitterRest
             new ColumnMetadata("user_name", createUnboundedVarcharType()),
             new ColumnMetadata("user_screen_name", createUnboundedVarcharType()));
 
-    public TwitterRest(String consumerKey, String consumerSecret, String token, String secret)
+    @Inject
+    public TwitterRest(RestConfig config)
     {
-        service = TwitterService.create(consumerKey, consumerSecret, token, secret);
+        requireNonNull(config, "config is null");
+        service = TwitterService.create(
+                config.getCustomerKey(),
+                config.getCustomerSecret(),
+                config.getToken(),
+                config.getSecret());
     }
 
     @Override

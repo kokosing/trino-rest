@@ -26,6 +26,6 @@ public class SlackPlugin
     public Iterable<ConnectorFactory> getConnectorFactories()
     {
         return ImmutableList.of(new RestConnectorFactory(
-                "slack", config -> new SlackRest(config.get("token"))));
+                "slack", SlackRest.class));
     }
 }

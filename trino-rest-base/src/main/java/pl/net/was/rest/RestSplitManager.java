@@ -26,6 +26,8 @@ import io.trino.spi.connector.ConnectorTransactionHandle;
 import io.trino.spi.connector.DynamicFilter;
 import io.trino.spi.connector.FixedSplitSource;
 
+import javax.inject.Inject;
+
 import java.util.List;
 
 import static java.util.stream.Collectors.toList;
@@ -35,6 +37,7 @@ public class RestSplitManager
 {
     private final NodeManager nodeManager;
 
+    @Inject
     public RestSplitManager(NodeManager nodeManager)
     {
         this.nodeManager = nodeManager;

@@ -14,28 +14,26 @@
 
 package pl.net.was.rest;
 
-import io.trino.spi.NodeManager;
-import io.trino.spi.connector.ColumnHandle;
+import com.google.inject.Injector;
+import io.airlift.bootstrap.Bootstrap;
 import io.trino.spi.connector.Connector;
 import io.trino.spi.connector.ConnectorContext;
 import io.trino.spi.connector.ConnectorFactory;
 import io.trino.spi.connector.ConnectorHandleResolver;
-import io.trino.spi.connector.ConnectorInsertTableHandle;
-import io.trino.spi.connector.ConnectorSplit;
-import io.trino.spi.connector.ConnectorTableHandle;
-import io.trino.spi.connector.ConnectorTransactionHandle;
 
 import java.util.Map;
+
+import static java.util.Objects.requireNonNull;
 
 public class RestConnectorFactory
         implements ConnectorFactory
 {
-    private final RestFactory restFactory;
+    private final Class<? extends Rest> rest;
     private final String name;
 
-    public RestConnectorFactory(String name, RestFactory restFactory)
+    public RestConnectorFactory(String name, Class<? extends Rest> rest)
     {
-        this.restFactory = restFactory;
+        this.rest = rest;
         this.name = name;
     }
 
@@ -46,44 +44,29 @@ public class RestConnectorFactory
     }
 
     @Override
-    public Connector create(String s, Map<String, String> config, ConnectorContext context)
+    public ConnectorHandleResolver getHandleResolver()
     {
-        NodeManager nodeManager = context.getNodeManager();
-
-        return new RestConnector(nodeManager, restFactory.create(config));
+        return new RestHandleResolver();
     }
 
     @Override
-    public ConnectorHandleResolver getHandleResolver()
+    public Connector create(String s, Map<String, String> requiredConfig, ConnectorContext context)
     {
-        return new ConnectorHandleResolver()
-        {
-            public Class<? extends ConnectorTableHandle> getTableHandleClass()
-            {
-                return RestTableHandle.class;
-            }
+        requireNonNull(requiredConfig, "requiredConfig is null");
 
-            public Class<? extends ColumnHandle> getColumnHandleClass()
-            {
-                return RestColumnHandle.class;
-            }
+        // A plugin is not required to use Guice; it is just very convenient
+        Bootstrap app = new Bootstrap(
+                new RestModule(
+                        context.getNodeManager(),
+                        context.getTypeManager(),
+                        rest));
 
-            public Class<? extends ConnectorSplit> getSplitClass()
-            {
-                return RestConnectorSplit.class;
-            }
+        Injector injector = app
+                .strictConfig()
+                .doNotInitializeLogging()
+                .setRequiredConfigurationProperties(requiredConfig)
+                .initialize();
 
-            @Override
-            public Class<? extends ConnectorTransactionHandle> getTransactionHandleClass()
-            {
-                return RestTransactionHandle.class;
-            }
-
-            @Override
-            public Class<? extends ConnectorInsertTableHandle> getInsertTableHandleClass()
-            {
-                return RestInsertTableHandle.class;
-            }
-        };
+        return injector.getInstance(RestConnector.class);
     }
 }

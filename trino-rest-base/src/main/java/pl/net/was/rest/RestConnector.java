@@ -14,7 +14,7 @@
 
 package pl.net.was.rest;
 
-import io.trino.spi.NodeManager;
+import io.airlift.bootstrap.LifeCycleManager;
 import io.trino.spi.connector.Connector;
 import io.trino.spi.connector.ConnectorMetadata;
 import io.trino.spi.connector.ConnectorRecordSetProvider;
@@ -22,39 +22,62 @@ import io.trino.spi.connector.ConnectorSplitManager;
 import io.trino.spi.connector.ConnectorTransactionHandle;
 import io.trino.spi.transaction.IsolationLevel;
 
+import javax.inject.Inject;
+
+import static java.util.Objects.requireNonNull;
+import static pl.net.was.rest.RestTransactionHandle.INSTANCE;
+
 public class RestConnector
         implements Connector
 {
-    private final NodeManager nodeManager;
+    private final LifeCycleManager lifeCycleManager;
+    private final RestMetadata metadata;
+    private final RestSplitManager splitManager;
+    private final RestRecordSetProvider recordSetProvider;
     private final Rest rest;
 
-    public RestConnector(NodeManager nodeManager, Rest rest)
+    @Inject
+    public RestConnector(
+            LifeCycleManager lifeCycleManager,
+            RestMetadata metadata,
+            RestSplitManager splitManager,
+            RestRecordSetProvider recordSetProvider,
+            Rest rest)
     {
-        this.nodeManager = nodeManager;
+        this.lifeCycleManager = requireNonNull(lifeCycleManager, "lifeCycleManager is null");
+        this.metadata = requireNonNull(metadata, "metadata is null");
+        this.splitManager = requireNonNull(splitManager, "splitManager is null");
+        this.recordSetProvider = requireNonNull(recordSetProvider, "recordSetProvider is null");
         this.rest = rest;
     }
 
     @Override
     public ConnectorTransactionHandle beginTransaction(IsolationLevel isolationLevel, boolean readOnly)
     {
-        return new RestTransactionHandle(0);
+        return INSTANCE;
     }
 
     @Override
     public ConnectorMetadata getMetadata(ConnectorTransactionHandle transaction)
     {
-        return new RestMetadata(rest);
+        return metadata;
     }
 
     @Override
     public ConnectorSplitManager getSplitManager()
     {
-        return new RestSplitManager(nodeManager);
+        return splitManager;
     }
 
     @Override
     public ConnectorRecordSetProvider getRecordSetProvider()
     {
-        return new RestRecordSetProvider(rest);
+        return recordSetProvider;
+    }
+
+    @Override
+    public final void shutdown()
+    {
+        lifeCycleManager.stop();
     }
 }

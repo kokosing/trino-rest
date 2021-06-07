@@ -34,6 +34,8 @@ import io.trino.spi.connector.TopNApplicationResult;
 import io.trino.spi.predicate.TupleDomain;
 import io.trino.spi.statistics.ComputedStatistics;
 
+import javax.inject.Inject;
+
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -46,6 +48,7 @@ public class RestMetadata
 {
     private final Rest rest;
 
+    @Inject
     public RestMetadata(Rest rest)
     {
         this.rest = rest;

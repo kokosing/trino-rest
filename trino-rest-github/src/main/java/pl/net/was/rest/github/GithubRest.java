@@ -45,6 +45,7 @@ import okhttp3.ResponseBody;
 import okhttp3.logging.HttpLoggingInterceptor;
 import pl.net.was.rest.Rest;
 import pl.net.was.rest.RestColumnHandle;
+import pl.net.was.rest.RestConfig;
 import pl.net.was.rest.RestTableHandle;
 import pl.net.was.rest.github.filter.ArtifactFilter;
 import pl.net.was.rest.github.filter.FilterApplier;
@@ -74,6 +75,8 @@ import retrofit2.Call;
 import retrofit2.Response;
 import retrofit2.Retrofit;
 import retrofit2.converter.jackson.JacksonConverterFactory;
+
+import javax.inject.Inject;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -766,9 +769,11 @@ public class GithubRest
             .put(GithubTable.REPOS, new RepoFilter())
             .build();
 
-    public GithubRest(String token)
+    @Inject
+    public GithubRest(RestConfig config)
     {
-        GithubRest.token = token;
+        requireNonNull(config, "config is null");
+        GithubRest.token = config.getToken();
 
         columnHandles = columns.keySet()
                 .stream()

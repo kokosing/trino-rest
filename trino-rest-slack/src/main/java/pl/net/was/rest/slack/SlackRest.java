@@ -21,6 +21,7 @@ import io.trino.spi.connector.ConnectorTableMetadata;
 import io.trino.spi.connector.SchemaTableName;
 import io.trino.spi.connector.SchemaTablePrefix;
 import pl.net.was.rest.Rest;
+import pl.net.was.rest.RestConfig;
 import pl.net.was.rest.RestTableHandle;
 import pl.net.was.rest.slack.model.Channel;
 import pl.net.was.rest.slack.model.Channels;
@@ -34,6 +35,8 @@ import pl.net.was.rest.slack.rest.SlackService;
 import retrofit2.Retrofit;
 import retrofit2.converter.jackson.JacksonConverterFactory;
 
+import javax.inject.Inject;
+
 import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
@@ -42,6 +45,7 @@ import java.util.function.Consumer;
 
 import static io.trino.spi.type.VarcharType.createUnboundedVarcharType;
 import static java.util.Arrays.asList;
+import static java.util.Objects.requireNonNull;
 import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
@@ -68,9 +72,11 @@ public class SlackRest
             new ColumnMetadata("user", createUnboundedVarcharType()),
             new ColumnMetadata("text", createUnboundedVarcharType()));
 
-    public SlackRest(String token)
+    @Inject
+    public SlackRest(RestConfig config)
     {
-        this.token = token;
+        requireNonNull(config, "config is null");
+        this.token = config.getToken();
         try {
             Channels channels = service.listChannels(token).execute().body();
             if (channels.getError() != null) {
