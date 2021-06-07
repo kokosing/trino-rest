@@ -65,7 +65,7 @@ public class RestModule
         configBinder(binder).bindConfig(RestConfig.class);
     }
 
-    public static <T> T getService(Class<T> type, String URL, Interceptor... interceptors)
+    public static <T> T getService(Class<T> type, String url, Interceptor... interceptors)
     {
         OkHttpClient.Builder clientBuilder = new OkHttpClient.Builder();
 
@@ -84,7 +84,7 @@ public class RestModule
         }
 
         return new Retrofit.Builder()
-                .baseUrl(URL)
+                .baseUrl(url)
                 .client(clientBuilder.build())
                 .addConverterFactory(JacksonConverterFactory.create(
                         new ObjectMapper()
