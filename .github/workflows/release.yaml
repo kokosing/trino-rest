@@ -33,8 +33,13 @@ jobs:
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/github.key
           sudo chmod 600 ~/.ssh/github.key
           ssh-keyscan -H github.com > ~/.ssh/known_hosts
-      - name: Publish JAR
-        run: ./mvnw -B release:prepare release:perform -Darguments=-Dgpg.skip
+      - name: Login to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Prepare release
+        run: ./mvnw -B release:prepare
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
@@ -42,11 +47,8 @@ jobs:
           TWITTER_SECRET: ${{ secrets.TWITTER_SECRET }}
           TWITTER_CUSTOMER_KEY: ${{ secrets.TWITTER_CUSTOMER_KEY }}
           TWITTER_CUSTOMER_SECRET: ${{ secrets.TWITTER_CUSTOMER_SECRET }}
-      - name: Login to Docker Hub
-        uses: docker/login-action@v1
-        with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Build and push Docker image
         run: |
           ./docker-build.sh
+      - name: Publish JAR
+        run: ./mvnw -B release:perform -Darguments=-Dgpg.skip

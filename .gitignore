@@ -19,4 +19,5 @@ benchmark_outputs
 *.class
 .checkstyle
 .mvn/timing.properties
+/release.properties
 /config
