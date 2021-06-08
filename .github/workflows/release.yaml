@@ -52,3 +52,5 @@ jobs:
           ./docker-build.sh
       - name: Publish JAR
         run: ./mvnw -B release:perform -Darguments=-Dgpg.skip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
