@@ -3,8 +3,11 @@
 set -euo pipefail
 
 VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+TAG=nineinchnick/trino-rest:$VERSION
 
 docker build \
-    -t trino-rest:$VERSION \
-    --build-arg VERSION=$VERSION \
+    -t "$TAG" \
+    --build-arg VERSION="$VERSION" \
     .
+
+docker push "$TAG"

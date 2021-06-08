@@ -7,6 +7,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, '[ci skip]')"
     steps:
       - uses: actions/checkout@v2
       - name: Set up JDK 11
@@ -26,6 +27,12 @@ jobs:
         run: |
           git config user.email "actions@github.com"
           git config user.name "GitHub Actions"
+      - name: Create SSH key
+        run: |
+          mkdir -p ~/.ssh/
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/github.key
+          sudo chmod 600 ~/.ssh/github.key
+          ssh-keyscan -H github.com > ~/.ssh/known_hosts
       - name: Publish JAR
         run: ./mvnw -B release:prepare release:perform -Darguments=-Dgpg.skip
         env:
@@ -35,3 +42,11 @@ jobs:
           TWITTER_SECRET: ${{ secrets.TWITTER_SECRET }}
           TWITTER_CUSTOMER_KEY: ${{ secrets.TWITTER_CUSTOMER_KEY }}
           TWITTER_CUSTOMER_SECRET: ${{ secrets.TWITTER_CUSTOMER_SECRET }}
+      - name: Login to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build and push Docker image
+        run: |
+          ./docker-build.sh
