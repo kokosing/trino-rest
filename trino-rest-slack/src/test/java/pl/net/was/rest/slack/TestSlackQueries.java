@@ -57,13 +57,6 @@ public class TestSlackQueries
     }
 
     @Test
-    public void insertIntoChannel()
-    {
-        assertUpdate("INSERT INTO slack.channel.trino_rest VALUES (null, null, 'ala ma kota')", 1);
-        assertUpdate("INSERT INTO slack.channel.trino_rest(text) VALUES ('ala ma kota 2')", 1);
-    }
-
-    @Test
     public void selectFromIm()
     {
         computeActual("SELECT * FROM slack.im.jan");
