@@ -30,3 +30,8 @@ jobs:
         run: ./mvnw -B release:prepare release:perform
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SLACK_TOKEN: ${{ secrets.SLACK_TOKEN }}
+          TWITTER_TOKEN: ${{ secrets.TWITTER_TOKEN }}
+          TWITTER_SECRET: ${{ secrets.TWITTER_SECRET }}
+          TWITTER_CUSTOMER_KEY: ${{ secrets.TWITTER_CUSTOMER_KEY }}
+          TWITTER_CUSTOMER_SECRET: ${{ secrets.TWITTER_CUSTOMER_SECRET }}
