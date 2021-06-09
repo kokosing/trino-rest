@@ -23,10 +23,7 @@
     <packaging>pom</packaging>
 
     <scm>
-        <connection>scm:git:${project.scm.url}</connection>
-        <developerConnection>scm:git:${project.scm.url}</developerConnection>
-        <url>ssh://git@github.com/nineinchnick/trino-rest.git</url>
-        <tag>HEAD</tag>
+        <developerConnection>scm:git:https://github.com/nineinchnick/trino-rest.git</developerConnection>
     </scm>
 
     <parent>
