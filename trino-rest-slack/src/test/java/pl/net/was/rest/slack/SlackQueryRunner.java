@@ -31,10 +31,6 @@ public class SlackQueryRunner
     public static QueryRunner createQueryRunner()
             throws Exception
     {
-        Logging logger = Logging.initialize();
-        logger.setLevel("pl.net.was", Level.DEBUG);
-        logger.setLevel("io.trino", Level.INFO);
-
         Session defaultSession = testSessionBuilder()
                 .setCatalog("slack")
                 .setSchema("default")
@@ -56,6 +52,10 @@ public class SlackQueryRunner
     public static void main(String[] args)
             throws Exception
     {
+        Logging logger = Logging.initialize();
+        logger.setLevel("pl.net.was", Level.DEBUG);
+        logger.setLevel("io.trino", Level.INFO);
+
         QueryRunner queryRunner = createQueryRunner();
 
         Logger log = Logger.get(SlackQueryRunner.class);

@@ -32,10 +32,6 @@ public class TwitterQueryRunner
     public static QueryRunner createQueryRunner()
             throws Exception
     {
-        Logging logger = Logging.initialize();
-        logger.setLevel("pl.net.was", Level.DEBUG);
-        logger.setLevel("io.trino", Level.INFO);
-
         Session defaultSession = testSessionBuilder()
                 .setCatalog("twitter")
                 .setSchema("default")
@@ -71,6 +67,10 @@ public class TwitterQueryRunner
     public static void main(String[] args)
             throws Exception
     {
+        Logging logger = Logging.initialize();
+        logger.setLevel("pl.net.was", Level.DEBUG);
+        logger.setLevel("io.trino", Level.INFO);
+
         QueryRunner queryRunner = createQueryRunner();
 
         Logger log = Logger.get(TwitterQueryRunner.class);

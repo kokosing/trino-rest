@@ -25,7 +25,7 @@
     <scm>
         <connection>scm:git:${project.scm.url}</connection>
         <developerConnection>scm:git:${project.scm.url}</developerConnection>
-        <url>git@github.com:nineinchnick/trino-rest.git</url>
+        <url>ssh://git@github.com/nineinchnick/trino-rest.git</url>
         <tag>HEAD</tag>
     </scm>
 
