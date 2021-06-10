@@ -38,12 +38,12 @@ import static pl.net.was.rest.github.GithubRest.RUNNERS_TABLE_TYPE;
 import static pl.net.was.rest.github.GithubRest.checkServiceResponse;
 import static pl.net.was.rest.github.GithubRest.getRowType;
 
-@ScalarFunction("runners")
-@Description("Get runners")
-public class Runners
+@ScalarFunction("org_runners")
+@Description("Get organization self-hosted runners")
+public class OrgRunners
         extends BaseFunction
 {
-    public Runners()
+    public OrgRunners()
     {
         RowType rowType = getRowType("runners");
         arrayType = new ArrayType(rowType);
@@ -51,13 +51,13 @@ public class Runners
     }
 
     @SqlType(RUNNERS_TABLE_TYPE)
-    public Block getPage(@SqlType(VARCHAR) Slice owner, @SqlType(VARCHAR) Slice repo, @SqlType(INTEGER) long page)
+    public Block getPage(@SqlType(VARCHAR) Slice org, @SqlType(INTEGER) long page)
             throws IOException
     {
-        Response<RunnersList> response = service.listRunners(
+        // there should not be more than a few pages worth of runners, so try to get all of them
+        Response<RunnersList> response = service.listOrgRunners(
                 "Bearer " + token,
-                owner.toStringUtf8(),
-                repo.toStringUtf8(),
+                org.toStringUtf8(),
                 PER_PAGE,
                 (int) page).execute();
         if (response.code() == HTTP_NOT_FOUND) {
@@ -66,8 +66,7 @@ public class Runners
         checkServiceResponse(response);
         RunnersList envelope = response.body();
         List<Runner> items = requireNonNull(envelope).getItems();
-        items.forEach(i -> i.setOwner(owner.toStringUtf8()));
-        items.forEach(i -> i.setRepo(repo.toStringUtf8()));
+        items.forEach(i -> i.setOrg(org.toStringUtf8()));
         return buildBlock(items);
     }
 }

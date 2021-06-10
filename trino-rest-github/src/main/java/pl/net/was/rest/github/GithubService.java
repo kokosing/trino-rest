@@ -185,6 +185,14 @@ public interface GithubService
             @Path("org") String org);
 
     @Headers("accept: application/vnd.github.v3+json")
+    @GET("/orgs/{org}/actions/runners")
+    Call<RunnersList> listOrgRunners(
+            @Header("Authorization") String auth,
+            @Path("org") String org,
+            @Query("per_page") int perPage,
+            @Query("page") int page);
+
+    @Headers("accept: application/vnd.github.v3+json")
     @GET("/repositories")
     Call<List<Repository>> listRepos(
             @Header("Authorization") String auth,

@@ -24,6 +24,7 @@ public class RunnerFilter
     public Map<String, FilterType> getSupportedFilters()
     {
         return ImmutableMap.of(
+                "org", FilterType.EQUAL,
                 "owner", FilterType.EQUAL,
                 "repo", FilterType.EQUAL);
     }

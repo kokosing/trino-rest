@@ -189,12 +189,17 @@ public interface FilterApplier
                 }
                 long since = (long) domain.getValues().getRanges().getSpan().getLowBoundedValue();
                 return ISO_LOCAL_DATE_TIME.format(fromTrinoTimestamp(since)) + "Z";
-            case "owner":
-            case "repo":
             case "login":
             case "owner_login":
                 if (domain == null) {
                     throw new TrinoException(INVALID_ROW_FILTER, "Missing required constraint for " + column.getName());
+                }
+                return ((Slice) domain.getSingleValue()).toStringUtf8();
+            case "org":
+            case "owner":
+            case "repo":
+                if (domain == null) {
+                    return null;
                 }
                 return ((Slice) domain.getSingleValue()).toStringUtf8();
             case "pull_number":

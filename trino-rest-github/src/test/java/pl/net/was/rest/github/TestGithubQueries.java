@@ -52,6 +52,8 @@ public class TestGithubQueries
         assertQuerySucceeds("SELECT * FROM steps WHERE owner = 'nineinchnick' AND repo = 'trino-rest' AND run_id = 895383456");
         assertQuerySucceeds("SELECT * FROM artifacts WHERE owner = 'nineinchnick' AND repo = 'trino-rest' AND run_id = 895383456");
         assertQuerySucceeds("SELECT * FROM runners WHERE owner = 'nineinchnick' AND repo = 'trino-rest'");
+        // TODO this require admin rights
+        //assertQuerySucceeds("SELECT * FROM runners WHERE org = 'trinodb'");
     }
 
     @Test
@@ -70,7 +72,7 @@ public class TestGithubQueries
         assertQueryFails("SELECT * FROM jobs", "Missing required constraint for owner");
         assertQueryFails("SELECT * FROM steps", "Missing required constraint for owner");
         assertQueryFails("SELECT * FROM artifacts", "Missing required constraint for owner");
-        assertQueryFails("SELECT * FROM runners", "Missing required constraint for owner");
+        assertQueryFails("SELECT * FROM runners", "Missing required constraint for org");
     }
 
     @Test
@@ -94,6 +96,8 @@ public class TestGithubQueries
         assertQuerySucceeds("SELECT * FROM unnest(steps('nineinchnick', 'trino-rest', 1))");
         assertQuerySucceeds("SELECT * FROM unnest(artifacts('nineinchnick', 'trino-rest', 1))");
         assertQuerySucceeds("SELECT * FROM unnest(runners('nineinchnick', 'trino-rest', 1))");
+        // TODO this requires admin rights
+        //assertQuerySucceeds("SELECT * FROM unnest(org_runners('trinodb', 1))");
         // TODO figure out why this requires special permissions
         //assertQuerySucceeds("SELECT job_logs('nineinchnick', 'trino-rest', 1)");
     }

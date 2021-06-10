@@ -26,6 +26,7 @@ import pl.net.was.rest.github.function.JobLogs;
 import pl.net.was.rest.github.function.Jobs;
 import pl.net.was.rest.github.function.Org;
 import pl.net.was.rest.github.function.OrgRepos;
+import pl.net.was.rest.github.function.OrgRunners;
 import pl.net.was.rest.github.function.Orgs;
 import pl.net.was.rest.github.function.PullCommits;
 import pl.net.was.rest.github.function.Pulls;
@@ -75,6 +76,7 @@ public class GithubPlugin
                 .add(Steps.class)
                 .add(Artifacts.class)
                 .add(Runners.class)
+                .add(OrgRunners.class)
                 .build();
     }
 }
