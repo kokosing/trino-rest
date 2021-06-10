@@ -60,7 +60,7 @@ public class OrgRepos
             Response<List<Repository>> response = service.listOrgRepos(
                     "Bearer " + token,
                     org.toStringUtf8(),
-                    100,
+                    PER_PAGE,
                     page++,
                     "updated",
                     "asc").execute();
@@ -73,6 +73,9 @@ public class OrgRepos
                 break;
             }
             repos.addAll(items);
+            if (items.size() < PER_PAGE) {
+                break;
+            }
         }
         return buildBlock(repos);
     }

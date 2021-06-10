@@ -17,35 +17,33 @@ package pl.net.was.rest.github.model;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
+import java.util.List;
+
+import static java.util.Objects.requireNonNull;
+
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class Label
+public class RunnersList
+        implements Envelope<Runner>
 {
-    private final long id;
-    private final String name;
-    private final String type;
+    private final long totalCount;
+    private final List<Runner> runners;
 
-    public Label(
-            @JsonProperty("id") long id,
-            @JsonProperty("name") String name,
-            @JsonProperty("type") String type)
+    public RunnersList(
+            @JsonProperty("total_count") long totalCount,
+            @JsonProperty("runners") List<Runner> runners)
     {
-        this.id = id;
-        this.name = name;
-        this.type = type;
+        requireNonNull(runners, "runners are null");
+        this.totalCount = totalCount;
+        this.runners = runners;
     }
 
-    public long getId()
+    public long getTotalCount()
     {
-        return id;
+        return totalCount;
     }
 
-    public String getName()
+    public List<Runner> getItems()
     {
-        return name;
-    }
-
-    public String getType()
-    {
-        return type;
+        return runners;
     }
 }

@@ -31,7 +31,8 @@ public enum GithubTable
     RUNS("runs"),
     JOBS("jobs"),
     STEPS("steps"),
-    ARTIFACTS("artifacts");
+    ARTIFACTS("artifacts"),
+    RUNNERS("runners");
 
     private final String name;
 

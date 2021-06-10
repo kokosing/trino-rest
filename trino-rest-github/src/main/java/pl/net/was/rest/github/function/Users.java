@@ -52,7 +52,7 @@ public class Users
     {
         Response<List<User>> response = service.listUsers(
                 "Bearer " + token,
-                100,
+                PER_PAGE,
                 since).execute();
         if (response.code() == HTTP_NOT_FOUND) {
             return null;

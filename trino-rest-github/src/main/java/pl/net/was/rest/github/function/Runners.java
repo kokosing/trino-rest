@@ -23,60 +23,51 @@ import io.trino.spi.function.ScalarFunction;
 import io.trino.spi.function.SqlType;
 import io.trino.spi.type.ArrayType;
 import io.trino.spi.type.RowType;
-import pl.net.was.rest.github.model.Repository;
+import pl.net.was.rest.github.model.Runner;
+import pl.net.was.rest.github.model.RunnersList;
 import retrofit2.Response;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.List;
 
+import static io.trino.spi.type.StandardTypes.INTEGER;
 import static io.trino.spi.type.StandardTypes.VARCHAR;
 import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
 import static java.util.Objects.requireNonNull;
-import static pl.net.was.rest.github.GithubRest.REPOS_TABLE_TYPE;
+import static pl.net.was.rest.github.GithubRest.RUNS_TABLE_TYPE;
 import static pl.net.was.rest.github.GithubRest.checkServiceResponse;
 import static pl.net.was.rest.github.GithubRest.getRowType;
 
-@ScalarFunction("user_repos")
-@Description("Get user repositories")
-public class UserRepos
+@ScalarFunction("runners")
+@Description("Get runners")
+public class Runners
         extends BaseFunction
 {
-    public UserRepos()
+    public Runners()
     {
-        RowType rowType = getRowType("repos");
+        RowType rowType = getRowType("runners");
         arrayType = new ArrayType(rowType);
         pageBuilder = new PageBuilder(ImmutableList.of(arrayType));
     }
 
-    @SqlType(REPOS_TABLE_TYPE)
-    public Block getPage(@SqlType(VARCHAR) Slice username)
+    @SqlType(RUNS_TABLE_TYPE)
+    public Block getPage(@SqlType(VARCHAR) Slice owner, @SqlType(VARCHAR) Slice repo, @SqlType(INTEGER) long page)
             throws IOException
     {
-        // there should not be more than a few pages worth of repos, so try to get all of them
-        List<Repository> repos = new ArrayList<>();
-        int page = 1;
-        while (true) {
-            Response<List<Repository>> response = service.listUserRepos(
-                    "Bearer " + token,
-                    username.toStringUtf8(),
-                    PER_PAGE,
-                    page++,
-                    "updated",
-                    "asc").execute();
-            if (response.code() == HTTP_NOT_FOUND) {
-                break;
-            }
-            checkServiceResponse(response);
-            List<Repository> items = requireNonNull(response.body());
-            if (items.size() == 0) {
-                break;
-            }
-            repos.addAll(items);
-            if (items.size() < PER_PAGE) {
-                break;
-            }
+        Response<RunnersList> response = service.listRunners(
+                "Bearer " + token,
+                owner.toStringUtf8(),
+                repo.toStringUtf8(),
+                PER_PAGE,
+                (int) page).execute();
+        if (response.code() == HTTP_NOT_FOUND) {
+            return null;
         }
-        return buildBlock(repos);
+        checkServiceResponse(response);
+        RunnersList envelope = response.body();
+        List<Runner> items = requireNonNull(envelope).getItems();
+        items.forEach(i -> i.setOwner(owner.toStringUtf8()));
+        items.forEach(i -> i.setRepo(repo.toStringUtf8()));
+        return buildBlock(items);
     }
 }

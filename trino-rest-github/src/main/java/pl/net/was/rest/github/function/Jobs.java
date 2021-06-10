@@ -66,7 +66,7 @@ public class Jobs
                     repo.toStringUtf8(),
                     runId,
                     "all",
-                    100,
+                    PER_PAGE,
                     page++).execute();
             if (response.code() == HTTP_NOT_FOUND) {
                 break;
@@ -81,6 +81,9 @@ public class Jobs
             items.forEach(i -> i.setOwner(owner.toStringUtf8()));
             items.forEach(i -> i.setRepo(repo.toStringUtf8()));
             jobs.addAll(items);
+            if (items.size() < PER_PAGE) {
+                break;
+            }
         }
         return buildBlock(jobs);
     }

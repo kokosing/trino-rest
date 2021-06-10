@@ -32,6 +32,7 @@ import pl.net.was.rest.github.function.Pulls;
 import pl.net.was.rest.github.function.Repos;
 import pl.net.was.rest.github.function.ReviewComments;
 import pl.net.was.rest.github.function.Reviews;
+import pl.net.was.rest.github.function.Runners;
 import pl.net.was.rest.github.function.Runs;
 import pl.net.was.rest.github.function.Steps;
 import pl.net.was.rest.github.function.UserGetter;
@@ -73,6 +74,7 @@ public class GithubPlugin
                 .add(Runs.class)
                 .add(Steps.class)
                 .add(Artifacts.class)
+                .add(Runners.class)
                 .build();
     }
 }

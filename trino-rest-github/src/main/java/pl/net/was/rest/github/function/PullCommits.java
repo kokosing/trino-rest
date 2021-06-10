@@ -66,7 +66,7 @@ public class PullCommits
                     owner.toStringUtf8(),
                     repo.toStringUtf8(),
                     pullNumber,
-                    100,
+                    PER_PAGE,
                     page++).execute();
             if (response.code() == HTTP_NOT_FOUND) {
                 break;
@@ -80,6 +80,9 @@ public class PullCommits
             items.forEach(i -> i.setRepo(repo.toStringUtf8()));
             items.forEach(i -> i.setPullNumber(pullNumber));
             commits.addAll(items);
+            if (items.size() < PER_PAGE) {
+                break;
+            }
         }
         return buildBlock(commits);
     }

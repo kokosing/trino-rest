@@ -62,7 +62,7 @@ public class Issues
                 "Bearer " + token,
                 owner.toStringUtf8(),
                 repo.toStringUtf8(),
-                100,
+                PER_PAGE,
                 (int) page,
                 "updated",
                 "asc",

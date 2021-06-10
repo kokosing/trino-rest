@@ -40,6 +40,7 @@ public abstract class BaseFunction
 
     protected final GithubService service;
     protected final String token;
+    protected final int PER_PAGE = 100;
 
     public BaseFunction()
     {

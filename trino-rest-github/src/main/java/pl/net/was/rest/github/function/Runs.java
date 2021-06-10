@@ -58,7 +58,7 @@ public class Runs
                 "Bearer " + token,
                 owner.toStringUtf8(),
                 repo.toStringUtf8(),
-                100,
+                PER_PAGE,
                 (int) page).execute();
         if (response.code() == HTTP_NOT_FOUND) {
             return null;

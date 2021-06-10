@@ -81,7 +81,7 @@ public class Artifacts
                     owner.toStringUtf8(),
                     repo.toStringUtf8(),
                     runId,
-                    100,
+                    PER_PAGE,
                     page++).execute();
             if (response.code() == HTTP_NOT_FOUND) {
                 break;
@@ -99,6 +99,9 @@ public class Artifacts
                 artifact.setRunId(runId);
 
                 result.addAll(download(service, token, artifact));
+            }
+            if (items.size() < PER_PAGE) {
+                break;
             }
         }
         return buildBlock(result);

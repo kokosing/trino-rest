@@ -377,6 +377,16 @@ public class GithubRest
                     new ColumnMetadata("file_size_in_bytes", BIGINT),
                     new ColumnMetadata("part_number", INTEGER),
                     new ColumnMetadata("contents", VARBINARY)))
+            .put(GithubTable.RUNNERS, ImmutableList.of(
+                    new ColumnMetadata("owner", VARCHAR),
+                    new ColumnMetadata("repo", VARCHAR),
+                    new ColumnMetadata("id", BIGINT),
+                    new ColumnMetadata("name", VARCHAR),
+                    new ColumnMetadata("os", VARCHAR),
+                    new ColumnMetadata("status", VARCHAR),
+                    new ColumnMetadata("busy", BOOLEAN),
+                    new ColumnMetadata("label_ids", new ArrayType(BIGINT)),
+                    new ColumnMetadata("label_names", new ArrayType(VARCHAR))))
             .build();
 
     private final Map<GithubTable, Function<RestTableHandle, Collection<? extends List<?>>>> rowGetters = new ImmutableMap.Builder<GithubTable, Function<RestTableHandle, Collection<? extends List<?>>>>()
@@ -393,6 +403,7 @@ public class GithubRest
             .put(GithubTable.JOBS, this::getJobs)
             .put(GithubTable.STEPS, this::getSteps)
             .put(GithubTable.ARTIFACTS, this::getArtifacts)
+            .put(GithubTable.RUNNERS, this::getRunners)
             .build();
 
     // The first sortItem is the default
@@ -740,6 +751,18 @@ public class GithubRest
             "contents varbinary" +
             "))";
 
+    public static final String RUNNERS_TABLE_TYPE = "array(row(" +
+            "owner varchar, " +
+            "repo varchar, " +
+            "id bigint, " +
+            "name varchar, " +
+            "os varchar, " +
+            "status varchar, " +
+            "busy boolean, " +
+            "label_ids array(bigint), " +
+            "label_names array(varchar)" +
+            "))";
+
     private final Map<GithubTable, Map<String, ColumnHandle>> columnHandles;
 
     private final Map<GithubTable, ? extends FilterApplier> filterAppliers = new ImmutableMap.Builder<GithubTable, FilterApplier>()
@@ -753,6 +776,7 @@ public class GithubRest
             .put(GithubTable.JOBS, new JobFilter())
             .put(GithubTable.STEPS, new StepFilter())
             .put(GithubTable.ARTIFACTS, new ArtifactFilter())
+            .put(GithubTable.RUNNERS, new RunFilter())
             .put(GithubTable.ORGS, new OrgFilter())
             .put(GithubTable.USERS, new UserFilter())
             .put(GithubTable.REPOS, new RepoFilter())
@@ -1200,6 +1224,25 @@ public class GithubRest
                         throw new RuntimeException(e);
                     }
                     return result.build();
+                },
+                table.getLimit());
+    }
+
+    private Collection<? extends List<?>> getRunners(RestTableHandle table)
+    {
+        GithubTable tableName = GithubTable.valueOf(table);
+        TupleDomain<ColumnHandle> constraint = table.getConstraint();
+        Map<String, ColumnHandle> columns = columnHandles.get(tableName);
+        FilterApplier filter = filterAppliers.get(tableName);
+
+        String owner = (String) filter.getFilter((RestColumnHandle) columns.get("owner"), constraint);
+        String repo = (String) filter.getFilter((RestColumnHandle) columns.get("repo"), constraint);
+        return getRowsFromPagesEnvelope(
+                page -> service.listRunners("Bearer " + token, owner, repo, PER_PAGE, page),
+                item -> {
+                    item.setOwner(owner);
+                    item.setRepo(repo);
+                    return Stream.of(item.toRow());
                 },
                 table.getLimit());
     }

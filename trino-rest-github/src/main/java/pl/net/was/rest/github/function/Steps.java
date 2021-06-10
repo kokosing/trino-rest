@@ -68,7 +68,7 @@ public class Steps
                     repo.toStringUtf8(),
                     runId,
                     "all",
-                    100,
+                    PER_PAGE,
                     page++).execute();
             if (response.code() == HTTP_NOT_FOUND) {
                 break;
@@ -81,6 +81,9 @@ public class Steps
                 break;
             }
             jobs.addAll(items);
+            if (items.size() < PER_PAGE) {
+                break;
+            }
         }
         List<Step> steps = jobs
                 .stream()

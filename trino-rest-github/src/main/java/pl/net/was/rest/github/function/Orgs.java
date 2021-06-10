@@ -52,7 +52,7 @@ public class Orgs
     {
         Response<List<Organization>> response = service.listOrgs(
                 "Bearer " + token,
-                100,
+                PER_PAGE,
                 since).execute();
         if (response.code() == HTTP_NOT_FOUND) {
             return null;
