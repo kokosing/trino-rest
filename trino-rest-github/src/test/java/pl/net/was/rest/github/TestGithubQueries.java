@@ -51,7 +51,8 @@ public class TestGithubQueries
         assertQuerySucceeds("SELECT * FROM jobs WHERE owner = 'nineinchnick' AND repo = 'trino-rest' AND run_id = 895383456");
         assertQuerySucceeds("SELECT * FROM steps WHERE owner = 'nineinchnick' AND repo = 'trino-rest' AND run_id = 895383456");
         assertQuerySucceeds("SELECT * FROM artifacts WHERE owner = 'nineinchnick' AND repo = 'trino-rest' AND run_id = 895383456");
-        assertQuerySucceeds("SELECT * FROM runners WHERE owner = 'nineinchnick' AND repo = 'trino-rest'");
+        // TODO this doesn't work with the default token available in GHA
+        //assertQuerySucceeds("SELECT * FROM runners WHERE owner = 'nineinchnick' AND repo = 'trino-rest'");
         // TODO this require admin rights
         //assertQuerySucceeds("SELECT * FROM runners WHERE org = 'trinodb'");
     }
@@ -95,7 +96,8 @@ public class TestGithubQueries
         assertQuerySucceeds("SELECT * FROM unnest(jobs('nineinchnick', 'trino-rest', 1))");
         assertQuerySucceeds("SELECT * FROM unnest(steps('nineinchnick', 'trino-rest', 1))");
         assertQuerySucceeds("SELECT * FROM unnest(artifacts('nineinchnick', 'trino-rest', 1))");
-        assertQuerySucceeds("SELECT * FROM unnest(runners('nineinchnick', 'trino-rest', 1))");
+        // TODO this doesn't work with the default token available in GHA
+        //assertQuerySucceeds("SELECT * FROM unnest(runners('nineinchnick', 'trino-rest', 1))");
         // TODO this requires admin rights
         //assertQuerySucceeds("SELECT * FROM unnest(org_runners('trinodb', 1))");
         // TODO figure out why this requires special permissions
