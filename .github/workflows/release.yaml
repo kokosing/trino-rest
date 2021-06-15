@@ -5,7 +5,7 @@ on:
     branches: [master]
 
 jobs:
-  build:
+  release:
     runs-on: ubuntu-latest
     if: "!contains(github.event.head_commit.message, '[ci skip]')"
     steps:
@@ -52,3 +52,13 @@ jobs:
         run: ./mvnw -B release:perform -Darguments=-Dgpg.skip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Save version number in env
+        run: |
+          echo "VERSION=$(grep 'project.rel.pl.net.was\\:trino-rest=' release.properties | cut -d'=' -f2)" >> $GITHUB_ENV
+      - uses: marvinpinto/action-automatic-releases@v1.2.1
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          prerelease: false
+          title: v${{ env.VERSION }}
+          files: |
+            trino-rest-*/target/*.zip
