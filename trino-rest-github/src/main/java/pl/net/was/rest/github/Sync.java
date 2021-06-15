@@ -525,7 +525,7 @@ public class Sync
                     "INSERT INTO " + destSchema + ".steps " +
                             "SELECT src.* " +
                             "FROM unnest(steps(?, ?, ?)) src " +
-                            "LEFT JOIN " + destSchema + ".steps dst ON (dst.job_id, dst.number) = (src.job_id, src.number) " +
+                            "LEFT JOIN " + destSchema + ".steps dst ON dst.run_id = ? AND (dst.job_id, dst.number) = (src.job_id, src.number) " +
                             "WHERE dst.number IS NULL";
             // the LEFT JOIN used to avoid duplicate errors always fetches all steps
             // and gets costly if there are many (>1 million) of those
@@ -549,6 +549,7 @@ public class Sync
             while (resultSet.next()) {
                 long runId = resultSet.getLong(1);
                 insertStatement.setLong(3, runId);
+                insertStatement.setLong(4, runId);
 
                 log.info(format("Fetching steps for jobs of run %d", runId));
                 long startTime = System.currentTimeMillis();
@@ -586,7 +587,7 @@ public class Sync
                             "SELECT src.* " +
                             "FROM (" + runsQuery + ") r " +
                             "CROSS JOIN unnest(steps(?, ?, r.id)) src " +
-                            "LEFT JOIN " + destSchema + ".steps dst ON (dst.job_id, dst.number) = (src.job_id, src.number) " +
+                            "LEFT JOIN " + destSchema + ".steps dst ON dst.run_id = r.id AND (dst.job_id, dst.number) = (src.job_id, src.number) " +
                             "WHERE dst.number IS NULL");
             insertStatement.setString(2, options.owner);
             insertStatement.setString(3, options.repo);
@@ -644,11 +645,11 @@ public class Sync
             String query = "INSERT INTO " + destSchema + ".artifacts " +
                     "SELECT src.* " +
                     "FROM artifacts src " +
-                    "LEFT JOIN " + destSchema + ".artifacts dst ON (dst.id, dst.path, dst.part_number) = (src.id, src.path, src.part_number) " +
+                    "LEFT JOIN " + destSchema + ".artifacts dst ON dst.run_id = ? AND (dst.id, dst.path, dst.part_number) = (src.id, src.path, src.part_number) " +
                     "WHERE src.owner = ? AND src.repo = ? AND src.run_id = ? AND dst.id IS NULL";
             PreparedStatement insertStatement = conn.prepareStatement(query);
-            insertStatement.setString(1, options.owner);
-            insertStatement.setString(2, options.repo);
+            insertStatement.setString(2, options.owner);
+            insertStatement.setString(3, options.repo);
 
             long previousId = Long.MAX_VALUE;
             while (true) {
@@ -663,7 +664,8 @@ public class Sync
                     break;
                 }
 
-                insertStatement.setLong(3, previousId);
+                insertStatement.setLong(1, previousId);
+                insertStatement.setLong(4, previousId);
                 log.info("Fetching artifacts");
                 long startTime = System.currentTimeMillis();
                 int rows = retryExecute(insertStatement);

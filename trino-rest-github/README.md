@@ -15,8 +15,40 @@ Not all API endpoints are mapped yet, here's a list of the available tables:
 * `repos` - [Repositories](https://docs.github.com/en/rest/reference/repos)
 * `issues` and `issue_comments` - [Issues](https://docs.github.com/en/rest/reference/issues)
 * `pulls`, `pull_commits`, `reviews`, `review_comments` - [Pull requests](https://docs.github.com/en/rest/reference/pulls)
-* `runs`, `jobs`, `steps`, `artifacts` - [Actions](https://docs.github.com/en/rest/reference/actions)
-  
+* `runs`, `jobs`, `steps`, `artifacts`, `runners` - [Actions](https://docs.github.com/en/rest/reference/actions)
+
+# Build
+
+Run all the unit test classes.
+```
+mvn test
+```
+
+Creates a deployable jar file
+```
+mvn clean package
+```
+
+# Deploy
+
+An example command to run the Trino server with the git plugin and catalog enabled:
+
+```bash
+src=$(git rev-parse --show-toplevel)
+docker run \
+  -v $src/trino-rest-github/target/trino-rest-github-0.4-SNAPSHOT:/usr/lib/trino/plugin/github \
+  -v $src/catalog:/etc/trino/catalog \
+  -p 8080:8080 \
+  --name trino \
+  -d \
+  trinodb/trino:357
+```
+
+Connect to that server using:
+```bash
+docker run -it --rm --link trino trinodb/trino:357 trino --server trino:8080 --catalog github --schema default
+```
+
 # Authentication and rate limits
 
 Github API doesn't require authentication, but unauthenticated requests have very low rate-limits.
@@ -34,6 +66,16 @@ Caching can prevent from fetching latest data. This could be mitigated by adding
 but mos endpoints only support a `since` filter, which is the opposite. Another solution is to disable caching,
 and copy the data into another, persistent catalog. There is a [Sync](src/main/java/pl/net/was/rest/github/Sync.java) program,
 that does this in an incremental fashion, that is it can be run in regular intervals, for example from a cron job.
+
+To run the `Sync` utility in `trino-rest-github`:
+```bash
+java -cp "trino-rest-github/target/trino-rest-github-0.4-SNAPSHOT/*" pl.net.was.rest.github.Sync
+```
+
+Check how much data the `Sync` collected by running a query like:
+```sql
+SELECT COUNT(DISTINCT id), COUNT(*), MIN(created_at), MAX(created_at) FROM runs;
+```
 
 # Adding new tables
 
