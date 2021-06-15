@@ -48,10 +48,6 @@ jobs:
       - name: Build and push Docker image
         run: |
           ./docker-build.sh
-      - name: Publish JAR
-        run: ./mvnw -B release:perform -Darguments=-Dgpg.skip
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Save version number in env
         run: |
           echo "VERSION=$(grep 'project.rel.pl.net.was\\:trino-rest=' release.properties | cut -d'=' -f2)" >> $GITHUB_ENV
@@ -63,3 +59,7 @@ jobs:
           title: v${{ env.VERSION }}
           files: |
             trino-rest-*/target/*.zip
+      - name: Publish JAR
+        run: ./mvnw -B release:perform -Darguments=-Dgpg.skip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
