@@ -1423,6 +1423,7 @@ public class GithubRest
                         restTable.getConstraint(),
                         (int) Math.min(limit, Integer.MAX_VALUE),
                         restTable.getSortOrder().isPresent() ? restTable.getSortOrder().get() : null),
+                true,
                 true));
     }
 
@@ -1465,7 +1466,7 @@ public class GithubRest
                 limit,
                 sortItems);
 
-        return Optional.of(new TopNApplicationResult<>(sortedTableHandle, true));
+        return Optional.of(new TopNApplicationResult<>(sortedTableHandle, true, true));
     }
 
     @Override

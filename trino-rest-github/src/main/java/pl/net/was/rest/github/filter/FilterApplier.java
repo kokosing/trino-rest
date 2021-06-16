@@ -106,7 +106,8 @@ public interface FilterApplier
                         currentConstraint,
                         table.getLimit(),
                         table.getSortOrder().isPresent() ? table.getSortOrder().get() : null),
-                constraint));
+                constraint,
+                true));
     }
 
     private TupleDomain<ColumnHandle> normalizeConstraint(RestColumnHandle column, FilterType supportedFilter, TupleDomain<ColumnHandle> constraint)

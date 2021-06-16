@@ -632,15 +632,19 @@ public class Sync
             // CREATE INDEX ON artifacts(owner, repo);
             // CREATE INDEX ON artifacts(run_id);
 
+            // get largest run id of those with an artifact and move up
             // TODO because dynamic filtering is not supported yet, CROSS JOIN LATERAL between runs and artifacts would not push down filter on run_id
             String runsQuery = "SELECT r.id " +
                     "FROM " + destSchema + ".runs r " +
                     "LEFT JOIN " + destSchema + ".artifacts a ON a.run_id = r.id " +
-                    "WHERE r.status = 'completed' AND r.created_at > NOW() - INTERVAL '2' MONTH AND r.id < ? " +
+                    "WHERE r.status = 'completed' AND r.created_at > NOW() - INTERVAL '2' MONTH " +
                     "GROUP BY r.id " +
-                    "HAVING COUNT(a.id) = 0 " +
+                    "HAVING COUNT(a.id) != 0 " +
                     "ORDER BY r.id DESC LIMIT 1";
-            PreparedStatement idStatement = conn.prepareStatement("SELECT min(r.id) FROM (" + runsQuery + ") r");
+            PreparedStatement idStatement = conn.prepareStatement("SELECT r.id " +
+                    "FROM " + destSchema + ".runs r " +
+                    "WHERE r.id > (" + runsQuery + ") " +
+                    "ORDER BY r.id ASC");
 
             String query = "INSERT INTO " + destSchema + ".artifacts " +
                     "SELECT src.* " +
@@ -651,22 +655,17 @@ public class Sync
             insertStatement.setString(2, options.owner);
             insertStatement.setString(3, options.repo);
 
-            long previousId = Long.MAX_VALUE;
-            while (true) {
-                idStatement.setLong(1, previousId);
-                log.info("Checking for next runs with jobs without artifacts");
-                ResultSet resultSet = idStatement.executeQuery();
-                if (!resultSet.next()) {
-                    break;
-                }
-                previousId = resultSet.getLong(1);
-                if (resultSet.wasNull()) {
-                    break;
-                }
+            log.info("Fetching run ids to get artifacts for");
+            if (!idStatement.execute()) {
+                return;
+            }
+            ResultSet resultSet = idStatement.getResultSet();
+            while (resultSet.next()) {
+                long runId = resultSet.getLong(1);
+                insertStatement.setLong(1, runId);
+                insertStatement.setLong(4, runId);
 
-                insertStatement.setLong(1, previousId);
-                insertStatement.setLong(4, previousId);
-                log.info("Fetching artifacts");
+                log.info(format("Fetching artifacts for jobs of run %d", runId));
                 long startTime = System.currentTimeMillis();
                 int rows = retryExecute(insertStatement);
                 log.info(format("Inserted %d rows, took %s", rows, Duration.ofMillis(System.currentTimeMillis() - startTime)));
