@@ -74,7 +74,7 @@ public class Sync
                 "TRINO_USERNAME", username,
                 "TRINO_PASSWORD", password,
                 // notice that steps, logs and artifacts are not enabled by default
-                "SYNC_TABLES", "issues,issue_comments,pulls,reviews,review_comments,runs,jobs",
+                "SYNC_TABLES", "issues,issue_comments,pulls,reviews,review_comments,runs,jobs,check_runs,check_run_annotations",
                 "LOG_LEVEL", "INFO",
                 "EMPTY_INSERT_LIMIT", "1",
                 "CHECK_STEPS_DUPLICATES", "false",
@@ -135,6 +135,8 @@ public class Sync
         availableTables.put("steps", Sync::syncSteps);
         availableTables.put("artifacts", Sync::syncArtifacts);
         availableTables.put("logs", Sync::syncLogs);
+        availableTables.put("check_runs", Sync::syncCheckRuns);
+        availableTables.put("check_run_annotations", Sync::syncCheckRunAnnotations);
 
         try (Connection conn = DriverManager.getConnection(url, username, password)) {
             options.conn = conn;
@@ -643,7 +645,7 @@ public class Sync
                     "ORDER BY r.id DESC LIMIT 1";
             PreparedStatement idStatement = conn.prepareStatement("SELECT r.id " +
                     "FROM " + destSchema + ".runs r " +
-                    "WHERE r.id > (" + runsQuery + ") " +
+                    "WHERE r.id > COALESCE((" + runsQuery + "), 0) AND r.status = 'completed' AND r.created_at > NOW() - INTERVAL '2' MONTH " +
                     "ORDER BY r.id ASC");
 
             String query = "INSERT INTO " + destSchema + ".artifacts " +
@@ -716,6 +718,122 @@ public class Sync
                 if (rows == 0) {
                     break;
                 }
+            }
+        }
+        catch (Exception e) {
+            log.severe(e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private static void syncCheckRuns(Options options)
+    {
+        Connection conn = options.conn;
+        String destSchema = options.destSchema;
+        String srcSchema = options.srcSchema;
+        try {
+            conn.createStatement().executeUpdate(
+                    "CREATE TABLE IF NOT EXISTS " + destSchema + ".check_runs AS SELECT * FROM " + srcSchema + ".check_runs WITH NO DATA");
+            // consider adding some indexes:
+            // ALTER TABLE check_runs ADD PRIMARY KEY (id);
+            // CREATE INDEX ON check_runs(owner, repo);
+            // CREATE INDEX ON check_runs(ref);
+
+            // get largest run id of those with a check and move up
+            // TODO because dynamic filtering is not supported yet, CROSS JOIN LATERAL between runs and checks would not push down filter on ref
+            String runsQuery = "SELECT r.id " +
+                    "FROM " + destSchema + ".runs r " +
+                    "LEFT JOIN " + destSchema + ".check_runs c ON c.ref = r.head_sha " +
+                    "WHERE r.status = 'completed' AND r.created_at > NOW() - INTERVAL '2' MONTH " +
+                    "GROUP BY r.id " +
+                    "HAVING COUNT(c.id) != 0 " +
+                    "ORDER BY r.id DESC LIMIT 1";
+            PreparedStatement idStatement = conn.prepareStatement("SELECT r.head_sha " +
+                    "FROM " + destSchema + ".runs r " +
+                    "WHERE r.id > COALESCE((" + runsQuery + "), 0) AND r.status = 'completed' AND r.created_at > NOW() - INTERVAL '2' MONTH " +
+                    "ORDER BY r.id ASC");
+
+            String query = "INSERT INTO " + destSchema + ".check_runs " +
+                    "SELECT src.* " +
+                    "FROM check_runs src " +
+                    "LEFT JOIN " + destSchema + ".check_runs dst ON dst.ref = ? AND dst.id = src.id " +
+                    "WHERE src.owner = ? AND src.repo = ? AND src.ref = ? AND dst.id IS NULL";
+            PreparedStatement insertStatement = conn.prepareStatement(query);
+            insertStatement.setString(2, options.owner);
+            insertStatement.setString(3, options.repo);
+
+            log.info("Fetching run refs to get checks for");
+            if (!idStatement.execute()) {
+                return;
+            }
+            ResultSet resultSet = idStatement.getResultSet();
+            while (resultSet.next()) {
+                String runRef = resultSet.getString(1);
+                insertStatement.setString(1, runRef);
+                insertStatement.setString(4, runRef);
+
+                log.info(format("Fetching checks for ref %s", runRef));
+                long startTime = System.currentTimeMillis();
+                int rows = retryExecute(insertStatement);
+                log.info(format("Inserted %d rows, took %s", rows, Duration.ofMillis(System.currentTimeMillis() - startTime)));
+            }
+        }
+        catch (Exception e) {
+            log.severe(e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private static void syncCheckRunAnnotations(Options options)
+    {
+        Connection conn = options.conn;
+        String destSchema = options.destSchema;
+        String srcSchema = options.srcSchema;
+        try {
+            conn.createStatement().executeUpdate(
+                    "CREATE TABLE IF NOT EXISTS " + destSchema + ".check_run_annotations AS SELECT * FROM " + srcSchema + ".check_run_annotations WITH NO DATA");
+            // consider adding some indexes:
+            // ALTER TABLE check_run_annotations ADD PRIMARY KEY (check_run_id, path, start_line, end_line, start_column, end_column, title);
+            // CREATE INDEX ON check_run_annotations(owner, repo);
+            // CREATE INDEX ON check_run_annotations(check_run_id);
+
+            // get largest check run id of those with an annotation and move up
+            // TODO because dynamic filtering is not supported yet, CROSS JOIN LATERAL between checks and annotations would not push down filter on check_run_id
+            String runsQuery = "SELECT c.id " +
+                    "FROM " + destSchema + ".check_runs c " +
+                    "LEFT JOIN " + destSchema + ".check_run_annotations a ON a.check_run_id = c.id " +
+                    "WHERE c.status = 'completed' AND c.started_at > NOW() - INTERVAL '2' MONTH " +
+                    "GROUP BY c.id " +
+                    "HAVING COUNT(a.id) != 0 " +
+                    "ORDER BY c.id DESC LIMIT 1";
+            PreparedStatement idStatement = conn.prepareStatement("SELECT c.id " +
+                    "FROM " + destSchema + ".check_runs c " +
+                    "WHERE c.id > COALESCE((" + runsQuery + "), 0) AND c.status = 'completed' AND c.started_at > NOW() - INTERVAL '2' MONTH " +
+                    "ORDER BY c.id ASC");
+
+            String query = "INSERT INTO " + destSchema + ".check_run_annotations " +
+                    "SELECT src.* " +
+                    "FROM check_run_annotations src " +
+                    "LEFT JOIN " + destSchema + ".check_run_annotations dst ON dst.check_run_id = ? AND (dst.path, dst.start_line, dst.end_line, dst.start_column, dst.end_column, dst.title) = (src.path, src.start_line, src.end_line, src.start_column, src.end_column, src.title) " +
+                    "WHERE src.owner = ? AND src.repo = ? AND src.check_run_id = ? AND dst.path IS NULL";
+            PreparedStatement insertStatement = conn.prepareStatement(query);
+            insertStatement.setString(2, options.owner);
+            insertStatement.setString(3, options.repo);
+
+            log.info("Fetching check ids to get annotations for");
+            if (!idStatement.execute()) {
+                return;
+            }
+            ResultSet resultSet = idStatement.getResultSet();
+            while (resultSet.next()) {
+                long checkId = resultSet.getLong(1);
+                insertStatement.setLong(1, checkId);
+                insertStatement.setLong(4, checkId);
+
+                log.info(format("Fetching annotations for check id %s", checkId));
+                long startTime = System.currentTimeMillis();
+                int rows = retryExecute(insertStatement);
+                log.info(format("Inserted %d rows, took %s", rows, Duration.ofMillis(System.currentTimeMillis() - startTime)));
             }
         }
         catch (Exception e) {

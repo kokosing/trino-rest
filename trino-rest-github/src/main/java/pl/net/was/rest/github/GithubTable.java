@@ -32,7 +32,9 @@ public enum GithubTable
     JOBS("jobs"),
     STEPS("steps"),
     ARTIFACTS("artifacts"),
-    RUNNERS("runners");
+    RUNNERS("runners"),
+    CHECK_RUNS("check_runs"),
+    CHECK_RUN_ANNOTATIONS("check_run_annotations");
 
     private final String name;
 

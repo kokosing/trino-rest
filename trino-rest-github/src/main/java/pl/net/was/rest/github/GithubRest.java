@@ -42,6 +42,8 @@ import pl.net.was.rest.RestColumnHandle;
 import pl.net.was.rest.RestConfig;
 import pl.net.was.rest.RestTableHandle;
 import pl.net.was.rest.github.filter.ArtifactFilter;
+import pl.net.was.rest.github.filter.CheckRunAnnotationFilter;
+import pl.net.was.rest.github.filter.CheckRunFilter;
 import pl.net.was.rest.github.filter.FilterApplier;
 import pl.net.was.rest.github.filter.IssueCommentFilter;
 import pl.net.was.rest.github.filter.IssueFilter;
@@ -390,6 +392,44 @@ public class GithubRest
                     new ColumnMetadata("busy", BOOLEAN),
                     new ColumnMetadata("label_ids", new ArrayType(BIGINT)),
                     new ColumnMetadata("label_names", new ArrayType(VARCHAR))))
+            .put(GithubTable.CHECK_RUNS, ImmutableList.of(
+                    new ColumnMetadata("owner", VARCHAR),
+                    new ColumnMetadata("repo", VARCHAR),
+                    new ColumnMetadata("ref", VARCHAR),
+                    new ColumnMetadata("id", BIGINT),
+                    new ColumnMetadata("head_sha", VARCHAR),
+                    new ColumnMetadata("external_id", VARCHAR),
+                    new ColumnMetadata("url", VARCHAR),
+                    new ColumnMetadata("html_url", VARCHAR),
+                    new ColumnMetadata("details_url", VARCHAR),
+                    new ColumnMetadata("status", VARCHAR),
+                    new ColumnMetadata("conclusion", VARCHAR),
+                    new ColumnMetadata("started_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
+                    new ColumnMetadata("completed_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
+                    new ColumnMetadata("output_title", VARCHAR),
+                    new ColumnMetadata("output_summary", VARCHAR),
+                    new ColumnMetadata("output_text", VARCHAR),
+                    new ColumnMetadata("annotations_count", BIGINT),
+                    new ColumnMetadata("annotations_url", VARCHAR),
+                    new ColumnMetadata("name", VARCHAR),
+                    new ColumnMetadata("check_suite_id", BIGINT),
+                    new ColumnMetadata("app_id", BIGINT),
+                    new ColumnMetadata("app_slug", VARCHAR),
+                    new ColumnMetadata("app_name", VARCHAR)))
+            .put(GithubTable.CHECK_RUN_ANNOTATIONS, ImmutableList.of(
+                    new ColumnMetadata("owner", VARCHAR),
+                    new ColumnMetadata("repo", VARCHAR),
+                    new ColumnMetadata("check_run_id", BIGINT),
+                    new ColumnMetadata("path", VARCHAR),
+                    new ColumnMetadata("start_line", INTEGER),
+                    new ColumnMetadata("end_line", INTEGER),
+                    new ColumnMetadata("start_column", INTEGER),
+                    new ColumnMetadata("end_column", INTEGER),
+                    new ColumnMetadata("annotation_level", VARCHAR),
+                    new ColumnMetadata("title", VARCHAR),
+                    new ColumnMetadata("message", VARCHAR),
+                    new ColumnMetadata("raw_details", VARCHAR),
+                    new ColumnMetadata("blob_href", VARCHAR)))
             .build();
 
     private final Map<GithubTable, Function<RestTableHandle, Collection<? extends List<?>>>> rowGetters = new ImmutableMap.Builder<GithubTable, Function<RestTableHandle, Collection<? extends List<?>>>>()
@@ -407,6 +447,8 @@ public class GithubRest
             .put(GithubTable.STEPS, this::getSteps)
             .put(GithubTable.ARTIFACTS, this::getArtifacts)
             .put(GithubTable.RUNNERS, this::getRunners)
+            .put(GithubTable.CHECK_RUNS, this::getCheckRuns)
+            .put(GithubTable.CHECK_RUN_ANNOTATIONS, this::getCheckRunAnnotations)
             .build();
 
     // The first sortItem is the default
@@ -767,6 +809,49 @@ public class GithubRest
             "label_names array(varchar)" +
             "))";
 
+    /* there are no functions that would use these
+    public static final String CHECK_RUNS_TABLE_TYPE = "array(row(" +
+            "owner varchar, " +
+            "repo varchar, " +
+            "ref varchar, " +
+            "id bigint, " +
+            "head_sha varchar, " +
+            "external_id varchar, " +
+            "url varchar, " +
+            "html_url varchar, " +
+            "details_url varchar, " +
+            "status varchar, " +
+            "conclusion varchar, " +
+            "started_at timestamp(3) with time zone, " +
+            "completed_at timestamp(3) with time zone, " +
+            "output_title varchar, " +
+            "output_summary varchar, " +
+            "output_text varchar, " +
+            "annotations_count bigint, " +
+            "annotations_url varchar, " +
+            "check_suite_id bigint, " +
+            "app_id bigint, " +
+            "app_slug varchar, " +
+            "app_name varchar" +
+        "))";
+
+    public static final String CHECK_RUN_ANNOTATIONS_TABLE_TYPE = "array(row(" +
+        "owner varchar, " +
+        "repo varchar, " +
+        "check_run_id bigint, " +
+        "path varchar, " +
+        "start_line integer, " +
+        "end_line integer, " +
+        "start_column integer, " +
+        "end_column integer, " +
+        "annotation_level varchar, " +
+        "title varchar, " +
+        "message varchar, " +
+        "raw_details varchar, " +
+        "blob_href varchar" +
+        "))";
+     */
+
     private final Map<GithubTable, Map<String, ColumnHandle>> columnHandles;
 
     private final Map<GithubTable, ? extends FilterApplier> filterAppliers = new ImmutableMap.Builder<GithubTable, FilterApplier>()
@@ -784,6 +869,8 @@ public class GithubRest
             .put(GithubTable.ORGS, new OrgFilter())
             .put(GithubTable.USERS, new UserFilter())
             .put(GithubTable.REPOS, new RepoFilter())
+            .put(GithubTable.CHECK_RUNS, new CheckRunFilter())
+            .put(GithubTable.CHECK_RUN_ANNOTATIONS, new CheckRunAnnotationFilter())
             .build();
 
     @Inject
@@ -1287,6 +1374,60 @@ public class GithubRest
                     item.setOwner(owner);
                     item.setRepo(repo);
                     return Stream.of(item.toRow());
+                },
+                table.getLimit());
+    }
+
+    private Collection<? extends List<?>> getCheckRuns(RestTableHandle table)
+    {
+        GithubTable tableName = GithubTable.valueOf(table);
+        TupleDomain<ColumnHandle> constraint = table.getConstraint();
+        Map<String, ColumnHandle> columns = columnHandles.get(tableName);
+        FilterApplier filter = filterAppliers.get(tableName);
+
+        String owner = (String) filter.getFilter((RestColumnHandle) columns.get("owner"), constraint);
+        String repo = (String) filter.getFilter((RestColumnHandle) columns.get("repo"), constraint);
+        String ref = (String) filter.getFilter((RestColumnHandle) columns.get("ref"), constraint);
+        requirePredicate(owner, "owner");
+        requirePredicate(repo, "repo");
+        requirePredicate(repo, "ref");
+        return getRowsFromPagesEnvelope(
+                page -> service.listCheckRuns("Bearer " + token, owner, repo, ref, PER_PAGE, page),
+                item -> {
+                    item.setOwner(owner);
+                    item.setRepo(repo);
+                    item.setRef(ref);
+                    return Stream.of(item.toRow());
+                },
+                table.getLimit());
+    }
+
+    private Collection<? extends List<?>> getCheckRunAnnotations(RestTableHandle table)
+    {
+        GithubTable tableName = GithubTable.valueOf(table);
+        TupleDomain<ColumnHandle> constraint = table.getConstraint();
+        Map<String, ColumnHandle> columns = columnHandles.get(tableName);
+        FilterApplier filter = filterAppliers.get(tableName);
+
+        String owner = (String) filter.getFilter((RestColumnHandle) columns.get("owner"), constraint);
+        String repo = (String) filter.getFilter((RestColumnHandle) columns.get("repo"), constraint);
+        Long checkRunId = (Long) filter.getFilter((RestColumnHandle) columns.get("check_run_id"), constraint);
+        requirePredicate(owner, "owner");
+        requirePredicate(repo, "repo");
+        requirePredicate(checkRunId, "check_run_id");
+        return getRowsFromPages(
+                page -> service.listCheckRunAnnotations(
+                        "Bearer " + token,
+                        owner,
+                        repo,
+                        checkRunId,
+                        PER_PAGE,
+                        page),
+                item -> {
+                    item.setOwner(owner);
+                    item.setRepo(repo);
+                    item.setCheckRunId(checkRunId);
+                    return item.toRow();
                 },
                 table.getLimit());
     }

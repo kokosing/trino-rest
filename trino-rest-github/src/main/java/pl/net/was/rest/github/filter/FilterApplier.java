@@ -199,6 +199,7 @@ public interface FilterApplier
             case "org":
             case "owner":
             case "repo":
+            case "ref":
                 if (domain == null) {
                     return null;
                 }
@@ -210,6 +211,7 @@ public interface FilterApplier
                 return domain.getSingleValue();
             case "run_id":
             case "job_id":
+            case "check_run_id":
                 if (domain == null) {
                     return null;
                 }

@@ -32,7 +32,7 @@ public class TestGithubQueries
     public void showTables()
     {
         assertQuery("SHOW SCHEMAS FROM github", "VALUES 'default', 'information_schema'");
-        assertQuery("SHOW TABLES FROM github.default", "VALUES 'orgs', 'users', 'repos', 'issues', 'issue_comments', 'pulls', 'pull_commits', 'reviews', 'review_comments', 'runs', 'jobs', 'steps', 'artifacts', 'runners'");
+        assertQuery("SHOW TABLES FROM github.default", "VALUES 'orgs', 'users', 'repos', 'issues', 'issue_comments', 'pulls', 'pull_commits', 'reviews', 'review_comments', 'runs', 'jobs', 'steps', 'artifacts', 'runners', 'check_runs', 'check_run_annotations'");
     }
 
     @Test
@@ -55,6 +55,8 @@ public class TestGithubQueries
         //assertQuerySucceeds("SELECT * FROM runners WHERE owner = 'nineinchnick' AND repo = 'trino-rest'");
         // TODO this require admin rights
         //assertQuerySucceeds("SELECT * FROM runners WHERE org = 'trinodb'");
+        assertQuerySucceeds("SELECT * FROM check_runs WHERE owner = 'nineinchnick' AND repo = 'trino-rest' AND ref = '5e53296c8f8124168d1a9e37fc310e9c517d3ec5'");
+        assertQuerySucceeds("SELECT * FROM check_run_annotations WHERE owner = 'nineinchnick' AND repo = 'trino-rest' AND check_run_id = 1");
     }
 
     @Test
@@ -74,6 +76,8 @@ public class TestGithubQueries
         assertQueryFails("SELECT * FROM steps", "Missing required constraint for owner");
         assertQueryFails("SELECT * FROM artifacts", "Missing required constraint for owner");
         assertQueryFails("SELECT * FROM runners", "Missing required constraint for org");
+        assertQueryFails("SELECT * FROM check_runs", "Missing required constraint for owner");
+        assertQueryFails("SELECT * FROM check_run_annotations", "Missing required constraint for owner");
     }
 
     @Test
