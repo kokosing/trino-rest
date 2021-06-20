@@ -73,8 +73,8 @@ public class Sync
                 "TRINO_URL", url,
                 "TRINO_USERNAME", username,
                 "TRINO_PASSWORD", password,
-                // notice that steps, logs and artifacts are not enabled by default
-                "SYNC_TABLES", "issues,issue_comments,pulls,reviews,review_comments,runs,jobs,check_runs,check_run_annotations",
+                // notice that jog_logs and artifacts are not enabled by default
+                "SYNC_TABLES", "issues,issue_comments,pulls,reviews,review_comments,runs,jobs,steps,check_runs,check_run_annotations",
                 "LOG_LEVEL", "INFO",
                 "EMPTY_INSERT_LIMIT", "1",
                 "CHECK_STEPS_DUPLICATES", "false",
@@ -132,9 +132,9 @@ public class Sync
         availableTables.put("review_comments", Sync::syncReviewComments);
         availableTables.put("runs", Sync::syncRuns);
         availableTables.put("jobs", Sync::syncJobs);
+        availableTables.put("job_logs", Sync::syncJobLogs);
         availableTables.put("steps", Sync::syncSteps);
         availableTables.put("artifacts", Sync::syncArtifacts);
-        availableTables.put("logs", Sync::syncLogs);
         availableTables.put("check_runs", Sync::syncCheckRuns);
         availableTables.put("check_run_annotations", Sync::syncCheckRunAnnotations);
 
@@ -679,45 +679,54 @@ public class Sync
         }
     }
 
-    private static void syncLogs(Options options)
+    private static void syncJobLogs(Options options)
     {
         Connection conn = options.conn;
         String destSchema = options.destSchema;
+        String srcSchema = options.srcSchema;
         try {
             conn.createStatement().executeUpdate(
-                    "CREATE TABLE IF NOT EXISTS " + destSchema + ".logs (owner VARCHAR, repo VARCHAR, job_id BIGINT, log VARCHAR)");
-            // run this directly in the backend:
-            // CREATE TABLE logs (owner VARCHAR, repo VARCHAR, job_id BIGINT, log VARCHAR, PRIMARY KEY (job_id));
-            // CREATE INDEX ON logs(owner, repo);
+                    "CREATE TABLE IF NOT EXISTS " + destSchema + ".job_logs AS SELECT * FROM " + srcSchema + ".job_logs WITH NO DATA");
+            // ALTER TABLE job_logs ADD PRIMARY KEY (job_id, part_number);
+            // CREATE INDEX ON job_logs(owner, repo);
 
-            // only fetch up to 5 job logs for completed runs not older than 2 months, without any job logs
-
-            String query = "INSERT INTO " + destSchema + ".logs " +
-                    "SELECT j.id, job_logs(?, ?, j.id) " +
-                    "FROM (" +
-                    "SELECT j.id " +
-                    "FROM " + destSchema + ".runs r " +
-                    "JOIN " + destSchema + ".jobs j ON j.run_id = r.id " +
-                    "LEFT JOIN " + destSchema + ".logs l ON l.job_id = j.id " +
-                    "WHERE r.status = 'completed' AND r.conclusion IS DISTINCT FROM 'success' AND r.created_at > NOW() - INTERVAL '2' MONTH " +
-                    "AND j.conclusion IS DISTINCT FROM 'success' " +
+            // get largest jobb id of those with a log and move up
+            // TODO because dynamic filtering is not supported yet, CROSS JOIN LATERAL between jobs and logs would not push down filter on job_id
+            String runsQuery = "SELECT j.id " +
+                    "FROM " + destSchema + ".jobs j " +
+                    "LEFT JOIN " + destSchema + ".job_logs l ON l.job_id = j.id " +
+                    "WHERE j.status = 'completed' AND j.conclusion = 'failure' AND j.started_at > NOW() - INTERVAL '2' MONTH " +
                     "GROUP BY j.id " +
-                    "HAVING COUNT(l.job_id) = 0 " +
-                    "ORDER BY j.id DESC LIMIT 5" +
-                    ") j";
-            log.fine(format("Executing query: %s", query));
-            PreparedStatement statement = conn.prepareStatement(query);
-            statement.setString(1, options.owner);
-            statement.setString(2, options.repo);
+                    "HAVING COUNT(l.job_id) != 0 " +
+                    "ORDER BY j.id DESC LIMIT 1";
+            PreparedStatement idStatement = conn.prepareStatement("SELECT j.id " +
+                    "FROM " + destSchema + ".jobs j " +
+                    "WHERE j.id > COALESCE((" + runsQuery + "), 0) AND j.status = 'completed' AND j.created_at > NOW() - INTERVAL '2' MONTH " +
+                    "ORDER BY j.id ASC");
 
-            while (true) {
-                log.info("Fetching logs");
+            String query = "INSERT INTO " + destSchema + ".job_logs " +
+                    "SELECT src.* " +
+                    "FROM job_logs src " +
+                    "LEFT JOIN " + destSchema + ".job_logs dst ON dst.job_id = ? AND dst.part_number = src.part_number " +
+                    "WHERE src.owner = ? AND src.repo = ? AND src.job_id = ? AND dst.job_id IS NULL";
+            PreparedStatement insertStatement = conn.prepareStatement(query);
+            insertStatement.setString(2, options.owner);
+            insertStatement.setString(3, options.repo);
+
+            log.info("Fetching job ids to get logs for");
+            if (!idStatement.execute()) {
+                return;
+            }
+            ResultSet resultSet = idStatement.getResultSet();
+            while (resultSet.next()) {
+                long jobId = resultSet.getLong(1);
+                insertStatement.setLong(1, jobId);
+                insertStatement.setLong(4, jobId);
+
+                log.info(format("Fetching logs of job %d", jobId));
                 long startTime = System.currentTimeMillis();
-                int rows = retryExecute(statement);
+                int rows = retryExecute(insertStatement);
                 log.info(format("Inserted %d rows, took %s", rows, Duration.ofMillis(System.currentTimeMillis() - startTime)));
-                if (rows == 0) {
-                    break;
-                }
             }
         }
         catch (Exception e) {

@@ -23,6 +23,7 @@ import io.trino.spi.function.ScalarFunction;
 import io.trino.spi.function.SqlType;
 import io.trino.spi.type.ArrayType;
 import io.trino.spi.type.RowType;
+import pl.net.was.rest.github.GithubTable;
 import pl.net.was.rest.github.model.PullCommit;
 import retrofit2.Response;
 
@@ -45,7 +46,7 @@ public class PullCommits
 {
     public PullCommits()
     {
-        RowType rowType = getRowType("pull_commits");
+        RowType rowType = getRowType(GithubTable.PULL_COMMITS);
         arrayType = new ArrayType(rowType);
         pageBuilder = new PageBuilder(ImmutableList.of(arrayType));
     }

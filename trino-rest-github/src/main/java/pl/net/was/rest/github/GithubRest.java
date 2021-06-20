@@ -16,6 +16,7 @@ package pl.net.was.rest.github;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import io.airlift.slice.Slice;
 import io.trino.spi.TrinoException;
 import io.trino.spi.connector.ColumnHandle;
 import io.trino.spi.connector.ColumnMetadata;
@@ -48,6 +49,7 @@ import pl.net.was.rest.github.filter.FilterApplier;
 import pl.net.was.rest.github.filter.IssueCommentFilter;
 import pl.net.was.rest.github.filter.IssueFilter;
 import pl.net.was.rest.github.filter.JobFilter;
+import pl.net.was.rest.github.filter.JobLogFilter;
 import pl.net.was.rest.github.filter.OrgFilter;
 import pl.net.was.rest.github.filter.PullCommitFilter;
 import pl.net.was.rest.github.filter.PullFilter;
@@ -58,6 +60,7 @@ import pl.net.was.rest.github.filter.RunFilter;
 import pl.net.was.rest.github.filter.RunnerFilter;
 import pl.net.was.rest.github.filter.StepFilter;
 import pl.net.was.rest.github.filter.UserFilter;
+import pl.net.was.rest.github.function.JobLogs;
 import pl.net.was.rest.github.model.Artifact;
 import pl.net.was.rest.github.model.ArtifactsList;
 import pl.net.was.rest.github.model.Envelope;
@@ -351,6 +354,13 @@ public class GithubRest
                     new ColumnMetadata("started_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
                     new ColumnMetadata("completed_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
                     new ColumnMetadata("name", VARCHAR)))
+            .put(GithubTable.JOB_LOGS, ImmutableList.of(
+                    new ColumnMetadata("owner", VARCHAR),
+                    new ColumnMetadata("repo", VARCHAR),
+                    new ColumnMetadata("job_id", BIGINT),
+                    new ColumnMetadata("size_in_bytes", BIGINT),
+                    new ColumnMetadata("part_number", INTEGER),
+                    new ColumnMetadata("contents", VARBINARY)))
             .put(GithubTable.STEPS, ImmutableList.of(
                     new ColumnMetadata("owner", VARCHAR),
                     new ColumnMetadata("repo", VARCHAR),
@@ -444,6 +454,7 @@ public class GithubRest
             .put(GithubTable.ISSUE_COMMENTS, this::getIssueComments)
             .put(GithubTable.RUNS, this::getRuns)
             .put(GithubTable.JOBS, this::getJobs)
+            .put(GithubTable.JOB_LOGS, this::getJobLogs)
             .put(GithubTable.STEPS, this::getSteps)
             .put(GithubTable.ARTIFACTS, this::getArtifacts)
             .put(GithubTable.RUNNERS, this::getRunners)
@@ -762,6 +773,15 @@ public class GithubRest
             "name varchar" +
             "))";
 
+    public static final String JOB_LOGS_TABLE_TYPE = "array(row(" +
+            "owner varchar, " +
+            "repo varchar, " +
+            "job_id bigint, " +
+            "size_in_bytes bigint, " +
+            "part_number integer, " +
+            "contents varbinary" +
+            "))";
+
     public static final String STEPS_TABLE_TYPE = "array(row(" +
             "owner varchar, " +
             "repo varchar, " +
@@ -863,6 +883,7 @@ public class GithubRest
             .put(GithubTable.ISSUE_COMMENTS, new IssueCommentFilter())
             .put(GithubTable.RUNS, new RunFilter())
             .put(GithubTable.JOBS, new JobFilter())
+            .put(GithubTable.JOB_LOGS, new JobLogFilter())
             .put(GithubTable.STEPS, new StepFilter())
             .put(GithubTable.ARTIFACTS, new ArtifactFilter())
             .put(GithubTable.RUNNERS, new RunnerFilter())
@@ -1243,6 +1264,60 @@ public class GithubRest
                 table.getLimit());
     }
 
+    private Collection<? extends List<?>> getJobLogs(RestTableHandle table)
+    {
+        GithubTable tableName = GithubTable.valueOf(table);
+        TupleDomain<ColumnHandle> constraint = table.getConstraint();
+        Map<String, ColumnHandle> columns = columnHandles.get(tableName);
+        FilterApplier filter = filterAppliers.get(tableName);
+
+        String owner = (String) filter.getFilter((RestColumnHandle) columns.get("owner"), constraint);
+        String repo = (String) filter.getFilter((RestColumnHandle) columns.get("repo"), constraint);
+        requirePredicate(owner, "owner");
+        requirePredicate(repo, "repo");
+        Long jobId = (Long) filter.getFilter((RestColumnHandle) columns.get("job_id"), constraint);
+        if (jobId == null) {
+            throw new TrinoException(INVALID_ROW_FILTER, "Missing required constraint for job_id");
+        }
+
+        Response<ResponseBody> response;
+        try {
+            response = service.jobLogs(
+                    "Bearer " + token,
+                    owner,
+                    repo,
+                    jobId).execute();
+        }
+        catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        if (response.code() == HTTP_NOT_FOUND) {
+            return List.of();
+        }
+        checkServiceResponse(response);
+        ResponseBody body = requireNonNull(response.body());
+        String size = response.headers().get("Content-Length");
+        long sizeBytes = size != null ? Long.parseLong(size) : 0;
+
+        ImmutableList.Builder<List<?>> result = new ImmutableList.Builder<>();
+        int i = 1;
+        try {
+            for (Slice slice : JobLogs.getParts(body.byteStream())) {
+                result.add(List.of(
+                        owner,
+                        repo,
+                        jobId,
+                        sizeBytes,
+                        i++,
+                        slice));
+            }
+        }
+        catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        return result.build();
+    }
+
     private Collection<? extends List<?>> getSteps(RestTableHandle table)
     {
         GithubTable tableName = GithubTable.valueOf(table);
@@ -1540,9 +1615,9 @@ public class GithubRest
                 .collect(Collectors.joining(", ", "ARRAY(ROW(", "))"));
     }
 
-    public static RowType getRowType(String tableName)
+    public static RowType getRowType(GithubTable tableName)
     {
-        List<RowType.Field> fields = GithubRest.columns.get(GithubTable.valueOf(tableName.toUpperCase()))
+        List<RowType.Field> fields = GithubRest.columns.get(tableName)
                 .stream()
                 .map(columnMetadata -> RowType.field(
                         columnMetadata.getName(),

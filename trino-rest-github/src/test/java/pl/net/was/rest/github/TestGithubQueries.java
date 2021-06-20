@@ -32,7 +32,7 @@ public class TestGithubQueries
     public void showTables()
     {
         assertQuery("SHOW SCHEMAS FROM github", "VALUES 'default', 'information_schema'");
-        assertQuery("SHOW TABLES FROM github.default", "VALUES 'orgs', 'users', 'repos', 'issues', 'issue_comments', 'pulls', 'pull_commits', 'reviews', 'review_comments', 'runs', 'jobs', 'steps', 'artifacts', 'runners', 'check_runs', 'check_run_annotations'");
+        assertQuery("SHOW TABLES FROM github.default", "VALUES 'orgs', 'users', 'repos', 'issues', 'issue_comments', 'pulls', 'pull_commits', 'reviews', 'review_comments', 'runs', 'jobs', 'job_logs', 'steps', 'artifacts', 'runners', 'check_runs', 'check_run_annotations'");
     }
 
     @Test
@@ -49,6 +49,7 @@ public class TestGithubQueries
         assertQuerySucceeds("SELECT * FROM review_comments WHERE owner = 'nineinchnick' AND repo = 'trino-rest'");
         assertQuerySucceeds("SELECT * FROM runs WHERE owner = 'nineinchnick' AND repo = 'trino-rest'");
         assertQuerySucceeds("SELECT * FROM jobs WHERE owner = 'nineinchnick' AND repo = 'trino-rest' AND run_id = 895383456");
+        assertQuerySucceeds("SELECT * FROM job_logs WHERE owner = 'nineinchnick' AND repo = 'trino-rest' AND job_id = 2716915847");
         assertQuerySucceeds("SELECT * FROM steps WHERE owner = 'nineinchnick' AND repo = 'trino-rest' AND run_id = 895383456");
         assertQuerySucceeds("SELECT * FROM artifacts WHERE owner = 'nineinchnick' AND repo = 'trino-rest' AND run_id = 895383456");
         // TODO this doesn't work with the default token available in GHA
@@ -73,6 +74,7 @@ public class TestGithubQueries
         assertQueryFails("SELECT * FROM review_comments", "Missing required constraint for owner");
         assertQueryFails("SELECT * FROM runs", "Missing required constraint for owner");
         assertQueryFails("SELECT * FROM jobs", "Missing required constraint for owner");
+        assertQueryFails("SELECT * FROM job_logs", "Missing required constraint for owner");
         assertQueryFails("SELECT * FROM steps", "Missing required constraint for owner");
         assertQueryFails("SELECT * FROM artifacts", "Missing required constraint for owner");
         assertQueryFails("SELECT * FROM runners", "Missing required constraint for org");
@@ -105,6 +107,6 @@ public class TestGithubQueries
         // TODO this requires admin rights
         //assertQuerySucceeds("SELECT * FROM unnest(org_runners('trinodb', 1))");
         // TODO figure out why this requires special permissions
-        //assertQuerySucceeds("SELECT job_logs('nineinchnick', 'trino-rest', 1)");
+        //assertQuerySucceeds("SELECT * FROM unnest(job_logs('nineinchnick', 'trino-rest', 1))");
     }
 }

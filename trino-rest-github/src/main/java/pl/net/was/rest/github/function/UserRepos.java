@@ -23,6 +23,7 @@ import io.trino.spi.function.ScalarFunction;
 import io.trino.spi.function.SqlType;
 import io.trino.spi.type.ArrayType;
 import io.trino.spi.type.RowType;
+import pl.net.was.rest.github.GithubTable;
 import pl.net.was.rest.github.model.Repository;
 import retrofit2.Response;
 
@@ -44,7 +45,7 @@ public class UserRepos
 {
     public UserRepos()
     {
-        RowType rowType = getRowType("repos");
+        RowType rowType = getRowType(GithubTable.REPOS);
         arrayType = new ArrayType(rowType);
         pageBuilder = new PageBuilder(ImmutableList.of(arrayType));
     }

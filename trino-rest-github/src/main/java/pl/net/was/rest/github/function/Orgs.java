@@ -22,6 +22,7 @@ import io.trino.spi.function.ScalarFunction;
 import io.trino.spi.function.SqlType;
 import io.trino.spi.type.ArrayType;
 import io.trino.spi.type.RowType;
+import pl.net.was.rest.github.GithubTable;
 import pl.net.was.rest.github.model.Organization;
 import retrofit2.Response;
 
@@ -41,7 +42,7 @@ public class Orgs
 {
     public Orgs()
     {
-        RowType rowType = getRowType("orgs");
+        RowType rowType = getRowType(GithubTable.ORGS);
         arrayType = new ArrayType(rowType);
         pageBuilder = new PageBuilder(ImmutableList.of(arrayType));
     }

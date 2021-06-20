@@ -30,6 +30,7 @@ public enum GithubTable
     ISSUE_COMMENTS("issue_comments"),
     RUNS("runs"),
     JOBS("jobs"),
+    JOB_LOGS("job_logs"),
     STEPS("steps"),
     ARTIFACTS("artifacts"),
     RUNNERS("runners"),

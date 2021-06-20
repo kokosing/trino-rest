@@ -23,6 +23,7 @@ import io.trino.spi.function.ScalarFunction;
 import io.trino.spi.function.SqlType;
 import io.trino.spi.type.ArrayType;
 import io.trino.spi.type.RowType;
+import pl.net.was.rest.github.GithubTable;
 import pl.net.was.rest.github.model.Job;
 import pl.net.was.rest.github.model.JobsList;
 import pl.net.was.rest.github.model.Step;
@@ -48,7 +49,7 @@ public class Steps
 {
     public Steps()
     {
-        RowType rowType = getRowType("steps");
+        RowType rowType = getRowType(GithubTable.STEPS);
         arrayType = new ArrayType(rowType);
         pageBuilder = new PageBuilder(ImmutableList.of(arrayType));
     }

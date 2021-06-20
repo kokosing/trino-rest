@@ -26,6 +26,7 @@ import io.trino.spi.type.RowType;
 import okhttp3.ResponseBody;
 import org.apache.tika.Tika;
 import pl.net.was.rest.github.GithubService;
+import pl.net.was.rest.github.GithubTable;
 import pl.net.was.rest.github.model.Artifact;
 import pl.net.was.rest.github.model.ArtifactsList;
 import retrofit2.Response;
@@ -59,7 +60,7 @@ public class Artifacts
 
     public Artifacts()
     {
-        RowType rowType = getRowType("artifacts");
+        RowType rowType = getRowType(GithubTable.ARTIFACTS);
         arrayType = new ArrayType(rowType);
         pageBuilder = new PageBuilder(ImmutableList.of(arrayType));
     }

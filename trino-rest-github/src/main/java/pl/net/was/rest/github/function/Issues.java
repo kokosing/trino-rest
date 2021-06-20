@@ -23,6 +23,7 @@ import io.trino.spi.function.ScalarFunction;
 import io.trino.spi.function.SqlType;
 import io.trino.spi.type.ArrayType;
 import io.trino.spi.type.RowType;
+import pl.net.was.rest.github.GithubTable;
 import pl.net.was.rest.github.model.Issue;
 import retrofit2.Response;
 
@@ -45,7 +46,7 @@ public class Issues
 {
     public Issues()
     {
-        RowType rowType = getRowType("issues");
+        RowType rowType = getRowType(GithubTable.ISSUES);
         arrayType = new ArrayType(rowType);
         pageBuilder = new PageBuilder(ImmutableList.of(arrayType));
     }
