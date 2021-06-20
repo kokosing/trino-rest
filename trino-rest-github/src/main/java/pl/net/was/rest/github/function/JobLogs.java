@@ -102,7 +102,8 @@ public class JobLogs
             BigintType.BIGINT.writeLong(rowBuilder, jobId);
             if (size == null) {
                 rowBuilder.appendNull();
-            } else {
+            }
+            else {
                 BigintType.BIGINT.writeLong(rowBuilder, size);
             }
             INTEGER.writeLong(rowBuilder, i++);
