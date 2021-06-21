@@ -3,6 +3,7 @@
 set -euo pipefail
 
 VERSION=$(mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+TAG=nineinchnick/trino-rest:$VERSION
 
 connectors=("$@")
 
@@ -19,6 +20,6 @@ docker run \
     --name trino-rest \
     -d \
     -p8080:8080 \
-    -v $(mktemp -d):/etc/trino/catalog \
+    --tmpfs /etc/trino/catalog \
     "${opts[@]}" \
-    trino-rest:"$VERSION"
+    "$TAG"
