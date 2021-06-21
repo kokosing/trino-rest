@@ -121,11 +121,6 @@ public interface FilterApplier
         TupleDomain<ColumnHandle> newConstraint = constraint.filter(
                 (columnHandle, tupleDomain) -> columnHandle.equals(column));
         if (!domain.getType().isOrderable()) {
-            if (!domain.isSingleValue()) {
-                // none of the upstream filters supports multiple values
-                log.warning(format("Not pushing down filter on %s because it's not a single value: %s", column.getName(), domain));
-                return null;
-            }
             return newConstraint;
         }
         switch (supportedFilter) {
@@ -146,12 +141,11 @@ public interface FilterApplier
                                 false)));
                 break;
             case EQUAL:
-                if (!domain.isSingleValue()) {
-                    // none of the upstream filters supports multiple values
-                    log.warning(format("Not pushing down filter on %s because it's not a single value: %s", column.getName(), domain));
+                if (!domain.getValues().isDiscreteSet() && !domain.getValues().getRanges().getOrderedRanges().stream().allMatch(Range::isSingleValue)) {
+                    log.warning(format("Not pushing down filter on %s because it's not a discrete set: %s", column.getName(), domain));
                     return null;
                 }
-                break;
+                return newConstraint;
         }
         return newConstraint;
     }

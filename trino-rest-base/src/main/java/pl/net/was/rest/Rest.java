@@ -14,13 +14,20 @@
 
 package pl.net.was.rest;
 
+import io.trino.spi.HostAddress;
+import io.trino.spi.Node;
+import io.trino.spi.NodeManager;
 import io.trino.spi.connector.ColumnHandle;
 import io.trino.spi.connector.ColumnMetadata;
 import io.trino.spi.connector.ConnectorSession;
+import io.trino.spi.connector.ConnectorSplitManager;
+import io.trino.spi.connector.ConnectorSplitSource;
 import io.trino.spi.connector.ConnectorTableHandle;
 import io.trino.spi.connector.ConnectorTableMetadata;
 import io.trino.spi.connector.Constraint;
 import io.trino.spi.connector.ConstraintApplicationResult;
+import io.trino.spi.connector.DynamicFilter;
+import io.trino.spi.connector.FixedSplitSource;
 import io.trino.spi.connector.LimitApplicationResult;
 import io.trino.spi.connector.SchemaTableName;
 import io.trino.spi.connector.SchemaTablePrefix;
@@ -88,5 +95,25 @@ public interface Rest
             Constraint constraint)
     {
         return Optional.empty();
+    }
+
+    default ConnectorSplitSource getSplitSource(
+            NodeManager nodeManager,
+            ConnectorTableHandle table,
+            ConnectorSplitManager.SplitSchedulingStrategy splitSchedulingStrategy,
+            DynamicFilter dynamicFilter)
+    {
+        if (splitSchedulingStrategy != ConnectorSplitManager.SplitSchedulingStrategy.UNGROUPED_SCHEDULING) {
+            throw new IllegalArgumentException("Unknown splitSchedulingStrategy: " + splitSchedulingStrategy);
+        }
+
+        RestTableHandle handle = (RestTableHandle) table;
+
+        List<HostAddress> addresses = nodeManager.getRequiredWorkerNodes().stream()
+                .map(Node::getHostAndPort)
+                .collect(toList());
+
+        List<RestConnectorSplit> splits = List.of(new RestConnectorSplit(handle, addresses));
+        return new FixedSplitSource(splits);
     }
 }

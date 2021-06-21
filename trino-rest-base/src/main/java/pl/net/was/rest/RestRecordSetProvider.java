@@ -53,14 +53,18 @@ public class RestRecordSetProvider
             List<? extends ColumnHandle> list)
     {
         RestConnectorSplit split = Types.checkType(connectorSplit, RestConnectorSplit.class, "split");
-        // TODO fix below cast
-        List<RestColumnHandle> restColumnHandles = (List<RestColumnHandle>) list;
+        List<RestColumnHandle> restColumnHandles = list
+                .stream()
+                .map(c -> (RestColumnHandle) c)
+                .collect(toList());
 
-        RestTableHandle restTable = (RestTableHandle) table;
+        // use the split's table handle, since
+        RestTableHandle restTable = split.getTableHandle();
         Collection<? extends List<?>> rows = rest.getRows(restTable);
         ConnectorTableMetadata tableMetadata = rest.getTableMetadata(restTable.getSchemaTableName());
 
-        List<Integer> columnIndexes = restColumnHandles.stream()
+        List<Integer> columnIndexes = restColumnHandles
+                .stream()
                 .map(column -> {
                     int index = 0;
                     for (ColumnMetadata columnMetadata : tableMetadata.getColumns()) {
@@ -73,13 +77,16 @@ public class RestRecordSetProvider
                 })
                 .collect(toList());
 
-        Collection<? extends List<?>> mappedRows = rows.stream()
-                .map(row -> columnIndexes.stream()
+        Collection<? extends List<?>> mappedRows = rows
+                .stream()
+                .map(row -> columnIndexes
+                        .stream()
                         .map(row::get)
                         .collect(toList()))
                 .collect(toList());
 
-        List<Type> mappedTypes = restColumnHandles.stream()
+        List<Type> mappedTypes = restColumnHandles
+                .stream()
                 .map(RestColumnHandle::getType)
                 .collect(toList());
         return new InMemoryRecordSet(mappedTypes, mappedRows);
