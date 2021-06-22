@@ -16,22 +16,33 @@ package pl.net.was.rest.github;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
 import io.airlift.slice.Slice;
+import io.trino.spi.HostAddress;
+import io.trino.spi.Node;
+import io.trino.spi.NodeManager;
 import io.trino.spi.TrinoException;
 import io.trino.spi.connector.ColumnHandle;
 import io.trino.spi.connector.ColumnMetadata;
 import io.trino.spi.connector.ConnectorSession;
+import io.trino.spi.connector.ConnectorSplitManager;
+import io.trino.spi.connector.ConnectorSplitSource;
 import io.trino.spi.connector.ConnectorTableHandle;
 import io.trino.spi.connector.ConnectorTableMetadata;
 import io.trino.spi.connector.Constraint;
 import io.trino.spi.connector.ConstraintApplicationResult;
+import io.trino.spi.connector.DynamicFilter;
+import io.trino.spi.connector.FixedSplitSource;
 import io.trino.spi.connector.LimitApplicationResult;
 import io.trino.spi.connector.SchemaTableName;
 import io.trino.spi.connector.SchemaTablePrefix;
 import io.trino.spi.connector.SortItem;
 import io.trino.spi.connector.SortOrder;
 import io.trino.spi.connector.TopNApplicationResult;
+import io.trino.spi.predicate.Domain;
+import io.trino.spi.predicate.Range;
 import io.trino.spi.predicate.TupleDomain;
+import io.trino.spi.predicate.ValueSet;
 import io.trino.spi.type.ArrayType;
 import io.trino.spi.type.MapType;
 import io.trino.spi.type.RowType;
@@ -41,11 +52,13 @@ import okhttp3.ResponseBody;
 import pl.net.was.rest.Rest;
 import pl.net.was.rest.RestColumnHandle;
 import pl.net.was.rest.RestConfig;
+import pl.net.was.rest.RestConnectorSplit;
 import pl.net.was.rest.RestTableHandle;
 import pl.net.was.rest.github.filter.ArtifactFilter;
 import pl.net.was.rest.github.filter.CheckRunAnnotationFilter;
 import pl.net.was.rest.github.filter.CheckRunFilter;
 import pl.net.was.rest.github.filter.FilterApplier;
+import pl.net.was.rest.github.filter.FilterType;
 import pl.net.was.rest.github.filter.IssueCommentFilter;
 import pl.net.was.rest.github.filter.IssueFilter;
 import pl.net.was.rest.github.filter.JobFilter;
@@ -77,7 +90,9 @@ import retrofit2.Response;
 import javax.inject.Inject;
 
 import java.io.IOException;
+import java.util.AbstractMap;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -1633,13 +1648,16 @@ public class GithubRest
             long limit)
     {
         RestTableHandle restTable = (RestTableHandle) table;
+        if (restTable.getLimit() == limit) {
+            return Optional.empty();
+        }
         return Optional.of(new LimitApplicationResult<>(
                 new RestTableHandle(
                         restTable.getSchemaTableName(),
                         restTable.getConstraint(),
                         (int) Math.min(limit, Integer.MAX_VALUE),
                         restTable.getSortOrder().isPresent() ? restTable.getSortOrder().get() : null),
-                true,
+                false,
                 true));
     }
 
@@ -1682,7 +1700,10 @@ public class GithubRest
                 limit,
                 sortItems);
 
-        return Optional.of(new TopNApplicationResult<>(sortedTableHandle, true, true));
+        return Optional.of(new TopNApplicationResult<>(
+                sortedTableHandle,
+                false,
+                true));
     }
 
     @Override
@@ -1703,5 +1724,85 @@ public class GithubRest
                 columnHandles.get(tableName),
                 filterApplier.getSupportedFilters(),
                 constraint.getSummary());
+    }
+
+    public ConnectorSplitSource getSplitSource(
+            NodeManager nodeManager,
+            ConnectorTableHandle handle,
+            ConnectorSplitManager.SplitSchedulingStrategy splitSchedulingStrategy,
+            DynamicFilter dynamicFilter)
+    {
+        if (splitSchedulingStrategy != ConnectorSplitManager.SplitSchedulingStrategy.UNGROUPED_SCHEDULING) {
+            throw new IllegalArgumentException("Unknown splitSchedulingStrategy: " + splitSchedulingStrategy);
+        }
+
+        RestTableHandle table = (RestTableHandle) handle;
+        TupleDomain<ColumnHandle> constraint = table.getConstraint();
+
+        List<HostAddress> addresses = nodeManager.getRequiredWorkerNodes().stream()
+                .map(Node::getHostAndPort)
+                .collect(toList());
+
+        GithubTable tableName = GithubTable.valueOf(table);
+        FilterApplier filterApplier = filterAppliers.get(tableName);
+        if (filterApplier == null || constraint.getDomains().isEmpty()) {
+            List<RestConnectorSplit> splits = List.of(new RestConnectorSplit(table, addresses));
+            return new FixedSplitSource(splits);
+        }
+
+        /*
+        Generate splits based on the cartesian product of all multi-valued domains.
+        Example, given predicates such as: `job_id IN (12, 34) AND conclusion IN ('canceled', 'failure')`
+        the cartesian product will yield:
+        * job_id:12, conclusion:canceled
+        * job_id:34, conclusion:canceled
+        * job_id:12, conclusion:failure
+        * job_id:34, conclusion:failure
+         */
+        Map<ColumnHandle, Domain> originalDomains = constraint.getDomains().get();
+        // first build a list of lists of tuples with the column and single-valued domain, for every value of a multi-valued domain
+        ImmutableList.Builder<List<Map.Entry<ColumnHandle, Domain>>> singleDomains = new ImmutableList.Builder<>();
+        for (Map.Entry<ColumnHandle, Domain> entry : originalDomains.entrySet()) {
+            RestColumnHandle column = (RestColumnHandle) entry.getKey();
+            Domain domain = entry.getValue();
+
+            FilterType supportedFilter = filterApplier.getSupportedFilters().get(column.getName());
+            if (domain.isSingleValue() || supportedFilter != FilterType.EQUAL) {
+                continue;
+            }
+            List<Object> values;
+            if (domain.getValues().isDiscreteSet()) {
+                values = domain.getValues().getDiscreteSet();
+            }
+            else {
+                values = domain.getValues().getRanges().getOrderedRanges()
+                        .stream()
+                        .map(Range::getSingleValue)
+                        .collect(toList());
+            }
+            ImmutableList.Builder<Map.Entry<ColumnHandle, Domain>> splitDomains = new ImmutableList.Builder<>();
+            for (Object value : values) {
+                splitDomains.add(new AbstractMap.SimpleImmutableEntry<>(column, Domain.create(
+                        ValueSet.of(domain.getType(), value),
+                        domain.isNullAllowed())));
+            }
+            singleDomains.add(splitDomains.build());
+        }
+        // then create copies of the original constraints, with every multi-valued domain replaced with single-value sets
+        ImmutableList.Builder<RestConnectorSplit> splits = new ImmutableList.Builder<>();
+        for (List<Map.Entry<ColumnHandle, Domain>> splitDomains : Lists.cartesianProduct(singleDomains.build())) {
+            Map<ColumnHandle, Domain> newDomains = new HashMap<>(originalDomains);
+            for (Map.Entry<ColumnHandle, Domain> entry : splitDomains) {
+                newDomains.put(entry.getKey(), entry.getValue());
+            }
+            splits.add(new RestConnectorSplit(
+                    new RestTableHandle(
+                            table.getSchemaTableName(),
+                            TupleDomain.withColumnDomains(newDomains),
+                            table.getLimit(),
+                            table.getSortOrder().isPresent() ? table.getSortOrder().get() : null),
+                    addresses));
+        }
+        return new FixedSplitSource(splits.build());
     }
 }
