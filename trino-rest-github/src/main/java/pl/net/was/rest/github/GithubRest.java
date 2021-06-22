@@ -1773,7 +1773,8 @@ public class GithubRest
             List<Object> values;
             if (domain.getValues().isDiscreteSet()) {
                 values = domain.getValues().getDiscreteSet();
-            } else {
+            }
+            else {
                 values = domain.getValues().getRanges().getOrderedRanges()
                         .stream()
                         .map(Range::getSingleValue)
