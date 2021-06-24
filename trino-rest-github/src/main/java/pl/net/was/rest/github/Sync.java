@@ -695,13 +695,13 @@ public class Sync
             String runsQuery = "SELECT j.id " +
                     "FROM " + destSchema + ".jobs j " +
                     "LEFT JOIN " + destSchema + ".job_logs l ON l.job_id = j.id " +
-                    "WHERE j.status = 'completed' AND j.conclusion = 'failure' AND j.started_at > NOW() - INTERVAL '2' MONTH " +
+                    "WHERE j.status = 'completed' AND j.conclusion != 'success' AND j.started_at > NOW() - INTERVAL '2' MONTH " +
                     "GROUP BY j.id " +
                     "HAVING COUNT(l.job_id) != 0 " +
                     "ORDER BY j.id DESC LIMIT 1";
             PreparedStatement idStatement = conn.prepareStatement("SELECT j.id " +
                     "FROM " + destSchema + ".jobs j " +
-                    "WHERE j.id > COALESCE((" + runsQuery + "), 0) AND j.status = 'completed' AND j.created_at > NOW() - INTERVAL '2' MONTH " +
+                    "WHERE j.id > COALESCE((" + runsQuery + "), 0) AND j.status = 'completed' AND j.started_at > NOW() - INTERVAL '2' MONTH " +
                     "ORDER BY j.id ASC");
 
             String query = "INSERT INTO " + destSchema + ".job_logs " +
@@ -813,21 +813,20 @@ public class Sync
                     "LEFT JOIN " + destSchema + ".check_run_annotations a ON a.check_run_id = c.id " +
                     "WHERE c.status = 'completed' AND c.started_at > NOW() - INTERVAL '2' MONTH " +
                     "GROUP BY c.id " +
-                    "HAVING COUNT(a.id) != 0 " +
+                    "HAVING COUNT(a.check_run_id) != 0 " +
                     "ORDER BY c.id DESC LIMIT 1";
             PreparedStatement idStatement = conn.prepareStatement("SELECT c.id " +
                     "FROM " + destSchema + ".check_runs c " +
-                    "WHERE c.id > COALESCE((" + runsQuery + "), 0) AND c.status = 'completed' AND c.started_at > NOW() - INTERVAL '2' MONTH " +
+                    "WHERE c.id > COALESCE((" + runsQuery + "), 0) AND c.status = 'completed' AND c.annotations_count != 0 AND c.started_at > NOW() - INTERVAL '2' MONTH " +
                     "ORDER BY c.id ASC");
 
             String query = "INSERT INTO " + destSchema + ".check_run_annotations " +
-                    "SELECT src.* " +
+                    "SELECT DISTINCT src.* " +
                     "FROM check_run_annotations src " +
-                    "LEFT JOIN " + destSchema + ".check_run_annotations dst ON dst.check_run_id = ? AND (dst.path, dst.start_line, dst.end_line, dst.start_column, dst.end_column, dst.title) = (src.path, src.start_line, src.end_line, src.start_column, src.end_column, src.title) " +
-                    "WHERE src.owner = ? AND src.repo = ? AND src.check_run_id = ? AND dst.path IS NULL";
+                    "WHERE src.owner = ? AND src.repo = ? AND src.check_run_id = ?";
             PreparedStatement insertStatement = conn.prepareStatement(query);
-            insertStatement.setString(2, options.owner);
-            insertStatement.setString(3, options.repo);
+            insertStatement.setString(1, options.owner);
+            insertStatement.setString(2, options.repo);
 
             log.info("Fetching check ids to get annotations for");
             if (!idStatement.execute()) {
@@ -836,8 +835,7 @@ public class Sync
             ResultSet resultSet = idStatement.getResultSet();
             while (resultSet.next()) {
                 long checkId = resultSet.getLong(1);
-                insertStatement.setLong(1, checkId);
-                insertStatement.setLong(4, checkId);
+                insertStatement.setLong(3, checkId);
 
                 log.info(format("Fetching annotations for check id %s", checkId));
                 long startTime = System.currentTimeMillis();
