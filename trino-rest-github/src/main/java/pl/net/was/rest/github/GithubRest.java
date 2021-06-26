@@ -96,6 +96,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.OptionalInt;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.IntFunction;
@@ -128,6 +129,7 @@ public class GithubRest
     public static final String SCHEMA_NAME = "default";
 
     private static final int PER_PAGE = 100;
+    private static final int MIN_SPLITS = 4;
 
     private static String token;
     private final GithubService service = getService(GithubService.class, "https://api.github.com/");
@@ -475,6 +477,15 @@ public class GithubRest
             .put(GithubTable.RUNNERS, this::getRunners)
             .put(GithubTable.CHECK_RUNS, this::getCheckRuns)
             .put(GithubTable.CHECK_RUN_ANNOTATIONS, this::getCheckRunAnnotations)
+            .build();
+
+    private final Map<GithubTable, Function<RestTableHandle, Long>> rowCountGetters = new ImmutableMap.Builder<GithubTable, Function<RestTableHandle, Long>>()
+            .put(GithubTable.RUNS, this::getRunsCount)
+            .put(GithubTable.JOBS, this::getJobsCount)
+            .put(GithubTable.STEPS, this::getJobsCount)
+            .put(GithubTable.ARTIFACTS, this::getArtifactsCount)
+            .put(GithubTable.RUNNERS, this::getRunnersCount)
+            .put(GithubTable.CHECK_RUNS, this::getCheckRunsCount)
             .build();
 
     // The first sortItem is the default
@@ -992,6 +1003,17 @@ public class GithubRest
         return rowGetters.get(tableName).apply(table);
     }
 
+    public OptionalInt getMaxPage(RestTableHandle table)
+    {
+        GithubTable tableName = GithubTable.valueOf(table);
+        Function<RestTableHandle, Long> getter = rowCountGetters.get(tableName);
+        if (getter == null) {
+            return OptionalInt.empty();
+        }
+        long totalCount = getter.apply(table);
+        return OptionalInt.of((int) (totalCount + PER_PAGE - 1) / PER_PAGE);
+    }
+
     private Collection<? extends List<?>> getOrgs(RestTableHandle table)
     {
         if (table.getLimit() == 0) {
@@ -1035,7 +1057,9 @@ public class GithubRest
                         sortOrder.getName(),
                         sortOrder.getSortOrder().isAscending() ? "asc" : "desc"),
                 Repository::toRow,
-                table.getLimit());
+                table.getOffset(),
+                table.getLimit(),
+                table.getPageIncrement());
     }
 
     private Collection<? extends List<?>> getPulls(RestTableHandle table)
@@ -1066,7 +1090,9 @@ public class GithubRest
                     item.setRepo(repo);
                     return item.toRow();
                 },
-                table.getLimit());
+                table.getOffset(),
+                table.getLimit(),
+                table.getPageIncrement());
     }
 
     private void requirePredicate(Object value, String name)
@@ -1113,7 +1139,9 @@ public class GithubRest
                     item.setPullNumber(pullNumber);
                     return item.toRow();
                 },
-                table.getLimit());
+                table.getOffset(),
+                table.getLimit(),
+                table.getPageIncrement());
     }
 
     private Collection<? extends List<?>> getReviews(RestTableHandle table)
@@ -1135,7 +1163,9 @@ public class GithubRest
                     item.setRepo(repo);
                     return item.toRow();
                 },
-                table.getLimit());
+                table.getOffset(),
+                table.getLimit(),
+                table.getPageIncrement());
     }
 
     private Collection<? extends List<?>> getReviewComments(RestTableHandle table)
@@ -1167,7 +1197,9 @@ public class GithubRest
                     item.setRepo(repo);
                     return item.toRow();
                 },
-                table.getLimit());
+                table.getOffset(),
+                table.getLimit(),
+                table.getPageIncrement());
     }
 
     private Collection<? extends List<?>> getIssues(RestTableHandle table)
@@ -1198,7 +1230,9 @@ public class GithubRest
                     item.setRepo(repo);
                     return item.toRow();
                 },
-                table.getLimit());
+                table.getOffset(),
+                table.getLimit(),
+                table.getPageIncrement());
     }
 
     private Collection<? extends List<?>> getIssueComments(RestTableHandle table)
@@ -1229,10 +1263,36 @@ public class GithubRest
                     item.setRepo(repo);
                     return item.toRow();
                 },
-                table.getLimit());
+                table.getOffset(),
+                table.getLimit(),
+                table.getPageIncrement());
     }
 
     private Collection<? extends List<?>> getRuns(RestTableHandle table)
+    {
+        Map<String, String> filters = getRunsFilters(table);
+        String owner = filters.get("owner");
+        String repo = filters.get("repo");
+        return getRowsFromPagesEnvelope(
+                page -> service.listRuns("Bearer " + token, owner, repo, PER_PAGE, page),
+                item -> {
+                    item.setOwner(owner);
+                    item.setRepo(repo);
+                    return Stream.of(item.toRow());
+                },
+                table.getOffset(),
+                table.getLimit(),
+                table.getPageIncrement());
+    }
+
+    private long getRunsCount(RestTableHandle table)
+    {
+        Map<String, String> filters = getRunsFilters(table);
+        return getTotalCountFromPagesEnvelope(
+                () -> service.listRuns("Bearer " + token, filters.get("owner"), filters.get("repo"), 0, 1));
+    }
+
+    private Map<String, String> getRunsFilters(RestTableHandle table)
     {
         GithubTable tableName = GithubTable.valueOf(table);
         TupleDomain<ColumnHandle> constraint = table.getConstraint();
@@ -1243,17 +1303,46 @@ public class GithubRest
         String repo = (String) filter.getFilter((RestColumnHandle) columns.get("repo"), constraint);
         requirePredicate(owner, "owner");
         requirePredicate(repo, "repo");
+
+        return ImmutableMap.of(
+                "owner", owner,
+                "repo", repo);
+    }
+
+    private Collection<? extends List<?>> getJobs(RestTableHandle table)
+    {
+        Map<String, Object> filters = getJobsFilters(table);
+        String owner = (String) filters.get("owner");
+        String repo = (String) filters.get("repo");
+        Long runId = (Long) filters.get("runId");
+        // TODO this needs to allow pushing down multiple run_id values and make a separate request for each: https://github.com/nineinchnick/trino-rest/issues/30
         return getRowsFromPagesEnvelope(
-                page -> service.listRuns("Bearer " + token, owner, repo, PER_PAGE, page),
+                page -> service.listRunJobs("Bearer " + token, owner, repo, runId, "all", PER_PAGE, page),
                 item -> {
                     item.setOwner(owner);
                     item.setRepo(repo);
                     return Stream.of(item.toRow());
                 },
-                table.getLimit());
+                table.getOffset(),
+                table.getLimit(),
+                table.getPageIncrement());
     }
 
-    private Collection<? extends List<?>> getJobs(RestTableHandle table)
+    private long getJobsCount(RestTableHandle table)
+    {
+        Map<String, Object> filters = getJobsFilters(table);
+        return getTotalCountFromPagesEnvelope(
+                () -> service.listRunJobs(
+                        "Bearer " + token,
+                        (String) filters.get("owner"),
+                        (String) filters.get("repo"),
+                        (Long) filters.get("runId"),
+                        "all",
+                        0,
+                        1));
+    }
+
+    private Map<String, Object> getJobsFilters(RestTableHandle table)
     {
         GithubTable tableName = GithubTable.valueOf(table);
         TupleDomain<ColumnHandle> constraint = table.getConstraint();
@@ -1268,32 +1357,18 @@ public class GithubRest
         if (runId == null) {
             throw new TrinoException(INVALID_ROW_FILTER, "Missing required constraint for run_id");
         }
-        // TODO this needs to allow pushing down multiple run_id values and make a separate request for each: https://github.com/nineinchnick/trino-rest/issues/30
-        return getRowsFromPagesEnvelope(
-                page -> service.listRunJobs("Bearer " + token, owner, repo, runId, "all", PER_PAGE, page),
-                item -> {
-                    item.setOwner(owner);
-                    item.setRepo(repo);
-                    return Stream.of(item.toRow());
-                },
-                table.getLimit());
+        return ImmutableMap.of(
+                "owner", owner,
+                "repo", repo,
+                "runId", runId);
     }
 
     private Collection<? extends List<?>> getJobLogs(RestTableHandle table)
     {
-        GithubTable tableName = GithubTable.valueOf(table);
-        TupleDomain<ColumnHandle> constraint = table.getConstraint();
-        Map<String, ColumnHandle> columns = columnHandles.get(tableName);
-        FilterApplier filter = filterAppliers.get(tableName);
-
-        String owner = (String) filter.getFilter((RestColumnHandle) columns.get("owner"), constraint);
-        String repo = (String) filter.getFilter((RestColumnHandle) columns.get("repo"), constraint);
-        requirePredicate(owner, "owner");
-        requirePredicate(repo, "repo");
-        Long jobId = (Long) filter.getFilter((RestColumnHandle) columns.get("job_id"), constraint);
-        if (jobId == null) {
-            throw new TrinoException(INVALID_ROW_FILTER, "Missing required constraint for job_id");
-        }
+        Map<String, Object> filters = getJobLogsFilters(table);
+        String owner = (String) filters.get("owner");
+        String repo = (String) filters.get("repo");
+        Long jobId = (Long) filters.get("jobId");
 
         Response<ResponseBody> response;
         try {
@@ -1333,7 +1408,7 @@ public class GithubRest
         return result.build();
     }
 
-    private Collection<? extends List<?>> getSteps(RestTableHandle table)
+    private Map<String, Object> getJobLogsFilters(RestTableHandle table)
     {
         GithubTable tableName = GithubTable.valueOf(table);
         TupleDomain<ColumnHandle> constraint = table.getConstraint();
@@ -1344,10 +1419,23 @@ public class GithubRest
         String repo = (String) filter.getFilter((RestColumnHandle) columns.get("repo"), constraint);
         requirePredicate(owner, "owner");
         requirePredicate(repo, "repo");
-        Long runId = (Long) filter.getFilter((RestColumnHandle) columns.get("run_id"), constraint);
-        if (runId == null) {
-            throw new TrinoException(INVALID_ROW_FILTER, "Missing required constraint for run_id");
+        Long jobId = (Long) filter.getFilter((RestColumnHandle) columns.get("job_id"), constraint);
+        if (jobId == null) {
+            throw new TrinoException(INVALID_ROW_FILTER, "Missing required constraint for job_id");
         }
+
+        return ImmutableMap.of(
+                "owner", owner,
+                "repo", repo,
+                "jobId", jobId);
+    }
+
+    private Collection<? extends List<?>> getSteps(RestTableHandle table)
+    {
+        Map<String, Object> filters = getJobsFilters(table);
+        String owner = (String) filters.get("owner");
+        String repo = (String) filters.get("repo");
+        Long runId = (Long) filters.get("runId");
 
         ImmutableList.Builder<Job> jobs = new ImmutableList.Builder<>();
 
@@ -1395,16 +1483,10 @@ public class GithubRest
 
     private Collection<? extends List<?>> getArtifacts(RestTableHandle table)
     {
-        GithubTable tableName = GithubTable.valueOf(table);
-        TupleDomain<ColumnHandle> constraint = table.getConstraint();
-        Map<String, ColumnHandle> columns = columnHandles.get(tableName);
-        FilterApplier filter = filterAppliers.get(tableName);
-
-        String owner = (String) filter.getFilter((RestColumnHandle) columns.get("owner"), constraint);
-        String repo = (String) filter.getFilter((RestColumnHandle) columns.get("repo"), constraint);
-        requirePredicate(owner, "owner");
-        requirePredicate(repo, "repo");
-        Long runId = (Long) filter.getFilter((RestColumnHandle) columns.get("run_id"), constraint);
+        Map<String, Object> filters = getArtifactsFilters(table);
+        String owner = (String) filters.get("owner");
+        String repo = (String) filters.get("repo");
+        Long runId = (Long) filters.get("runId");
 
         IntFunction<Call<ArtifactsList>> fetcher = page -> service.listArtifacts("Bearer " + token, owner, repo, PER_PAGE, page);
         if (runId != null) {
@@ -1433,10 +1515,87 @@ public class GithubRest
                     }
                     return result.build();
                 },
-                table.getLimit());
+                table.getOffset(),
+                table.getLimit(),
+                table.getPageIncrement());
+    }
+
+    private long getArtifactsCount(RestTableHandle table)
+    {
+        Map<String, Object> filters = getArtifactsFilters(table);
+        String owner = (String) filters.get("owner");
+        String repo = (String) filters.get("repo");
+        Long runId = (Long) filters.get("runId");
+        Supplier<Call<ArtifactsList>> fetcher = () -> service.listArtifacts("Bearer " + token, owner, repo, 0, 1);
+        if (runId != null) {
+            fetcher = () -> service.listRunArtifacts("Bearer " + token, owner, repo, runId, 0, 1);
+        }
+        return getTotalCountFromPagesEnvelope(fetcher);
+    }
+
+    private Map<String, Object> getArtifactsFilters(RestTableHandle table)
+    {
+        GithubTable tableName = GithubTable.valueOf(table);
+        TupleDomain<ColumnHandle> constraint = table.getConstraint();
+        Map<String, ColumnHandle> columns = columnHandles.get(tableName);
+        FilterApplier filter = filterAppliers.get(tableName);
+
+        String owner = (String) filter.getFilter((RestColumnHandle) columns.get("owner"), constraint);
+        String repo = (String) filter.getFilter((RestColumnHandle) columns.get("repo"), constraint);
+        requirePredicate(owner, "owner");
+        requirePredicate(repo, "repo");
+        Long runId = (Long) filter.getFilter((RestColumnHandle) columns.get("run_id"), constraint);
+
+        return ImmutableMap.of(
+                "owner", owner,
+                "repo", repo,
+                "runId", runId);
     }
 
     private Collection<? extends List<?>> getRunners(RestTableHandle table)
+    {
+        Map<String, Optional<String>> filters = getRunnersFilters(table);
+        Optional<String> org = filters.get("org");
+        Optional<String> owner = filters.get("owner");
+        Optional<String> repo = filters.get("repo");
+
+        IntFunction<Call<RunnersList>> fetcher;
+        if (org.isPresent()) {
+            fetcher = page -> service.listOrgRunners("Bearer " + token, org.get(), PER_PAGE, page);
+        }
+        else {
+            fetcher = page -> service.listRunners("Bearer " + token, owner.get(), repo.get(), PER_PAGE, page);
+        }
+        return getRowsFromPagesEnvelope(
+                fetcher,
+                item -> {
+                    item.setOrg(org.orElse(null));
+                    item.setOwner(owner.orElse(null));
+                    item.setRepo(repo.orElse(null));
+                    return Stream.of(item.toRow());
+                },
+                table.getOffset(),
+                table.getLimit(),
+                table.getPageIncrement());
+    }
+
+    private long getRunnersCount(RestTableHandle table)
+    {
+        Map<String, Optional<String>> filters = getRunnersFilters(table);
+        Optional<String> org = filters.get("org");
+        Optional<String> owner = filters.get("owner");
+        Optional<String> repo = filters.get("repo");
+        Supplier<Call<RunnersList>> fetcher;
+        if (org.isPresent()) {
+            fetcher = () -> service.listOrgRunners("Bearer " + token, org.get(), 0, 1);
+        }
+        else {
+            fetcher = () -> service.listRunners("Bearer " + token, owner.get(), repo.get(), 0, 1);
+        }
+        return getTotalCountFromPagesEnvelope(fetcher);
+    }
+
+    private Map<String, Optional<String>> getRunnersFilters(RestTableHandle table)
     {
         GithubTable tableName = GithubTable.valueOf(table);
         TupleDomain<ColumnHandle> constraint = table.getConstraint();
@@ -1453,22 +1612,44 @@ public class GithubRest
             requirePredicate(owner, "owner");
             requirePredicate(repo, "repo");
         }
-        IntFunction<Call<RunnersList>> fetcher = page -> service.listRunners("Bearer " + token, owner, repo, PER_PAGE, page);
-        if (org != null) {
-            fetcher = page -> service.listOrgRunners("Bearer " + token, org, PER_PAGE, page);
-        }
-        return getRowsFromPagesEnvelope(
-                fetcher,
-                item -> {
-                    item.setOrg(org);
-                    item.setOwner(owner);
-                    item.setRepo(repo);
-                    return Stream.of(item.toRow());
-                },
-                table.getLimit());
+
+        return ImmutableMap.of(
+                "org", Optional.ofNullable(org),
+                "owner", Optional.ofNullable(owner),
+                "repo", Optional.ofNullable(repo));
     }
 
     private Collection<? extends List<?>> getCheckRuns(RestTableHandle table)
+    {
+        Map<String, String> filters = getCheckRunsFilters(table);
+        String owner = filters.get("owner");
+        String repo = filters.get("repo");
+        String ref = filters.get("ref");
+
+        return getRowsFromPagesEnvelope(
+                page -> service.listCheckRuns("Bearer " + token, owner, repo, ref, PER_PAGE, page),
+                item -> {
+                    item.setOwner(owner);
+                    item.setRepo(repo);
+                    item.setRef(ref);
+                    return Stream.of(item.toRow());
+                },
+                table.getOffset(),
+                table.getLimit(),
+                table.getPageIncrement());
+    }
+
+    private long getCheckRunsCount(RestTableHandle table)
+    {
+        Map<String, String> filters = getCheckRunsFilters(table);
+        String owner = filters.get("owner");
+        String repo = filters.get("repo");
+        String ref = filters.get("ref");
+        return getTotalCountFromPagesEnvelope(
+                () -> service.listCheckRuns("Bearer " + token, owner, repo, ref, 0, 1));
+    }
+
+    private Map<String, String> getCheckRunsFilters(RestTableHandle table)
     {
         GithubTable tableName = GithubTable.valueOf(table);
         TupleDomain<ColumnHandle> constraint = table.getConstraint();
@@ -1481,15 +1662,11 @@ public class GithubRest
         requirePredicate(owner, "owner");
         requirePredicate(repo, "repo");
         requirePredicate(repo, "ref");
-        return getRowsFromPagesEnvelope(
-                page -> service.listCheckRuns("Bearer " + token, owner, repo, ref, PER_PAGE, page),
-                item -> {
-                    item.setOwner(owner);
-                    item.setRepo(repo);
-                    item.setRef(ref);
-                    return Stream.of(item.toRow());
-                },
-                table.getLimit());
+
+        return ImmutableMap.of(
+                "owner", owner,
+                "repo", repo,
+                "ref", ref);
     }
 
     private Collection<? extends List<?>> getCheckRunAnnotations(RestTableHandle table)
@@ -1519,7 +1696,9 @@ public class GithubRest
                     item.setCheckRunId(checkRunId);
                     return item.toRow();
                 },
-                table.getLimit());
+                table.getOffset(),
+                table.getLimit(),
+                table.getPageIncrement());
     }
 
     private <T> Collection<? extends List<?>> getRow(Supplier<Call<T>> fetcher, Function<T, List<?>> mapper)
@@ -1539,16 +1718,22 @@ public class GithubRest
     }
 
     // TODO this abomination should be in a base class implementing a cursor
-    private <T> Collection<? extends List<?>> getRowsFromPages(IntFunction<Call<List<T>>> fetcher, Function<T, List<?>> mapper, int limit)
+    private <T> Collection<? extends List<?>> getRowsFromPages(
+            IntFunction<Call<List<T>>> fetcher,
+            Function<T, List<?>> mapper,
+            int offset,
+            int limit,
+            int pageIncrement)
     {
         ImmutableList.Builder<List<?>> result = new ImmutableList.Builder<>();
         int resultSize = 0;
 
-        int page = 1;
+        int page = offset + 1;
         while (true) {
             Response<List<T>> response;
             try {
-                response = fetcher.apply(page++).execute();
+                response = fetcher.apply(page).execute();
+                page += pageIncrement;
             }
             catch (IOException e) {
                 throw new RuntimeException(e);
@@ -1577,16 +1762,22 @@ public class GithubRest
     }
 
     // TODO this abomination is even worse
-    private <T, E extends Envelope<T>> Collection<? extends List<?>> getRowsFromPagesEnvelope(IntFunction<Call<E>> fetcher, Function<T, Stream<List<?>>> mapper, int limit)
+    private <T, E extends Envelope<T>> Collection<? extends List<?>> getRowsFromPagesEnvelope(
+            IntFunction<Call<E>> fetcher,
+            Function<T, Stream<List<?>>> mapper,
+            int offset,
+            int limit,
+            int pageIncrement)
     {
         ImmutableList.Builder<List<?>> result = new ImmutableList.Builder<>();
         int resultSize = 0;
 
-        int page = 1;
+        int page = offset + 1;
         while (true) {
             Response<E> response;
             try {
-                response = fetcher.apply(page++).execute();
+                response = fetcher.apply(page).execute();
+                page += pageIncrement;
             }
             catch (IOException e) {
                 throw new RuntimeException(e);
@@ -1614,6 +1805,23 @@ public class GithubRest
         }
 
         return result.build();
+    }
+
+    private <T, E extends Envelope<T>> long getTotalCountFromPagesEnvelope(Supplier<Call<E>> fetcher)
+    {
+        Response<E> response;
+        try {
+            response = fetcher.get().execute();
+        }
+        catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+        if (response.code() == HTTP_NOT_FOUND) {
+            return 0;
+        }
+        checkServiceResponse(response);
+        E envelope = requireNonNull(response.body());
+        return envelope.getTotalCount();
     }
 
     @Override
@@ -1652,11 +1860,7 @@ public class GithubRest
             return Optional.empty();
         }
         return Optional.of(new LimitApplicationResult<>(
-                new RestTableHandle(
-                        restTable.getSchemaTableName(),
-                        restTable.getConstraint(),
-                        (int) Math.min(limit, Integer.MAX_VALUE),
-                        restTable.getSortOrder().isPresent() ? restTable.getSortOrder().get() : null),
+                restTable.cloneWithLimit((int) Math.min(limit, Integer.MAX_VALUE)),
                 false,
                 true));
     }
@@ -1694,14 +1898,10 @@ public class GithubRest
             }
         }
 
-        RestTableHandle sortedTableHandle = new RestTableHandle(
-                restTable.getSchemaTableName(),
-                restTable.getConstraint(),
-                limit,
-                sortItems);
-
         return Optional.of(new TopNApplicationResult<>(
-                sortedTableHandle,
+                restTable
+                        .cloneWithLimit(limit)
+                        .cloneWithSortOrder(sortItems),
                 false,
                 true));
     }
@@ -1796,12 +1996,30 @@ public class GithubRest
                 newDomains.put(entry.getKey(), entry.getValue());
             }
             splits.add(new RestConnectorSplit(
-                    new RestTableHandle(
-                            table.getSchemaTableName(),
-                            TupleDomain.withColumnDomains(newDomains),
-                            table.getLimit(),
-                            table.getSortOrder().isPresent() ? table.getSortOrder().get() : null),
+                    table.cloneWithConstraint(TupleDomain.withColumnDomains(newDomains)),
                     addresses));
+        }
+        if (table.getLimit() > PER_PAGE) {
+            ImmutableList<RestConnectorSplit> oldSplits = splits.build();
+            splits = new ImmutableList.Builder<>();
+            for (RestConnectorSplit split : oldSplits) {
+                OptionalInt maxPage = getMaxPage(split.getTableHandle());
+                if (maxPage.isEmpty()) {
+                    for (int i = 0; i < MIN_SPLITS; i++) {
+                        splits.add(new RestConnectorSplit(
+                                split.getTableHandle().cloneWithOffset(i, MIN_SPLITS),
+                                List.of(addresses.get(i % addresses.size()))));
+                    }
+                }
+                else {
+                    for (int i = 0; i < maxPage.getAsInt(); i++) {
+                        RestTableHandle tableHandle = split.getTableHandle();
+                        splits.add(new RestConnectorSplit(
+                                tableHandle.cloneWithLimit(Math.min(tableHandle.getLimit(), PER_PAGE)),
+                                List.of(addresses.get(i % addresses.size()))));
+                    }
+                }
+            }
         }
         return new FixedSplitSource(splits.build());
     }
