@@ -22,6 +22,8 @@ import io.trino.Session;
 import io.trino.testing.DistributedQueryRunner;
 import io.trino.testing.QueryRunner;
 
+import java.util.Map;
+
 import static io.trino.testing.TestingSession.testSessionBuilder;
 import static java.util.Objects.requireNonNullElse;
 
@@ -38,6 +40,8 @@ public class GithubQueryRunner
                 .build();
 
         QueryRunner queryRunner = DistributedQueryRunner.builder(defaultSession)
+                .setExtraProperties(Map.of(
+                        "http-server.http.port", requireNonNullElse(System.getenv("TRINO_PORT"), "8082")))
                 .setNodeCount(1)
                 .build();
         queryRunner.installPlugin(new GithubPlugin());

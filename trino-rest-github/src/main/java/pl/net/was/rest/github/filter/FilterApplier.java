@@ -101,11 +101,7 @@ public interface FilterApplier
         }
 
         return Optional.of(new ConstraintApplicationResult<>(
-                new RestTableHandle(
-                        table.getSchemaTableName(),
-                        currentConstraint,
-                        table.getLimit(),
-                        table.getSortOrder().isPresent() ? table.getSortOrder().get() : null),
+                table.cloneWithConstraint(currentConstraint),
                 constraint,
                 true));
     }

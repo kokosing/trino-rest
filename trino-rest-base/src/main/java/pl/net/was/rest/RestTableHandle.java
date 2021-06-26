@@ -26,23 +26,29 @@ import java.util.List;
 import java.util.Optional;
 
 public class RestTableHandle
-        implements ConnectorTableHandle
+        implements ConnectorTableHandle, Cloneable
 {
     private final SchemaTableName schemaTableName;
-    private final TupleDomain<ColumnHandle> constraint;
-    private final int limit;
-    private final List<SortItem> sortOrder;
+    private TupleDomain<ColumnHandle> constraint;
+    private int offset;
+    private int limit;
+    private int pageIncrement;
+    private List<SortItem> sortOrder;
 
     @JsonCreator
     public RestTableHandle(
             @JsonProperty("schemaTableName") SchemaTableName schemaTableName,
             @JsonProperty("constraint") TupleDomain<ColumnHandle> constraint,
+            @JsonProperty("offset") int offset,
             @JsonProperty("limit") int limit,
+            @JsonProperty("page_increment") int pageIncrement,
             @JsonProperty("sortOrder") List<SortItem> sortOrder)
     {
         this.schemaTableName = schemaTableName;
         this.constraint = constraint;
+        this.offset = offset;
         this.limit = limit;
+        this.pageIncrement = pageIncrement;
         this.sortOrder = sortOrder;
     }
 
@@ -58,15 +64,67 @@ public class RestTableHandle
         return constraint;
     }
 
+    @JsonProperty("offset")
+    public int getOffset()
+    {
+        return offset;
+    }
+
     @JsonProperty("limit")
     public int getLimit()
     {
         return limit;
     }
 
+    @JsonProperty("pageIncrement")
+    public int getPageIncrement()
+    {
+        return pageIncrement;
+    }
+
     @JsonProperty("sortOrder")
     public Optional<List<SortItem>> getSortOrder()
     {
         return sortOrder == null ? Optional.empty() : Optional.of(sortOrder);
+    }
+
+    @Override
+    public RestTableHandle clone()
+    {
+        try {
+            return (RestTableHandle) super.clone();
+        }
+        catch (CloneNotSupportedException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public RestTableHandle cloneWithLimit(int limit)
+    {
+        RestTableHandle tableHandle = this.clone();
+        tableHandle.limit = limit;
+        return tableHandle;
+    }
+
+    public RestTableHandle cloneWithOffset(int offset, int pageIncrement)
+    {
+        RestTableHandle tableHandle = this.clone();
+        tableHandle.offset = offset;
+        tableHandle.pageIncrement = pageIncrement;
+        return tableHandle;
+    }
+
+    public RestTableHandle cloneWithConstraint(TupleDomain<ColumnHandle> constraint)
+    {
+        RestTableHandle tableHandle = this.clone();
+        tableHandle.constraint = constraint;
+        return tableHandle;
+    }
+
+    public RestTableHandle cloneWithSortOrder(List<SortItem> sortOrder)
+    {
+        RestTableHandle tableHandle = this.clone();
+        tableHandle.sortOrder = sortOrder;
+        return tableHandle;
     }
 }

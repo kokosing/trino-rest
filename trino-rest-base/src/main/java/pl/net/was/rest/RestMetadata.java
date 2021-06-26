@@ -63,14 +63,22 @@ public class RestMetadata
     @Override
     public ConnectorTableHandle getTableHandle(ConnectorSession connectorSession, SchemaTableName schemaTableName)
     {
-        if (rest.listTables().contains(schemaTableName)) {
-            return new RestTableHandle(schemaTableName, TupleDomain.none(), Integer.MAX_VALUE, null);
+        if (!rest.listTables().contains(schemaTableName)) {
+            return null;
         }
-        return null;
+        return new RestTableHandle(
+                schemaTableName,
+                TupleDomain.none(),
+                0,
+                Integer.MAX_VALUE,
+                1,
+                null);
     }
 
     @Override
-    public ConnectorTableMetadata getTableMetadata(ConnectorSession connectorSession, ConnectorTableHandle connectorTableHandle)
+    public ConnectorTableMetadata getTableMetadata(
+            ConnectorSession connectorSession,
+            ConnectorTableHandle connectorTableHandle)
     {
         RestTableHandle tableHandle = Types.checkType(connectorTableHandle, RestTableHandle.class, "tableHandle");
         return rest.getTableMetadata(tableHandle.getSchemaTableName());
@@ -83,14 +91,19 @@ public class RestMetadata
     }
 
     @Override
-    public Map<String, ColumnHandle> getColumnHandles(ConnectorSession connectorSession, ConnectorTableHandle connectorTableHandle)
+    public Map<String, ColumnHandle> getColumnHandles(
+            ConnectorSession connectorSession,
+            ConnectorTableHandle connectorTableHandle)
     {
         return getTableMetadata(connectorSession, connectorTableHandle).getColumns().stream()
                 .collect(toMap(ColumnMetadata::getName, column -> new RestColumnHandle(column.getName(), column.getType())));
     }
 
     @Override
-    public ColumnMetadata getColumnMetadata(ConnectorSession connectorSession, ConnectorTableHandle connectorTableHandle, ColumnHandle columnHandle)
+    public ColumnMetadata getColumnMetadata(
+            ConnectorSession connectorSession,
+            ConnectorTableHandle connectorTableHandle,
+            ColumnHandle columnHandle)
     {
         RestColumnHandle restColumnHandle = Types.checkType(columnHandle, RestColumnHandle.class, "columnHandle");
         return new ColumnMetadata(restColumnHandle.getName(), restColumnHandle.getType());
@@ -109,7 +122,9 @@ public class RestMetadata
     }
 
     @Override
-    public Map<SchemaTableName, List<ColumnMetadata>> listTableColumns(ConnectorSession connectorSession, SchemaTablePrefix schemaTablePrefix)
+    public Map<SchemaTableName, List<ColumnMetadata>> listTableColumns(
+            ConnectorSession connectorSession,
+            SchemaTablePrefix schemaTablePrefix)
     {
         return rest.listTableColumns(schemaTablePrefix);
     }
