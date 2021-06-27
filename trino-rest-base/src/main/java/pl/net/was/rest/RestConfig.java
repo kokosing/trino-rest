@@ -19,12 +19,15 @@ import io.airlift.configuration.ConfigSecuritySensitive;
 
 import javax.validation.constraints.NotNull;
 
+import static com.google.common.base.Verify.verify;
+
 public class RestConfig
 {
     private String customerKey;
     private String customerSecret;
     private String secret;
     private String token;
+    private int minSplits = 1;
 
     public String getCustomerKey()
     {
@@ -75,6 +78,20 @@ public class RestConfig
     public RestConfig setToken(String token)
     {
         this.token = token;
+        return this;
+    }
+
+    public int getMinSplits()
+    {
+        return minSplits;
+    }
+
+    @Config("min_splits")
+    public RestConfig setMinSplits(String minSplits)
+    {
+        int value = Integer.parseInt(minSplits);
+        verify(value > 0, "min_splits must be greater than zero");
+        this.minSplits = value;
         return this;
     }
 }
