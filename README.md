@@ -46,6 +46,27 @@ After reloading Trino, you should be able to connect to the `github` catalog and
 * `artifacts`
 * `runners'
 
+Most tables always require conditions on specific columns, like 'owner' and 'repo'.
+
+Join conditions can be used for that in some situations. For example:
+```sql
+SELECT *
+  FROM runs r
+  JOIN jobs j ON j.run_id = r.id
+ WHERE r.owner = 'nineinchnick' AND r.repo= 'trino-rest'
+   AND j.owner = 'nineinchnick' AND j.repo = 'trino-rest'
+```
+
+Note that such query would perform :
+* one HTTP request to count all runs, 
+* one HTTP request to get the runs
+* one HTTP request **for each run** to get its jobs
+
+If you'll get an error message like `Missing required condition on run_id`, it means there might be too many runs (over 20).
+Try to enable the `enable-large-dynamic-filters` config option,
+or enable it in the current session by executing `SET SESSION enable_large_dynamic_filters = true`.
+See the [dynamic filtering](https://trino.io/docs/current/admin/dynamic-filtering.html) for more configuration options.
+
 # Development
 
 For more information, see the README files in connector directories:

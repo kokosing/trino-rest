@@ -33,6 +33,7 @@ import io.trino.spi.connector.SchemaTableName;
 import io.trino.spi.connector.SchemaTablePrefix;
 import io.trino.spi.connector.SortItem;
 import io.trino.spi.connector.TopNApplicationResult;
+import io.trino.spi.statistics.TableStatistics;
 import io.trino.spi.type.Type;
 
 import java.util.Collection;
@@ -95,6 +96,14 @@ public interface Rest
             Constraint constraint)
     {
         return Optional.empty();
+    }
+
+    default TableStatistics getTableStatistics(
+            ConnectorSession session,
+            ConnectorTableHandle tableHandle,
+            Constraint constraint)
+    {
+        return TableStatistics.empty();
     }
 
     default ConnectorSplitSource getSplitSource(

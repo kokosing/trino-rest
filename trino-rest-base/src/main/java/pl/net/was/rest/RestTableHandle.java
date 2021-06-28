@@ -52,6 +52,11 @@ public class RestTableHandle
         this.sortOrder = sortOrder;
     }
 
+    public String toString()
+    {
+        return schemaTableName.getTableName();
+    }
+
     @JsonProperty("schemaTableName")
     public SchemaTableName getSchemaTableName()
     {

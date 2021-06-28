@@ -125,6 +125,11 @@ public class Repository
         this.permissions = permissions;
     }
 
+    public long getOpenIssuesCount()
+    {
+        return openIssuesCount;
+    }
+
     public List<?> toRow()
     {
         BlockBuilder topics = VARCHAR.createBlockBuilder(null, this.topics != null ? this.topics.length : 0);

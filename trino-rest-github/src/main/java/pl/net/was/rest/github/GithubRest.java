@@ -43,7 +43,11 @@ import io.trino.spi.predicate.Domain;
 import io.trino.spi.predicate.Range;
 import io.trino.spi.predicate.TupleDomain;
 import io.trino.spi.predicate.ValueSet;
+import io.trino.spi.statistics.ColumnStatistics;
+import io.trino.spi.statistics.Estimate;
+import io.trino.spi.statistics.TableStatistics;
 import io.trino.spi.type.ArrayType;
+import io.trino.spi.type.FixedWidthType;
 import io.trino.spi.type.MapType;
 import io.trino.spi.type.RowType;
 import io.trino.spi.type.TimestampWithTimeZoneType;
@@ -126,6 +130,10 @@ import static pl.net.was.rest.github.function.Artifacts.download;
 public class GithubRest
         implements Rest
 {
+    // Estimate ratio of one to many relationships
+    private static final double RELATIONSHIPS_RATIO = 0.01;
+    // Estimate ratio of Issue comments to issues
+    private static final double ISSUE_COMMENTS_RATIO = 10;
     Logger log = Logger.getLogger(GithubRest.class.getName());
     public static final String SCHEMA_NAME = "default";
 
@@ -473,6 +481,44 @@ public class GithubRest
                     new ColumnMetadata("raw_details", VARCHAR),
                     new ColumnMetadata("blob_href", VARCHAR)))
             .build();
+
+    // These are only used by tableStatistics to estimate row counts, so they don't have to be complete
+    public static final Map<GithubTable, Map<String, KeyType>> keyColumns = new ImmutableMap.Builder<GithubTable, Map<String, KeyType>>()
+            .put(GithubTable.ISSUES, ImmutableMap.of(
+                    "id", KeyType.PRIMARY_KEY,
+                    "url", KeyType.PRIMARY_KEY,
+                    "user_id", KeyType.FOREIGN_KEY))
+            .put(GithubTable.ISSUE_COMMENTS, ImmutableMap.of(
+                    "id", KeyType.PRIMARY_KEY,
+                    "issue_url", KeyType.FOREIGN_KEY,
+                    "user_id", KeyType.FOREIGN_KEY))
+            .put(GithubTable.RUNS, ImmutableMap.of(
+                    "id", KeyType.PRIMARY_KEY,
+                    "run_number", KeyType.FOREIGN_KEY))
+            .put(GithubTable.JOBS, ImmutableMap.of(
+                    "id", KeyType.PRIMARY_KEY,
+                    "run_id", KeyType.FOREIGN_KEY))
+            .put(GithubTable.STEPS, ImmutableMap.of(
+                    "job_id", KeyType.FOREIGN_KEY,
+                    "run_id", KeyType.FOREIGN_KEY))
+            .put(GithubTable.ARTIFACTS, ImmutableMap.of(
+                    "id", KeyType.PRIMARY_KEY,
+                    "run_id", KeyType.FOREIGN_KEY))
+            .put(GithubTable.RUNNERS, ImmutableMap.of(
+                    "id", KeyType.PRIMARY_KEY))
+            .put(GithubTable.CHECK_RUNS, ImmutableMap.of(
+                    "id", KeyType.PRIMARY_KEY,
+                    "ref", KeyType.FOREIGN_KEY,
+                    "check_suite_id", KeyType.FOREIGN_KEY))
+            .put(GithubTable.CHECK_RUN_ANNOTATIONS, ImmutableMap.of(
+                    "check_run_id", KeyType.FOREIGN_KEY))
+            .build();
+
+    private enum KeyType
+    {
+        PRIMARY_KEY,
+        FOREIGN_KEY
+    }
 
     private final Map<GithubTable, Function<RestTableHandle, Collection<? extends List<?>>>> rowGetters = new ImmutableMap.Builder<GithubTable, Function<RestTableHandle, Collection<? extends List<?>>>>()
             .put(GithubTable.ORGS, this::getOrgs)
@@ -1803,6 +1849,15 @@ public class GithubRest
 
     private <T> Collection<? extends List<?>> getRow(Supplier<Call<T>> fetcher, Function<T, List<?>> mapper)
     {
+        T record = getRecord(fetcher);
+        if (record == null) {
+            return ImmutableList.of();
+        }
+        return ImmutableList.of(mapper.apply(record));
+    }
+
+    private <T> T getRecord(Supplier<Call<T>> fetcher)
+    {
         Response<T> response;
         try {
             response = fetcher.get().execute();
@@ -1811,10 +1866,10 @@ public class GithubRest
             throw new RuntimeException(e);
         }
         if (response.code() == HTTP_NOT_FOUND) {
-            return ImmutableList.of();
+            return null;
         }
         checkServiceResponse(response);
-        return ImmutableList.of(mapper.apply(response.body()));
+        return response.body();
     }
 
     // TODO this abomination should be in a base class implementing a cursor
@@ -2037,7 +2092,6 @@ public class GithubRest
         }
 
         RestTableHandle table = (RestTableHandle) handle;
-        TupleDomain<ColumnHandle> constraint = table.getConstraint();
 
         List<HostAddress> addresses = nodeManager.getRequiredWorkerNodes().stream()
                 .map(Node::getHostAndPort)
@@ -2045,7 +2099,22 @@ public class GithubRest
 
         GithubTable tableName = GithubTable.valueOf(table);
         FilterApplier filterApplier = filterAppliers.get(tableName);
-        if (filterApplier == null || constraint.getDomains().isEmpty()) {
+        if (filterApplier == null) {
+            List<RestConnectorSplit> splits = List.of(new RestConnectorSplit(table, addresses));
+            return new FixedSplitSource(splits);
+        }
+        // merge in constraints from dynamicFilter, which may contain multivalued domains
+        Optional<ConstraintApplicationResult<ConnectorTableHandle>> result = filterApplier.applyFilter(
+                table,
+                columnHandles.get(tableName),
+                filterApplier.getSupportedFilters(),
+                dynamicFilter.getCurrentPredicate());
+        if (result.isPresent()) {
+            table = (RestTableHandle) result.get().getHandle();
+        }
+
+        TupleDomain<ColumnHandle> constraint = table.getConstraint();
+        if (constraint.getDomains().isEmpty()) {
             List<RestConnectorSplit> splits = List.of(new RestConnectorSplit(table, addresses));
             return new FixedSplitSource(splits);
         }
@@ -2126,5 +2195,90 @@ public class GithubRest
             }
         }
         return new FixedSplitSource(splits.build());
+    }
+
+    @Override
+    public TableStatistics getTableStatistics(
+            ConnectorSession session,
+            ConnectorTableHandle handle,
+            Constraint constraint)
+    {
+        RestTableHandle table = (RestTableHandle) handle;
+        GithubTable tableName = GithubTable.valueOf(table);
+        Map<String, ColumnHandle> columns = columnHandles.get(tableName);
+        FilterApplier filter = filterAppliers.get(tableName);
+        TableStatistics.Builder builder = TableStatistics.builder();
+
+        Function<RestTableHandle, Long> getter = rowCountGetters.get(tableName);
+        int multiplier = 1;
+        if (tableName == GithubTable.CHECK_RUN_ANNOTATIONS) {
+            getter = rowCountGetters.get(GithubTable.CHECK_RUNS);
+            multiplier = 4;
+        }
+        else if (tableName == GithubTable.JOBS) {
+            // because jobs require run_id, which would be provided after applying a dynamic filter from the join
+            // fake a huge number here to ensure this is always the right side of the join
+            getter = rowCountGetters.get(GithubTable.RUNS);
+            multiplier = 100;
+        }
+        if (getter != null) {
+            // constraint needs to be pushed down into the table handle
+            if (filter != null) {
+                Optional<ConstraintApplicationResult<ConnectorTableHandle>> result = filter.applyFilter(
+                        table,
+                        columns,
+                        filter.getSupportedFilters(),
+                        constraint.getSummary());
+                if (result.isPresent()) {
+                    table = (RestTableHandle) result.get().getHandle();
+                }
+            }
+            long totalCount = multiplier * getter.apply(table);
+            builder.setRowCount(Estimate.of(totalCount));
+            // set stats at least for columns that might be joined by
+            for (Map.Entry<String, KeyType> entry : keyColumns.get(tableName).entrySet()) {
+                boolean isPrimary = entry.getValue() == KeyType.PRIMARY_KEY;
+                RestColumnHandle column = (RestColumnHandle) columns.get(entry.getKey());
+                ColumnStatistics.Builder columnStatistic = ColumnStatistics.builder()
+                        .setNullsFraction(Estimate.zero())
+                        .setDistinctValuesCount(Estimate.of((double) totalCount * (isPrimary ? 1 : RELATIONSHIPS_RATIO)));
+                if (column.getType() instanceof FixedWidthType) {
+                    columnStatistic.setDataSize(Estimate.of(((FixedWidthType) column.getType()).getFixedSize() * totalCount));
+                }
+                builder.setColumnStatistics(column, columnStatistic.build());
+            }
+            return builder.build();
+        }
+
+        switch (tableName) {
+            // return same number of rows for issues and issue_comments,
+            // assuming that some issues don't have any comments, so these numbers are close together
+            case ISSUES:
+            case ISSUE_COMMENTS:
+                String owner = (String) filter.getFilter((RestColumnHandle) columns.get("owner"), constraint.getSummary());
+                String repo = (String) filter.getFilter((RestColumnHandle) columns.get("repo"), constraint.getSummary());
+                Repository repository = getRecord(() -> service.getRepo("Bearer " + token, owner, repo));
+                if (repository == null) {
+                    break;
+                }
+                long totalCount = repository.getOpenIssuesCount();
+                builder.setRowCount(Estimate.of(totalCount));
+                // set stats at least for columns that might be joined by
+                for (Map.Entry<String, KeyType> entry : keyColumns.get(tableName).entrySet()) {
+                    boolean isPrimary = entry.getValue() == KeyType.PRIMARY_KEY;
+                    RestColumnHandle column = (RestColumnHandle) columns.get(entry.getKey());
+                    ColumnStatistics.Builder columnStatistic = ColumnStatistics.builder()
+                            .setNullsFraction(Estimate.zero())
+                            .setDistinctValuesCount(Estimate.of((double) totalCount * (isPrimary ? ISSUE_COMMENTS_RATIO : 1)));
+                    if (column.getType() instanceof FixedWidthType) {
+                        columnStatistic.setDataSize(Estimate.of(((FixedWidthType) column.getType()).getFixedSize() * totalCount));
+                    }
+                    builder.setColumnStatistics(column, columnStatistic.build());
+                }
+                break;
+            default:
+                return TableStatistics.empty();
+        }
+        return builder.build();
     }
 }

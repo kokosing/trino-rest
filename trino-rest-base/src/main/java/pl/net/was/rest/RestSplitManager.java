@@ -53,7 +53,7 @@ public class RestSplitManager
             SplitSchedulingStrategy splitSchedulingStrategy,
             DynamicFilter dynamicFilter)
     {
-        long timeoutMillis = 2000;
+        long timeoutMillis = 20000;
         if (!dynamicFilter.isAwaitable()) {
             return rest.getSplitSource(nodeManager, table, splitSchedulingStrategy, dynamicFilter);
         }

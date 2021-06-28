@@ -33,6 +33,7 @@ import io.trino.spi.connector.SortItem;
 import io.trino.spi.connector.TopNApplicationResult;
 import io.trino.spi.predicate.TupleDomain;
 import io.trino.spi.statistics.ComputedStatistics;
+import io.trino.spi.statistics.TableStatistics;
 
 import javax.inject.Inject;
 
@@ -173,5 +174,14 @@ public class RestMetadata
             Constraint constraint)
     {
         return rest.applyFilter(session, handle, constraint);
+    }
+
+    @Override
+    public TableStatistics getTableStatistics(
+            ConnectorSession session,
+            ConnectorTableHandle tableHandle,
+            Constraint constraint)
+    {
+        return rest.getTableStatistics(session, tableHandle, constraint);
     }
 }
