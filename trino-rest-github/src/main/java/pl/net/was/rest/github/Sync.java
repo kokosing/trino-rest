@@ -411,9 +411,9 @@ public class Sync
             // save only completed runs to avoid having to update them later
             PreparedStatement statement = conn.prepareStatement(
                     "INSERT INTO " + destSchema + ".runs " +
-                            "SELECT src.* FROM unnest(runs(?, ?, ?)) src " +
+                            "SELECT src.* FROM unnest(runs(?, ?, ?, 'completed')) src " +
                             "LEFT JOIN " + destSchema + ".runs dst ON dst.id = src.id " +
-                            "WHERE dst.id IS NULL AND src.status = 'completed'");
+                            "WHERE dst.id IS NULL");
             statement.setString(1, options.owner);
             statement.setString(2, options.repo);
 

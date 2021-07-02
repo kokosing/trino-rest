@@ -39,8 +39,6 @@ import static pl.net.was.rest.github.GithubRest.RUNS_TABLE_TYPE;
 import static pl.net.was.rest.github.GithubRest.checkServiceResponse;
 import static pl.net.was.rest.github.GithubRest.getRowType;
 
-@ScalarFunction("runs")
-@Description("Get workflow runs")
 public class Runs
         extends BaseFunction
 {
@@ -51,6 +49,8 @@ public class Runs
         pageBuilder = new PageBuilder(ImmutableList.of(arrayType));
     }
 
+    @ScalarFunction("runs")
+    @Description("Get workflow runs")
     @SqlType(RUNS_TABLE_TYPE)
     public Block getPage(@SqlType(VARCHAR) Slice owner, @SqlType(VARCHAR) Slice repo, @SqlType(INTEGER) long page)
             throws IOException
@@ -59,6 +59,30 @@ public class Runs
                 "Bearer " + token,
                 owner.toStringUtf8(),
                 repo.toStringUtf8(),
+                PER_PAGE,
+                (int) page).execute();
+        if (response.code() == HTTP_NOT_FOUND) {
+            return null;
+        }
+        checkServiceResponse(response);
+        RunsList envelope = response.body();
+        List<Run> items = requireNonNull(envelope).getItems();
+        items.forEach(i -> i.setOwner(owner.toStringUtf8()));
+        items.forEach(i -> i.setRepo(repo.toStringUtf8()));
+        return buildBlock(items);
+    }
+
+    @ScalarFunction("runs")
+    @Description("Get workflow runs")
+    @SqlType(RUNS_TABLE_TYPE)
+    public Block getPageWithStatus(@SqlType(VARCHAR) Slice owner, @SqlType(VARCHAR) Slice repo, @SqlType(INTEGER) long page, @SqlType(VARCHAR) Slice status)
+            throws IOException
+    {
+        Response<RunsList> response = service.listRunsWithStatus(
+                "Bearer " + token,
+                owner.toStringUtf8(),
+                repo.toStringUtf8(),
+                status.toStringUtf8(),
                 PER_PAGE,
                 (int) page).execute();
         if (response.code() == HTTP_NOT_FOUND) {
