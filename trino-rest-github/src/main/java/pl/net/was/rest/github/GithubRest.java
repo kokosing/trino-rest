@@ -928,6 +928,7 @@ public class GithubRest
         GithubRest.token = config.getToken();
         GithubRest.minSplits = config.getMinSplits();
         GithubRest.minSplitTables = config.getMinSplitTables().stream()
+                .map(String::toUpperCase)
                 .map(GithubTable::valueOf)
                 .collect(Collectors.toList());
         if (minSplitTables.size() == 0) {
