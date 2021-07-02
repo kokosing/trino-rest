@@ -133,13 +133,13 @@ public class ReviewComment
                 body != null ? body : "",
                 packTimestamp(createdAt),
                 packTimestamp(updatedAt),
-                authorAssociation,
+                authorAssociation != null ? authorAssociation : "",
                 startLine,
                 originalStartLine,
-                startSide,
+                startSide != null ? startSide : "",
                 line,
                 originalLine,
-                side);
+                side != null ? side : "");
     }
 
     @Override
