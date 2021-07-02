@@ -41,7 +41,7 @@ public class RestTableHandle
             @JsonProperty("constraint") TupleDomain<ColumnHandle> constraint,
             @JsonProperty("offset") int offset,
             @JsonProperty("limit") int limit,
-            @JsonProperty("page_increment") int pageIncrement,
+            @JsonProperty("pageIncrement") int pageIncrement,
             @JsonProperty("sortOrder") List<SortItem> sortOrder)
     {
         this.schemaTableName = schemaTableName;

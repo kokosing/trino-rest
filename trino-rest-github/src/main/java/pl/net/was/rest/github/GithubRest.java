@@ -1094,7 +1094,7 @@ public class GithubRest
 
         String owner = (String) filter.getFilter((RestColumnHandle) columns.get("owner_login"), table.getConstraint());
         SortItem sortOrder = getSortItem(table);
-        return getRowsFromPages(
+        Collection<? extends List<?>> userRepos = getRowsFromPages(
                 page -> service.listUserRepos(
                         "Bearer " + token,
                         owner,
@@ -1106,6 +1106,19 @@ public class GithubRest
                 table.getOffset(),
                 table.getLimit(),
                 table.getPageIncrement());
+        Collection<? extends List<?>> orgRepos = getRowsFromPages(
+                page -> service.listOrgRepos(
+                        "Bearer " + token,
+                        owner,
+                        PER_PAGE,
+                        page,
+                        sortOrder.getName(),
+                        sortOrder.getSortOrder().isAscending() ? "asc" : "desc"),
+                Repository::toRow,
+                table.getOffset(),
+                table.getLimit(),
+                table.getPageIncrement());
+        return Stream.concat(userRepos.stream(), orgRepos.stream()).collect(toList());
     }
 
     private Collection<? extends List<?>> getPulls(RestTableHandle table)
@@ -2092,12 +2105,14 @@ public class GithubRest
             for (RestConnectorSplit split : oldSplits) {
                 OptionalInt maxPage = getMaxPage(split.getTableHandle());
                 if (maxPage.isEmpty()) {
+                    int minSplits = 1;
                     if (minSplitTables.contains(tableName)) {
-                        for (int i = 0; i < minSplits; i++) {
-                            splits.add(new RestConnectorSplit(
-                                    split.getTableHandle().cloneWithOffset(i, minSplits),
-                                    List.of(addresses.get(i % addresses.size()))));
-                        }
+                        minSplits = GithubRest.minSplits;
+                    }
+                    for (int i = 0; i < minSplits; i++) {
+                        splits.add(new RestConnectorSplit(
+                                split.getTableHandle().cloneWithOffset(i, minSplits),
+                                List.of(addresses.get(i % addresses.size()))));
                     }
                 }
                 else {
