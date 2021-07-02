@@ -1,7 +1,7 @@
 trino-rest-github
 =================
 
-This is a Trino connector to access the Github API using SQL.
+This is a Trino connector to access the GitHub API using SQL.
 
 Because most endpoints have some parameters that are required, there are two ways of getting data:
 * reading from functions - required parameters are passed explicitly as function arguments, including page number;
@@ -16,6 +16,16 @@ Not all API endpoints are mapped yet, here's a list of the available tables:
 * `issues` and `issue_comments` - [Issues](https://docs.github.com/en/rest/reference/issues)
 * `pulls`, `pull_commits`, `reviews`, `review_comments` - [Pull requests](https://docs.github.com/en/rest/reference/pulls)
 * `runs`, `jobs`, `steps`, `artifacts`, `runners` - [Actions](https://docs.github.com/en/rest/reference/actions)
+
+# Configuration
+
+The following configuration options are recognied by this connector:
+
+* `token` - required, the personal access token to authenticate with; it is required, but doesn't have to be valid;
+  see the [Authentication and rate limits](#authentication-and-rate-limits) section below
+* `min_splits` and `min_split_tables` - for tables matching endpoints that don't return total number of elements,
+  a minimum number of splits can be used, where every split will fetch next page until no more results are available;
+  defaults to 1 for `issues`, `pulls`, `runs` and `check_runs` tables
 
 # Build
 
@@ -51,9 +61,19 @@ docker run -it --rm --link trino trinodb/trino:358 trino --server trino:8080 --c
 
 # Authentication and rate limits
 
-Github API doesn't require authentication, but unauthenticated requests have very low rate-limits.
+GitHub API doesn't require authentication, but unauthenticated requests have very low rate-limits.
 Generate a personal auth token in `Settings -> Developer settings -> Personal access tokens`.
-For more details, see [the Authentication section](https://docs.github.com/en/rest/guides/getting-started-with-the-rest-api#authentication) in Github's API docs.
+For more details, see [the Authentication section](https://docs.github.com/en/rest/guides/getting-started-with-the-rest-api#authentication) in GitHub's API docs.
+
+# Concurrency
+
+Some tables fetch data from endpoints that return total number of items. In such case,
+this connector will generate one split for every page of data (with 100 items per page).
+Such splits can be distributed evenly among all available nodes and/or threads, resulting in making concurrent HTTP requests.
+
+For other tables, a configurable minimum number of splits will be created (defaults to 1), where each fetches pages until no more are available.
+
+> Note: no rate limits are being accounted for when generating splits.
   
 # Cache
 

@@ -131,6 +131,7 @@ public class GithubRest
     private static final int PER_PAGE = 100;
 
     private static int minSplits;
+    private static List<GithubTable> minSplitTables;
     private static String token;
     private final GithubService service = getService(GithubService.class, "https://api.github.com/");
 
@@ -926,6 +927,16 @@ public class GithubRest
         requireNonNull(config, "config is null");
         GithubRest.token = config.getToken();
         GithubRest.minSplits = config.getMinSplits();
+        GithubRest.minSplitTables = config.getMinSplitTables().stream()
+                .map(GithubTable::valueOf)
+                .collect(Collectors.toList());
+        if (minSplitTables.size() == 0) {
+            minSplitTables = List.of(
+                    GithubTable.PULLS,
+                    GithubTable.ISSUES,
+                    GithubTable.RUNS,
+                    GithubTable.CHECK_RUNS);
+        }
         columnHandles = columns.keySet()
                 .stream()
                 .collect(Collectors.toMap(
@@ -2005,10 +2016,12 @@ public class GithubRest
             for (RestConnectorSplit split : oldSplits) {
                 OptionalInt maxPage = getMaxPage(split.getTableHandle());
                 if (maxPage.isEmpty()) {
-                    for (int i = 0; i < minSplits; i++) {
-                        splits.add(new RestConnectorSplit(
-                                split.getTableHandle().cloneWithOffset(i, minSplits),
-                                List.of(addresses.get(i % addresses.size()))));
+                    if (minSplitTables.contains(tableName)) {
+                        for (int i = 0; i < minSplits; i++) {
+                            splits.add(new RestConnectorSplit(
+                                    split.getTableHandle().cloneWithOffset(i, minSplits),
+                                    List.of(addresses.get(i % addresses.size()))));
+                        }
                     }
                 }
                 else {
