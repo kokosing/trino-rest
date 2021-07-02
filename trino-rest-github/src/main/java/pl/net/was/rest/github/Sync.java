@@ -744,9 +744,8 @@ public class Sync
             conn.createStatement().executeUpdate(
                     "CREATE TABLE IF NOT EXISTS " + destSchema + ".check_runs AS SELECT * FROM " + srcSchema + ".check_runs WITH NO DATA");
             // consider adding some indexes:
-            // ALTER TABLE check_runs ADD PRIMARY KEY (id);
+            // ALTER TABLE check_runs ADD PRIMARY KEY (id, ref);
             // CREATE INDEX ON check_runs(owner, repo);
-            // CREATE INDEX ON check_runs(ref);
 
             // get largest run id of those with a check and move up
             // TODO because dynamic filtering is not supported yet, CROSS JOIN LATERAL between runs and checks would not push down filter on ref
@@ -763,7 +762,7 @@ public class Sync
                     "ORDER BY r.id ASC");
 
             String query = "INSERT INTO " + destSchema + ".check_runs " +
-                    "SELECT src.* " +
+                    "SELECT DISTINCT src.* " +
                     "FROM check_runs src " +
                     "LEFT JOIN " + destSchema + ".check_runs dst ON dst.ref = ? AND dst.id = src.id " +
                     "WHERE src.owner = ? AND src.repo = ? AND src.ref = ? AND dst.id IS NULL";
