@@ -81,6 +81,8 @@ public class Steps
             if (items.size() == 0) {
                 break;
             }
+            items.forEach(i -> i.setOwner(owner.toStringUtf8()));
+            items.forEach(i -> i.setRepo(repo.toStringUtf8()));
             jobs.addAll(items);
             if (items.size() < PER_PAGE) {
                 break;
