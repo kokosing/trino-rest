@@ -45,7 +45,7 @@ import static pl.net.was.rest.github.GithubRest.JOBS_TABLE_TYPE;
 import static pl.net.was.rest.github.GithubRest.checkServiceResponse;
 import static pl.net.was.rest.github.GithubRest.getRowType;
 
-@ScalarFunction("job_logs")
+@ScalarFunction(value = "job_logs", deterministic = false)
 @Description("Get workflow job logs")
 public class JobLogs
         extends BaseFunction

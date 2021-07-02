@@ -38,7 +38,7 @@ import static pl.net.was.rest.github.GithubRest.REPOS_TABLE_TYPE;
 import static pl.net.was.rest.github.GithubRest.checkServiceResponse;
 import static pl.net.was.rest.github.GithubRest.getRowType;
 
-@ScalarFunction("user_repos")
+@ScalarFunction(value = "user_repos", deterministic = false)
 @Description("Get user repositories")
 public class UserRepos
         extends BaseFunction

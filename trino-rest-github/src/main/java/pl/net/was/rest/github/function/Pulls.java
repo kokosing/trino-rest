@@ -38,7 +38,7 @@ import static pl.net.was.rest.github.GithubRest.PULLS_TABLE_TYPE;
 import static pl.net.was.rest.github.GithubRest.checkServiceResponse;
 import static pl.net.was.rest.github.GithubRest.getRowType;
 
-@ScalarFunction("pulls")
+@ScalarFunction(value = "pulls", deterministic = false)
 @Description("Get pull requests")
 public class Pulls
         extends BaseFunction

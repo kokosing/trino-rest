@@ -35,7 +35,7 @@ import static pl.net.was.rest.github.GithubRest.REPOS_TABLE_TYPE;
 import static pl.net.was.rest.github.GithubRest.checkServiceResponse;
 import static pl.net.was.rest.github.GithubRest.getRowType;
 
-@ScalarFunction("repos")
+@ScalarFunction(value = "repos", deterministic = false)
 @Description("Get public repositories")
 public class Repos
         extends BaseFunction

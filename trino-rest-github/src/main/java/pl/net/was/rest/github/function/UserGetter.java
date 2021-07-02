@@ -36,7 +36,7 @@ import static pl.net.was.rest.github.GithubRest.USER_ROW_TYPE;
 import static pl.net.was.rest.github.GithubRest.checkServiceResponse;
 import static pl.net.was.rest.github.GithubRest.getRowType;
 
-@ScalarFunction("user")
+@ScalarFunction(value = "user", deterministic = false)
 @Description("Get a user")
 public class UserGetter
         extends BaseFunction

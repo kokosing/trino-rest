@@ -39,7 +39,7 @@ import static pl.net.was.rest.github.GithubRest.REVIEWS_TABLE_TYPE;
 import static pl.net.was.rest.github.GithubRest.checkServiceResponse;
 import static pl.net.was.rest.github.GithubRest.getRowType;
 
-@ScalarFunction("reviews")
+@ScalarFunction(value = "reviews", deterministic = false)
 @Description("Get pull request reviews")
 public class Reviews
         extends BaseFunction

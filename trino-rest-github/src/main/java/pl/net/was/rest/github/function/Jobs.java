@@ -40,7 +40,7 @@ import static pl.net.was.rest.github.GithubRest.JOBS_TABLE_TYPE;
 import static pl.net.was.rest.github.GithubRest.checkServiceResponse;
 import static pl.net.was.rest.github.GithubRest.getRowType;
 
-@ScalarFunction("jobs")
+@ScalarFunction(value = "jobs", deterministic = false)
 @Description("Get workflow jobs")
 public class Jobs
         extends BaseFunction

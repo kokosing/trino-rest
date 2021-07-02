@@ -39,7 +39,7 @@ import static pl.net.was.rest.github.GithubRest.PULL_COMMITS_TABLE_TYPE;
 import static pl.net.was.rest.github.GithubRest.checkServiceResponse;
 import static pl.net.was.rest.github.GithubRest.getRowType;
 
-@ScalarFunction("pull_commits")
+@ScalarFunction(value = "pull_commits", deterministic = false)
 @Description("Get pull request commits")
 public class PullCommits
         extends BaseFunction

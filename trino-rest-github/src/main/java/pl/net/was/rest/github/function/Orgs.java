@@ -35,7 +35,7 @@ import static pl.net.was.rest.github.GithubRest.ORGS_TABLE_TYPE;
 import static pl.net.was.rest.github.GithubRest.checkServiceResponse;
 import static pl.net.was.rest.github.GithubRest.getRowType;
 
-@ScalarFunction("orgs")
+@ScalarFunction(value = "orgs", deterministic = false)
 @Description("Get organizations")
 public class Orgs
         extends BaseFunction

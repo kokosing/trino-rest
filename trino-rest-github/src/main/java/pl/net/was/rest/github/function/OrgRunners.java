@@ -39,7 +39,7 @@ import static pl.net.was.rest.github.GithubRest.RUNNERS_TABLE_TYPE;
 import static pl.net.was.rest.github.GithubRest.checkServiceResponse;
 import static pl.net.was.rest.github.GithubRest.getRowType;
 
-@ScalarFunction("org_runners")
+@ScalarFunction(value = "org_runners", deterministic = false)
 @Description("Get organization self-hosted runners")
 public class OrgRunners
         extends BaseFunction

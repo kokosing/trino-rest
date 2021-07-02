@@ -39,7 +39,7 @@ import static pl.net.was.rest.github.GithubRest.ISSUES_TABLE_TYPE;
 import static pl.net.was.rest.github.GithubRest.checkServiceResponse;
 import static pl.net.was.rest.github.GithubRest.getRowType;
 
-@ScalarFunction("issues")
+@ScalarFunction(value = "issues", deterministic = false)
 @Description("Get issues")
 public class Issues
         extends BaseFunction

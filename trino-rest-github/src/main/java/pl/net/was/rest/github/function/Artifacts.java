@@ -48,7 +48,7 @@ import static pl.net.was.rest.github.GithubRest.ARTIFACTS_TABLE_TYPE;
 import static pl.net.was.rest.github.GithubRest.checkServiceResponse;
 import static pl.net.was.rest.github.GithubRest.getRowType;
 
-@ScalarFunction("artifacts")
+@ScalarFunction(value = "artifacts", deterministic = false)
 @Description("Get workflow run artifacts")
 public class Artifacts
         extends BaseFunction

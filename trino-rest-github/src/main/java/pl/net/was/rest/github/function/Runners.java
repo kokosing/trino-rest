@@ -39,7 +39,7 @@ import static pl.net.was.rest.github.GithubRest.RUNNERS_TABLE_TYPE;
 import static pl.net.was.rest.github.GithubRest.checkServiceResponse;
 import static pl.net.was.rest.github.GithubRest.getRowType;
 
-@ScalarFunction("runners")
+@ScalarFunction(value = "runners", deterministic = false)
 @Description("Get runners")
 public class Runners
         extends BaseFunction

@@ -35,7 +35,7 @@ import static pl.net.was.rest.github.GithubRest.USERS_TABLE_TYPE;
 import static pl.net.was.rest.github.GithubRest.checkServiceResponse;
 import static pl.net.was.rest.github.GithubRest.getRowType;
 
-@ScalarFunction("users")
+@ScalarFunction(value = "users", deterministic = false)
 @Description("Get users")
 public class Users
         extends BaseFunction

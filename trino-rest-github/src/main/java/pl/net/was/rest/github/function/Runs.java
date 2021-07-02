@@ -49,7 +49,7 @@ public class Runs
         pageBuilder = new PageBuilder(ImmutableList.of(arrayType));
     }
 
-    @ScalarFunction("runs")
+    @ScalarFunction(value = "runs", deterministic = false)
     @Description("Get workflow runs")
     @SqlType(RUNS_TABLE_TYPE)
     public Block getPage(@SqlType(VARCHAR) Slice owner, @SqlType(VARCHAR) Slice repo, @SqlType(INTEGER) long page)
@@ -72,7 +72,7 @@ public class Runs
         return buildBlock(items);
     }
 
-    @ScalarFunction("runs")
+    @ScalarFunction(value = "runs", deterministic = false)
     @Description("Get workflow runs")
     @SqlType(RUNS_TABLE_TYPE)
     public Block getPageWithStatus(@SqlType(VARCHAR) Slice owner, @SqlType(VARCHAR) Slice repo, @SqlType(INTEGER) long page, @SqlType(VARCHAR) Slice status)

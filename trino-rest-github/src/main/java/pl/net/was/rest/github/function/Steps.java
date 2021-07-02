@@ -42,7 +42,7 @@ import static pl.net.was.rest.github.GithubRest.STEPS_TABLE_TYPE;
 import static pl.net.was.rest.github.GithubRest.checkServiceResponse;
 import static pl.net.was.rest.github.GithubRest.getRowType;
 
-@ScalarFunction("steps")
+@ScalarFunction(value = "steps", deterministic = false)
 @Description("Get workflow steps")
 public class Steps
         extends BaseFunction

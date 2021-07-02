@@ -38,7 +38,7 @@ import static pl.net.was.rest.github.GithubRest.REPOS_TABLE_TYPE;
 import static pl.net.was.rest.github.GithubRest.checkServiceResponse;
 import static pl.net.was.rest.github.GithubRest.getRowType;
 
-@ScalarFunction("org_repos")
+@ScalarFunction(value = "org_repos", deterministic = false)
 @Description("Get organization repositories")
 public class OrgRepos
         extends BaseFunction

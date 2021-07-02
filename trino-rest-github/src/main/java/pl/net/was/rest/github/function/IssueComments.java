@@ -39,7 +39,7 @@ import static pl.net.was.rest.github.GithubRest.ISSUE_COMMENTS_TABLE_TYPE;
 import static pl.net.was.rest.github.GithubRest.checkServiceResponse;
 import static pl.net.was.rest.github.GithubRest.getRowType;
 
-@ScalarFunction("issue_comments")
+@ScalarFunction(value = "issue_comments", deterministic = false)
 @Description("Get issue comments")
 public class IssueComments
         extends BaseFunction
