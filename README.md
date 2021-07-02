@@ -39,6 +39,7 @@ After reloading Trino, you should be able to connect to the `github` catalog and
 * `pull_commits`
 * `reviews`
 * `review_comments`
+* `workflows`
 * `runs`
 * `jobs`
 * `steps`

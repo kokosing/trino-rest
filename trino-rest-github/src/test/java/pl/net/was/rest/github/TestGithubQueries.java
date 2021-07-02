@@ -32,7 +32,7 @@ public class TestGithubQueries
     public void showTables()
     {
         assertQuery("SHOW SCHEMAS FROM github", "VALUES 'default', 'information_schema'");
-        assertQuery("SHOW TABLES FROM github.default", "VALUES 'orgs', 'users', 'repos', 'issues', 'issue_comments', 'pulls', 'pull_commits', 'reviews', 'review_comments', 'runs', 'jobs', 'job_logs', 'steps', 'artifacts', 'runners', 'check_runs', 'check_run_annotations'");
+        assertQuery("SHOW TABLES FROM github.default", "VALUES 'orgs', 'users', 'repos', 'issues', 'issue_comments', 'pulls', 'pull_commits', 'reviews', 'review_comments', 'workflows', 'runs', 'jobs', 'job_logs', 'steps', 'artifacts', 'runners', 'check_runs', 'check_run_annotations'");
     }
 
     @Test
@@ -47,6 +47,7 @@ public class TestGithubQueries
         assertQuerySucceeds("SELECT * FROM pull_commits WHERE owner = 'nineinchnick' AND repo = 'trino-rest' AND pull_number = 1");
         assertQuerySucceeds("SELECT * FROM reviews WHERE owner = 'nineinchnick' AND repo = 'trino-rest' AND pull_number = 1");
         assertQuerySucceeds("SELECT * FROM review_comments WHERE owner = 'nineinchnick' AND repo = 'trino-rest'");
+        assertQuerySucceeds("SELECT * FROM workflows WHERE owner = 'nineinchnick' AND repo = 'trino-rest'");
         assertQuerySucceeds("SELECT * FROM runs WHERE owner = 'nineinchnick' AND repo = 'trino-rest'");
         assertQuerySucceeds("SELECT * FROM jobs WHERE owner = 'nineinchnick' AND repo = 'trino-rest' AND run_id = 895383456");
         assertQuerySucceeds("SELECT * FROM job_logs WHERE owner = 'nineinchnick' AND repo = 'trino-rest' AND job_id = 2716915847");
@@ -72,6 +73,7 @@ public class TestGithubQueries
         assertQueryFails("SELECT * FROM pull_commits", "Missing required constraint for owner");
         assertQueryFails("SELECT * FROM reviews", "Missing required constraint for owner");
         assertQueryFails("SELECT * FROM review_comments", "Missing required constraint for owner");
+        assertQueryFails("SELECT * FROM workflows", "Missing required constraint for owner");
         assertQueryFails("SELECT * FROM runs", "Missing required constraint for owner");
         assertQueryFails("SELECT * FROM jobs", "Missing required constraint for owner");
         assertQueryFails("SELECT * FROM job_logs", "Missing required constraint for owner");
@@ -98,6 +100,7 @@ public class TestGithubQueries
         assertQuerySucceeds("SELECT * FROM unnest(pull_commits('nineinchnick', 'trino-rest', 1))");
         assertQuerySucceeds("SELECT * FROM unnest(reviews('nineinchnick', 'trino-rest', 1))");
         assertQuerySucceeds("SELECT * FROM unnest(review_comments('nineinchnick', 'trino-rest', 1, timestamp '1970-01-01 00:00:00'))");
+        assertQuerySucceeds("SELECT * FROM unnest(workflows('nineinchnick', 'trino-rest', 1))");
         assertQuerySucceeds("SELECT * FROM unnest(runs('nineinchnick', 'trino-rest', 1))");
         assertQuerySucceeds("SELECT * FROM unnest(jobs('nineinchnick', 'trino-rest', 1))");
         assertQuerySucceeds("SELECT * FROM unnest(steps('nineinchnick', 'trino-rest', 1))");

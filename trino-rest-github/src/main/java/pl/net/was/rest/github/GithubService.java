@@ -30,6 +30,7 @@ import pl.net.was.rest.github.model.ReviewComment;
 import pl.net.was.rest.github.model.RunnersList;
 import pl.net.was.rest.github.model.RunsList;
 import pl.net.was.rest.github.model.User;
+import pl.net.was.rest.github.model.WorkflowsList;
 import retrofit2.Call;
 import retrofit2.http.GET;
 import retrofit2.http.Header;
@@ -108,6 +109,15 @@ public interface GithubService
             @Query("sort") String sort,
             @Query("direction") String direction,
             @Query("since") String since);
+
+    @Headers("accept: application/vnd.github.v3+json")
+    @GET("/repos/{owner}/{repo}/actions/workflows")
+    Call<WorkflowsList> listWorkflows(
+            @Header("Authorization") String auth,
+            @Path("owner") String owner,
+            @Path("repo") String repo,
+            @Query("per_page") int perPage,
+            @Query("page") int page);
 
     @Headers("accept: application/vnd.github.v3+json")
     @GET("/repos/{owner}/{repo}/actions/runs")

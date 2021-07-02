@@ -39,6 +39,7 @@ import pl.net.was.rest.github.function.Steps;
 import pl.net.was.rest.github.function.UserGetter;
 import pl.net.was.rest.github.function.UserRepos;
 import pl.net.was.rest.github.function.Users;
+import pl.net.was.rest.github.function.Workflows;
 
 import java.util.Set;
 
@@ -72,6 +73,7 @@ public class GithubPlugin
                 .add(Issues.class)
                 .add(JobLogs.class)
                 .add(Jobs.class)
+                .add(Workflows.class)
                 .add(Runs.class)
                 .add(Steps.class)
                 .add(Artifacts.class)

@@ -73,6 +73,7 @@ import pl.net.was.rest.github.filter.RunFilter;
 import pl.net.was.rest.github.filter.RunnerFilter;
 import pl.net.was.rest.github.filter.StepFilter;
 import pl.net.was.rest.github.filter.UserFilter;
+import pl.net.was.rest.github.filter.WorkflowFilter;
 import pl.net.was.rest.github.function.JobLogs;
 import pl.net.was.rest.github.model.Artifact;
 import pl.net.was.rest.github.model.ArtifactsList;
@@ -345,6 +346,19 @@ public class GithubRest
                     new ColumnMetadata("created_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
                     new ColumnMetadata("updated_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
                     new ColumnMetadata("author_association", VARCHAR)))
+            .put(GithubTable.WORKFLOWS, ImmutableList.of(
+                    new ColumnMetadata("owner", VARCHAR),
+                    new ColumnMetadata("repo", VARCHAR),
+                    new ColumnMetadata("id", BIGINT),
+                    new ColumnMetadata("node_id", VARCHAR),
+                    new ColumnMetadata("name", VARCHAR),
+                    new ColumnMetadata("path", VARCHAR),
+                    new ColumnMetadata("state", VARCHAR),
+                    new ColumnMetadata("created_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
+                    new ColumnMetadata("updated_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
+                    new ColumnMetadata("url", VARCHAR),
+                    new ColumnMetadata("html_url", VARCHAR),
+                    new ColumnMetadata("badge_url", VARCHAR)))
             .put(GithubTable.RUNS, ImmutableList.of(
                     new ColumnMetadata("owner", VARCHAR),
                     new ColumnMetadata("repo", VARCHAR),
@@ -470,6 +484,7 @@ public class GithubRest
             .put(GithubTable.REVIEW_COMMENTS, this::getReviewComments)
             .put(GithubTable.ISSUES, this::getIssues)
             .put(GithubTable.ISSUE_COMMENTS, this::getIssueComments)
+            .put(GithubTable.WORKFLOWS, this::getWorkflows)
             .put(GithubTable.RUNS, this::getRuns)
             .put(GithubTable.JOBS, this::getJobs)
             .put(GithubTable.JOB_LOGS, this::getJobLogs)
@@ -481,6 +496,7 @@ public class GithubRest
             .build();
 
     private final Map<GithubTable, Function<RestTableHandle, Long>> rowCountGetters = new ImmutableMap.Builder<GithubTable, Function<RestTableHandle, Long>>()
+            .put(GithubTable.WORKFLOWS, this::getWorkflowsCount)
             .put(GithubTable.RUNS, this::getRunsCount)
             .put(GithubTable.JOBS, this::getJobsCount)
             .put(GithubTable.STEPS, this::getJobsCount)
@@ -527,6 +543,8 @@ public class GithubRest
                     new SortItem("id", SortOrder.ASC_NULLS_LAST),
                     new SortItem("id", SortOrder.DESC_NULLS_LAST),
                     new SortItem("created_at", SortOrder.ASC_NULLS_LAST),
+                    new SortItem("created_at", SortOrder.DESC_NULLS_LAST)))
+            .put(GithubTable.WORKFLOWS, ImmutableList.of(
                     new SortItem("created_at", SortOrder.DESC_NULLS_LAST)))
             .put(GithubTable.RUNS, ImmutableList.of(
                     new SortItem("created_at", SortOrder.DESC_NULLS_LAST)))
@@ -769,6 +787,21 @@ public class GithubRest
             "author_association varchar" +
             "))";
 
+    public static final String WORKFLOWS_TABLE_TYPE = "array(row(" +
+            "owner varchar, " +
+            "repo varchar, " +
+            "id bigint, " +
+            "node_id varchar, " +
+            "name varchar, " +
+            "path varchar, " +
+            "state varchar, " +
+            "created_at timestamp(3) with time zone, " +
+            "updated_at timestamp(3) with time zone, " +
+            "url varchar, " +
+            "html_url varchar, " +
+            "badge_url varchar" +
+            "))";
+
     public static final String RUNS_TABLE_TYPE = "array(row(" +
             "owner varchar, " +
             "repo varchar, " +
@@ -908,6 +941,7 @@ public class GithubRest
             .put(GithubTable.REVIEW_COMMENTS, new ReviewCommentFilter())
             .put(GithubTable.ISSUES, new IssueFilter())
             .put(GithubTable.ISSUE_COMMENTS, new IssueCommentFilter())
+            .put(GithubTable.WORKFLOWS, new WorkflowFilter())
             .put(GithubTable.RUNS, new RunFilter())
             .put(GithubTable.JOBS, new JobFilter())
             .put(GithubTable.JOB_LOGS, new JobLogFilter())
@@ -1278,6 +1312,47 @@ public class GithubRest
                 table.getOffset(),
                 table.getLimit(),
                 table.getPageIncrement());
+    }
+
+    private Collection<? extends List<?>> getWorkflows(RestTableHandle table)
+    {
+        Map<String, String> filters = getWorkflowsFilters(table);
+        String owner = filters.get("owner");
+        String repo = filters.get("repo");
+        return getRowsFromPagesEnvelope(
+                page -> service.listWorkflows("Bearer " + token, owner, repo, PER_PAGE, page),
+                item -> {
+                    item.setOwner(owner);
+                    item.setRepo(repo);
+                    return Stream.of(item.toRow());
+                },
+                table.getOffset(),
+                table.getLimit(),
+                table.getPageIncrement());
+    }
+
+    private long getWorkflowsCount(RestTableHandle table)
+    {
+        Map<String, String> filters = getWorkflowsFilters(table);
+        return getTotalCountFromPagesEnvelope(
+                () -> service.listWorkflows("Bearer " + token, filters.get("owner"), filters.get("repo"), 0, 1));
+    }
+
+    private Map<String, String> getWorkflowsFilters(RestTableHandle table)
+    {
+        GithubTable tableName = GithubTable.valueOf(table);
+        TupleDomain<ColumnHandle> constraint = table.getConstraint();
+        Map<String, ColumnHandle> columns = columnHandles.get(tableName);
+        FilterApplier filter = filterAppliers.get(tableName);
+
+        String owner = (String) filter.getFilter((RestColumnHandle) columns.get("owner"), constraint);
+        String repo = (String) filter.getFilter((RestColumnHandle) columns.get("repo"), constraint);
+        requirePredicate(owner, "owner");
+        requirePredicate(repo, "repo");
+
+        return ImmutableMap.of(
+                "owner", owner,
+                "repo", repo);
     }
 
     private Collection<? extends List<?>> getRuns(RestTableHandle table)

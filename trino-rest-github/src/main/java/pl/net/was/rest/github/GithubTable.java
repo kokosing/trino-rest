@@ -28,6 +28,7 @@ public enum GithubTable
     REVIEW_COMMENTS("review_comments"),
     ISSUES("issues"),
     ISSUE_COMMENTS("issue_comments"),
+    WORKFLOWS("workflows"),
     RUNS("runs"),
     JOBS("jobs"),
     JOB_LOGS("job_logs"),
