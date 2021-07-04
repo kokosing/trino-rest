@@ -132,8 +132,10 @@ public class GithubRest
 {
     // Estimate ratio of one to many relationships
     private static final double RELATIONSHIPS_RATIO = 0.01;
-    // Estimate ratio of Issue comments to issues
+    // Estimate ratio of issue comments to issues
     private static final double ISSUE_COMMENTS_RATIO = 10;
+    // Estimate number of steps per job
+    private static final long STEPS_PER_JOB = 5;
     Logger log = Logger.getLogger(GithubRest.class.getName());
     public static final String SCHEMA_NAME = "default";
 
@@ -492,6 +494,9 @@ public class GithubRest
                     "id", KeyType.PRIMARY_KEY,
                     "issue_url", KeyType.FOREIGN_KEY,
                     "user_id", KeyType.FOREIGN_KEY))
+            .put(GithubTable.WORKFLOWS, ImmutableMap.of(
+                    "id", KeyType.PRIMARY_KEY,
+                    "repo", KeyType.FOREIGN_KEY))
             .put(GithubTable.RUNS, ImmutableMap.of(
                     "id", KeyType.PRIMARY_KEY,
                     "run_number", KeyType.FOREIGN_KEY))
@@ -545,7 +550,7 @@ public class GithubRest
             .put(GithubTable.WORKFLOWS, this::getWorkflowsCount)
             .put(GithubTable.RUNS, this::getRunsCount)
             .put(GithubTable.JOBS, this::getJobsCount)
-            .put(GithubTable.STEPS, this::getJobsCount)
+            .put(GithubTable.STEPS, this::getStepsCount)
             .put(GithubTable.ARTIFACTS, this::getArtifactsCount)
             .put(GithubTable.RUNNERS, this::getRunnersCount)
             .put(GithubTable.CHECK_RUNS, this::getCheckRunsCount)
@@ -1116,6 +1121,7 @@ public class GithubRest
         FilterApplier filter = filterAppliers.get(tableName);
 
         String login = (String) filter.getFilter((RestColumnHandle) columns.get("login"), table.getConstraint());
+        requirePredicate(login, "orgs.login");
         return getRow(() -> service.getOrg("Bearer " + token, login), Organization::toRow);
     }
 
@@ -1129,6 +1135,7 @@ public class GithubRest
         FilterApplier filter = filterAppliers.get(tableName);
 
         String login = (String) filter.getFilter((RestColumnHandle) columns.get("login"), table.getConstraint());
+        requirePredicate(login, "users.login");
         return getRow(() -> service.getUser("Bearer " + token, login), User::toRow);
     }
 
@@ -1139,6 +1146,7 @@ public class GithubRest
         FilterApplier filter = filterAppliers.get(tableName);
 
         String owner = (String) filter.getFilter((RestColumnHandle) columns.get("owner_login"), table.getConstraint());
+        requirePredicate(owner, "repos.owner_login");
         SortItem sortOrder = getSortItem(table);
         Collection<? extends List<?>> userRepos = getRowsFromPages(
                 page -> service.listUserRepos(
@@ -1176,8 +1184,8 @@ public class GithubRest
 
         String owner = (String) filter.getFilter((RestColumnHandle) columns.get("owner"), constraint);
         String repo = (String) filter.getFilter((RestColumnHandle) columns.get("repo"), constraint);
-        requirePredicate(owner, "owner");
-        requirePredicate(repo, "repo");
+        requirePredicate(owner, "pulls.owner");
+        requirePredicate(repo, "pulls.repo");
         // TODO allow filtering by state (many, comma separated, or all), requires https://github.com/nineinchnick/trino-rest/issues/30
         SortItem sortOrder = getSortItem(table);
         return getRowsFromPages(
@@ -1232,9 +1240,10 @@ public class GithubRest
 
         String owner = (String) filter.getFilter((RestColumnHandle) columns.get("owner"), constraint);
         String repo = (String) filter.getFilter((RestColumnHandle) columns.get("repo"), constraint);
-        requirePredicate(owner, "owner");
-        requirePredicate(repo, "repo");
+        requirePredicate(owner, "pull_commits.owner");
+        requirePredicate(repo, "pull_commits.repo");
         long pullNumber = (long) filter.getFilter((RestColumnHandle) columns.get("pull_number"), constraint);
+        requirePredicate(pullNumber, "pull_commits.pull_number");
         // TODO allow filtering by state (many, comma separated, or all), requires https://github.com/nineinchnick/trino-rest/issues/30
         return getRowsFromPages(
                 page -> service.listPullCommits("Bearer " + token, owner, repo, pullNumber, PER_PAGE, page),
@@ -1258,9 +1267,10 @@ public class GithubRest
 
         String owner = (String) filter.getFilter((RestColumnHandle) columns.get("owner"), constraint);
         String repo = (String) filter.getFilter((RestColumnHandle) columns.get("repo"), constraint);
-        requirePredicate(owner, "owner");
-        requirePredicate(repo, "repo");
+        requirePredicate(owner, "reviews.owner");
+        requirePredicate(repo, "reviews.repo");
         long pullNumber = (long) filter.getFilter((RestColumnHandle) columns.get("pull_number"), constraint);
+        requirePredicate(pullNumber, "reviews.pull_number");
         return getRowsFromPages(
                 page -> service.listPullReviews("Bearer " + token, owner, repo, pullNumber, PER_PAGE, page),
                 item -> {
@@ -1282,9 +1292,9 @@ public class GithubRest
 
         String owner = (String) filter.getFilter((RestColumnHandle) columns.get("owner"), constraint);
         String repo = (String) filter.getFilter((RestColumnHandle) columns.get("repo"), constraint);
-        requirePredicate(owner, "owner");
-        requirePredicate(repo, "repo");
-        String since = (String) filter.getFilter((RestColumnHandle) columns.get("updated_at"), constraint);
+        requirePredicate(owner, "review_comments.owner");
+        requirePredicate(repo, "review_comments.repo");
+        String since = (String) filter.getFilter((RestColumnHandle) columns.get("updated_at"), constraint, "1970-01-01T00:00:00Z");
         // TODO allow filtering by pull number, this would require using a different endpoint
         SortItem sortOrder = getSortItem(table);
         return getRowsFromPages(
@@ -1316,9 +1326,9 @@ public class GithubRest
 
         String owner = (String) filter.getFilter((RestColumnHandle) columns.get("owner"), constraint);
         String repo = (String) filter.getFilter((RestColumnHandle) columns.get("repo"), constraint);
-        requirePredicate(owner, "owner");
-        requirePredicate(repo, "repo");
-        String since = (String) filter.getFilter((RestColumnHandle) columns.get("updated_at"), constraint);
+        requirePredicate(owner, "issues.owner");
+        requirePredicate(repo, "issues.repo");
+        String since = (String) filter.getFilter((RestColumnHandle) columns.get("updated_at"), constraint, "1970-01-01T00:00:00Z");
         SortItem sortOrder = getSortItem(table);
         return getRowsFromPages(
                 page -> service.listIssues(
@@ -1349,9 +1359,9 @@ public class GithubRest
 
         String owner = (String) filter.getFilter((RestColumnHandle) columns.get("owner"), constraint);
         String repo = (String) filter.getFilter((RestColumnHandle) columns.get("repo"), constraint);
-        requirePredicate(owner, "owner");
-        requirePredicate(repo, "repo");
-        String since = (String) filter.getFilter((RestColumnHandle) columns.get("updated_at"), constraint);
+        requirePredicate(owner, "issue_comments.owner");
+        requirePredicate(repo, "issue_comments.repo");
+        String since = (String) filter.getFilter((RestColumnHandle) columns.get("updated_at"), constraint, "1970-01-01T00:00:00Z");
         SortItem sortOrder = getSortItem(table);
         return getRowsFromPages(
                 page -> service.listIssueComments(
@@ -1406,8 +1416,8 @@ public class GithubRest
 
         String owner = (String) filter.getFilter((RestColumnHandle) columns.get("owner"), constraint);
         String repo = (String) filter.getFilter((RestColumnHandle) columns.get("repo"), constraint);
-        requirePredicate(owner, "owner");
-        requirePredicate(repo, "repo");
+        requirePredicate(owner, "workflows.owner");
+        requirePredicate(repo, "workflows.repo");
 
         return ImmutableMap.of(
                 "owner", owner,
@@ -1447,8 +1457,8 @@ public class GithubRest
 
         String owner = (String) filter.getFilter((RestColumnHandle) columns.get("owner"), constraint);
         String repo = (String) filter.getFilter((RestColumnHandle) columns.get("repo"), constraint);
-        requirePredicate(owner, "owner");
-        requirePredicate(repo, "repo");
+        requirePredicate(owner, "runs.owner");
+        requirePredicate(repo, "runs.repo");
 
         return ImmutableMap.of(
                 "owner", owner,
@@ -1461,7 +1471,6 @@ public class GithubRest
         String owner = (String) filters.get("owner");
         String repo = (String) filters.get("repo");
         Long runId = (Long) filters.get("runId");
-        // TODO this needs to allow pushing down multiple run_id values and make a separate request for each: https://github.com/nineinchnick/trino-rest/issues/30
         return getRowsFromPagesEnvelope(
                 page -> service.listRunJobs("Bearer " + token, owner, repo, runId, "all", PER_PAGE, page),
                 item -> {
@@ -1497,12 +1506,10 @@ public class GithubRest
 
         String owner = (String) filter.getFilter((RestColumnHandle) columns.get("owner"), constraint);
         String repo = (String) filter.getFilter((RestColumnHandle) columns.get("repo"), constraint);
-        requirePredicate(owner, "owner");
-        requirePredicate(repo, "repo");
+        requirePredicate(owner, "jobs.owner");
+        requirePredicate(repo, "jobs.repo");
         Long runId = (Long) filter.getFilter((RestColumnHandle) columns.get("run_id"), constraint);
-        if (runId == null) {
-            throw new TrinoException(INVALID_ROW_FILTER, "Missing required constraint for run_id");
-        }
+        requirePredicate(runId, "jobs.run_id");
         return ImmutableMap.of(
                 "owner", owner,
                 "repo", repo,
@@ -1563,13 +1570,10 @@ public class GithubRest
 
         String owner = (String) filter.getFilter((RestColumnHandle) columns.get("owner"), constraint);
         String repo = (String) filter.getFilter((RestColumnHandle) columns.get("repo"), constraint);
-        requirePredicate(owner, "owner");
-        requirePredicate(repo, "repo");
+        requirePredicate(owner, "job_logs.owner");
+        requirePredicate(repo, "job_logs.repo");
         Long jobId = (Long) filter.getFilter((RestColumnHandle) columns.get("job_id"), constraint);
-        if (jobId == null) {
-            throw new TrinoException(INVALID_ROW_FILTER, "Missing required constraint for job_id");
-        }
-
+        requirePredicate(jobId, "job_logs.job_id");
         return ImmutableMap.of(
                 "owner", owner,
                 "repo", repo,
@@ -1578,7 +1582,7 @@ public class GithubRest
 
     private Collection<? extends List<?>> getSteps(RestTableHandle table)
     {
-        Map<String, Object> filters = getJobsFilters(table);
+        Map<String, Object> filters = getStepsFilters(table);
         String owner = (String) filters.get("owner");
         String repo = (String) filters.get("repo");
         Long runId = (Long) filters.get("runId");
@@ -1627,6 +1631,39 @@ public class GithubRest
         return result.build();
     }
 
+    private long getStepsCount(RestTableHandle table)
+    {
+        Map<String, Object> filters = getStepsFilters(table);
+        return STEPS_PER_JOB * getTotalCountFromPagesEnvelope(
+                () -> service.listRunJobs(
+                        "Bearer " + token,
+                        (String) filters.get("owner"),
+                        (String) filters.get("repo"),
+                        (Long) filters.get("runId"),
+                        "all",
+                        0,
+                        1));
+    }
+
+    private Map<String, Object> getStepsFilters(RestTableHandle table)
+    {
+        GithubTable tableName = GithubTable.valueOf(table);
+        TupleDomain<ColumnHandle> constraint = table.getConstraint();
+        Map<String, ColumnHandle> columns = columnHandles.get(tableName);
+        FilterApplier filter = filterAppliers.get(tableName);
+
+        String owner = (String) filter.getFilter((RestColumnHandle) columns.get("owner"), constraint);
+        String repo = (String) filter.getFilter((RestColumnHandle) columns.get("repo"), constraint);
+        requirePredicate(owner, "steps.owner");
+        requirePredicate(repo, "steps.repo");
+        Long runId = (Long) filter.getFilter((RestColumnHandle) columns.get("run_id"), constraint);
+        requirePredicate(runId, "steps.run_id");
+        return ImmutableMap.of(
+                "owner", owner,
+                "repo", repo,
+                "runId", runId);
+    }
+
     private Collection<? extends List<?>> getArtifacts(RestTableHandle table)
     {
         Map<String, Object> filters = getArtifactsFilters(table);
@@ -1641,7 +1678,6 @@ public class GithubRest
         else {
             log.warning(format("Missing filter on run_id, will try to fetch all artifacts for %s/%s", owner, repo));
         }
-        // TODO this needs to allow pushing down multiple run_id values and make a separate request for each: https://github.com/nineinchnick/trino-rest/issues/30
         return getRowsFromPagesEnvelope(
                 fetcher,
                 item -> {
@@ -1688,8 +1724,8 @@ public class GithubRest
 
         String owner = (String) filter.getFilter((RestColumnHandle) columns.get("owner"), constraint);
         String repo = (String) filter.getFilter((RestColumnHandle) columns.get("repo"), constraint);
-        requirePredicate(owner, "owner");
-        requirePredicate(repo, "repo");
+        requirePredicate(owner, "artifacts.owner");
+        requirePredicate(repo, "artifacts.repo");
         Long runId = (Long) filter.getFilter((RestColumnHandle) columns.get("run_id"), constraint);
 
         return ImmutableMap.of(
@@ -1752,11 +1788,11 @@ public class GithubRest
         String owner = (String) filter.getFilter((RestColumnHandle) columns.get("owner"), constraint);
         String repo = (String) filter.getFilter((RestColumnHandle) columns.get("repo"), constraint);
         if (owner == null && repo == null) {
-            requirePredicate(org, "org");
+            requirePredicate(org, "runners.org");
         }
         if (org == null) {
-            requirePredicate(owner, "owner");
-            requirePredicate(repo, "repo");
+            requirePredicate(owner, "runners.owner");
+            requirePredicate(repo, "runners.repo");
         }
 
         return ImmutableMap.of(
@@ -1805,9 +1841,9 @@ public class GithubRest
         String owner = (String) filter.getFilter((RestColumnHandle) columns.get("owner"), constraint);
         String repo = (String) filter.getFilter((RestColumnHandle) columns.get("repo"), constraint);
         String ref = (String) filter.getFilter((RestColumnHandle) columns.get("ref"), constraint);
-        requirePredicate(owner, "owner");
-        requirePredicate(repo, "repo");
-        requirePredicate(repo, "ref");
+        requirePredicate(owner, "check_runs.owner");
+        requirePredicate(repo, "check_runs.repo");
+        requirePredicate(ref, "check_runs.ref");
 
         return ImmutableMap.of(
                 "owner", owner,
@@ -1825,9 +1861,9 @@ public class GithubRest
         String owner = (String) filter.getFilter((RestColumnHandle) columns.get("owner"), constraint);
         String repo = (String) filter.getFilter((RestColumnHandle) columns.get("repo"), constraint);
         Long checkRunId = (Long) filter.getFilter((RestColumnHandle) columns.get("check_run_id"), constraint);
-        requirePredicate(owner, "owner");
-        requirePredicate(repo, "repo");
-        requirePredicate(checkRunId, "check_run_id");
+        requirePredicate(owner, "check_run_annotations.owner");
+        requirePredicate(repo, "check_run_annotations.repo");
+        requirePredicate(checkRunId, "check_run_annotations.check_run_id");
         return getRowsFromPages(
                 page -> service.listCheckRunAnnotations(
                         "Bearer " + token,
@@ -2215,12 +2251,6 @@ public class GithubRest
             getter = rowCountGetters.get(GithubTable.CHECK_RUNS);
             multiplier = 4;
         }
-        else if (tableName == GithubTable.JOBS) {
-            // because jobs require run_id, which would be provided after applying a dynamic filter from the join
-            // fake a huge number here to ensure this is always the right side of the join
-            getter = rowCountGetters.get(GithubTable.RUNS);
-            multiplier = 100;
-        }
         if (getter != null) {
             // constraint needs to be pushed down into the table handle
             if (filter != null) {
@@ -2233,10 +2263,24 @@ public class GithubRest
                     table = (RestTableHandle) result.get().getHandle();
                 }
             }
-            long totalCount = multiplier * getter.apply(table);
+            long totalCount;
+            try {
+                totalCount = multiplier * getter.apply(table);
+            }
+            catch (TrinoException e) {
+                if (!e.getErrorCode().equals(INVALID_ROW_FILTER.toErrorCode())) {
+                    throw e;
+                }
+                // TODO this is supposed to force this table to be the right side of the join  but should be relative to the left side, which is unknown here
+                totalCount = 1_000_000L;
+            }
             builder.setRowCount(Estimate.of(totalCount));
             // set stats at least for columns that might be joined by
-            for (Map.Entry<String, KeyType> entry : keyColumns.get(tableName).entrySet()) {
+            Map<String, KeyType> keyColumns = GithubRest.keyColumns.get(tableName);
+            if (keyColumns == null) {
+                return builder.build();
+            }
+            for (Map.Entry<String, KeyType> entry : keyColumns.entrySet()) {
                 boolean isPrimary = entry.getValue() == KeyType.PRIMARY_KEY;
                 RestColumnHandle column = (RestColumnHandle) columns.get(entry.getKey());
                 ColumnStatistics.Builder columnStatistic = ColumnStatistics.builder()
@@ -2257,9 +2301,12 @@ public class GithubRest
             case ISSUE_COMMENTS:
                 String owner = (String) filter.getFilter((RestColumnHandle) columns.get("owner"), constraint.getSummary());
                 String repo = (String) filter.getFilter((RestColumnHandle) columns.get("repo"), constraint.getSummary());
+                if (owner == null || repo == null) {
+                    return TableStatistics.empty();
+                }
                 Repository repository = getRecord(() -> service.getRepo("Bearer " + token, owner, repo));
                 if (repository == null) {
-                    break;
+                    return TableStatistics.empty();
                 }
                 long totalCount = repository.getOpenIssuesCount();
                 builder.setRowCount(Estimate.of(totalCount));

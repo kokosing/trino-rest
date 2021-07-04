@@ -93,6 +93,18 @@ public class TestGithubQueries
     public void selectJoinDynamicFilter()
     {
         assertQuery("WITH " +
+                        "r AS (SELECT * FROM repos WHERE owner_login = 'nineinchnick' AND name IN ('trino-git', 'trino-rest')) " +
+                        "SELECT count(*) > 0 " +
+                        "FROM r " +
+                        "JOIN workflows w ON w.owner = r.owner_login AND w.repo = r.name",
+                "VALUES (true)");
+        assertQuery("SELECT count(*) > 0 " +
+                        "FROM workflows w " +
+                        "JOIN runs r ON r.workflow_id = w.id " +
+                        "WHERE w.owner = 'nineinchnick' AND w.repo = 'trino-rest' " +
+                        "AND r.owner = 'nineinchnick' AND r.repo = 'trino-rest'",
+                "VALUES (true)");
+        assertQuery("WITH " +
                         "r AS (SELECT * FROM runs WHERE owner = 'nineinchnick' AND repo = 'trino-rest' LIMIT 5) " +
                         "SELECT count(*) > 0 " +
                         "FROM r " +
@@ -104,24 +116,24 @@ public class TestGithubQueries
     @Test
     public void selectMissingRequired()
     {
-        assertQueryFails("SELECT * FROM orgs", "Missing required constraint for login");
-        assertQueryFails("SELECT * FROM users", "Missing required constraint for login");
-        assertQueryFails("SELECT * FROM repos", "Missing required constraint for owner_login");
-        assertQueryFails("SELECT * FROM issues", "Missing required constraint for owner");
-        assertQueryFails("SELECT * FROM issue_comments", "Missing required constraint for owner");
-        assertQueryFails("SELECT * FROM pulls", "Missing required constraint for owner");
-        assertQueryFails("SELECT * FROM pull_commits", "Missing required constraint for owner");
-        assertQueryFails("SELECT * FROM reviews", "Missing required constraint for owner");
-        assertQueryFails("SELECT * FROM review_comments", "Missing required constraint for owner");
-        assertQueryFails("SELECT * FROM workflows", "Missing required constraint for owner");
-        assertQueryFails("SELECT * FROM runs", "Missing required constraint for owner");
-        assertQueryFails("SELECT * FROM jobs", "Missing required constraint for owner");
-        assertQueryFails("SELECT * FROM job_logs", "Missing required constraint for owner");
-        assertQueryFails("SELECT * FROM steps", "Missing required constraint for owner");
-        assertQueryFails("SELECT * FROM artifacts", "Missing required constraint for owner");
-        assertQueryFails("SELECT * FROM runners", "Missing required constraint for org");
-        assertQueryFails("SELECT * FROM check_runs", "Missing required constraint for owner");
-        assertQueryFails("SELECT * FROM check_run_annotations", "Missing required constraint for owner");
+        assertQueryFails("SELECT * FROM orgs", "Missing required constraint for orgs.login");
+        assertQueryFails("SELECT * FROM users", "Missing required constraint for users.login");
+        assertQueryFails("SELECT * FROM repos", "Missing required constraint for repos.owner_login");
+        assertQueryFails("SELECT * FROM issues", "Missing required constraint for issues.owner");
+        assertQueryFails("SELECT * FROM issue_comments", "Missing required constraint for issue_comments.owner");
+        assertQueryFails("SELECT * FROM pulls", "Missing required constraint for pulls.owner");
+        assertQueryFails("SELECT * FROM pull_commits", "Missing required constraint for pull_commits.owner");
+        assertQueryFails("SELECT * FROM reviews", "Missing required constraint for reviews.owner");
+        assertQueryFails("SELECT * FROM review_comments", "Missing required constraint for review_comments.owner");
+        assertQueryFails("SELECT * FROM workflows", "Missing required constraint for workflows.owner");
+        assertQueryFails("SELECT * FROM runs", "Missing required constraint for runs.owner");
+        assertQueryFails("SELECT * FROM jobs", "Missing required constraint for jobs.owner");
+        assertQueryFails("SELECT * FROM job_logs", "Missing required constraint for job_logs.owner");
+        assertQueryFails("SELECT * FROM steps", "Missing required constraint for steps.owner");
+        assertQueryFails("SELECT * FROM artifacts", "Missing required constraint for artifacts.owner");
+        assertQueryFails("SELECT * FROM runners", "Missing required constraint for runners.org");
+        assertQueryFails("SELECT * FROM check_runs", "Missing required constraint for check_runs.owner");
+        assertQueryFails("SELECT * FROM check_run_annotations", "Missing required constraint for check_run_annotations.owner");
     }
 
     @Test
