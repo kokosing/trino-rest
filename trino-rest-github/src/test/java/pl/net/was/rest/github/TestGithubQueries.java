@@ -18,6 +18,9 @@ import io.trino.testing.AbstractTestQueryFramework;
 import io.trino.testing.QueryRunner;
 import org.testng.annotations.Test;
 
+import static java.lang.String.format;
+import static org.assertj.core.api.Assertions.assertThat;
+
 public class TestGithubQueries
         extends AbstractTestQueryFramework
 {
@@ -38,50 +41,99 @@ public class TestGithubQueries
     @Test
     public void selectFromTable()
     {
-        assertQuerySucceeds("SELECT * FROM orgs WHERE login = 'trinodb'");
-        assertQuerySucceeds("SELECT * FROM users WHERE login = 'nineinchnick'");
-        assertQuerySucceeds("SELECT * FROM repos WHERE owner_login = 'nineinchnick'");
-        assertQuerySucceeds("SELECT * FROM issues WHERE owner = 'nineinchnick' AND repo = 'trino-rest'");
-        assertQuerySucceeds("SELECT * FROM issue_comments WHERE owner = 'nineinchnick' AND repo = 'trino-rest'");
-        assertQuerySucceeds("SELECT * FROM pulls WHERE owner = 'nineinchnick' AND repo = 'trino-rest'");
-        assertQuerySucceeds("SELECT * FROM pull_commits WHERE owner = 'nineinchnick' AND repo = 'trino-rest' AND pull_number = 1");
-        assertQuerySucceeds("SELECT * FROM reviews WHERE owner = 'nineinchnick' AND repo = 'trino-rest' AND pull_number = 1");
-        assertQuerySucceeds("SELECT * FROM review_comments WHERE owner = 'nineinchnick' AND repo = 'trino-rest'");
-        assertQuerySucceeds("SELECT * FROM workflows WHERE owner = 'nineinchnick' AND repo = 'trino-rest'");
-        assertQuerySucceeds("SELECT * FROM runs WHERE owner = 'nineinchnick' AND repo = 'trino-rest'");
-        assertQuerySucceeds("SELECT * FROM jobs WHERE owner = 'nineinchnick' AND repo = 'trino-rest' AND run_id = 895383456");
-        assertQuerySucceeds("SELECT * FROM job_logs WHERE owner = 'nineinchnick' AND repo = 'trino-rest' AND job_id = 2716915847");
-        assertQuerySucceeds("SELECT * FROM steps WHERE owner = 'nineinchnick' AND repo = 'trino-rest' AND run_id = 895383456");
-        assertQuerySucceeds("SELECT * FROM artifacts WHERE owner = 'nineinchnick' AND repo = 'trino-rest' AND run_id = 895383456");
+        assertQuery("SELECT login FROM orgs WHERE login = 'trinodb'",
+                "VALUES ('trinodb')");
+        assertQuery("SELECT login FROM users WHERE login = 'nineinchnick'",
+                "VALUES ('nineinchnick')");
+        assertQuery("SELECT name FROM repos WHERE owner_login = 'nineinchnick' AND name = 'trino-rest'",
+                "VALUES ('trino-rest')");
+        assertQuery("SELECT title FROM issues WHERE owner = 'nineinchnick' AND repo = 'trino-rest' AND number = 40",
+                "VALUES ('Dynamic filtering')");
+        assertQuery("SELECT user_login FROM issue_comments WHERE owner = 'nineinchnick' AND repo = 'trino-rest' AND id = 873167897",
+                "VALUES ('nineinchnick')");
+        assertQuery("SELECT title FROM pulls WHERE owner = 'nineinchnick' AND repo = 'trino-rest' AND number = 1",
+                "VALUES ('GitHub runs')");
+        assertQuery("SELECT commit_message FROM pull_commits WHERE owner = 'nineinchnick' AND repo = 'trino-rest' AND pull_number = 1 AND sha = 'e43f63027cae851f3a02c2816b2f234991b2d139'",
+                "VALUES ('Add Github Action runs')");
+        assertQuery("SELECT user_login FROM reviews WHERE owner = 'nineinchnick' AND repo = 'trino-rest' AND pull_number = 66",
+                "VALUES ('nineinchnick')");
+        assertQuery("SELECT user_login FROM review_comments WHERE owner = 'nineinchnick' AND repo = 'trino-rest' AND id = 660141310",
+                "VALUES ('nineinchnick')");
+    }
+
+    @Test
+    public void selectFromGithubActionsTable()
+    {
+        assertQuery("SELECT name FROM workflows WHERE owner = 'nineinchnick' AND repo = 'trino-rest' AND name = 'Release with Maven'",
+                "VALUES ('Release with Maven')");
+        assertQuery("SELECT name FROM runs WHERE owner = 'nineinchnick' AND repo = 'trino-rest' AND name = 'Release with Maven' LIMIT 1",
+                "VALUES ('Release with Maven')");
+
+        QueryRunner runner = getQueryRunner();
+        long runId = (long) runner.execute("SELECT id FROM runs WHERE owner = 'nineinchnick' AND repo = 'trino-rest' AND name = 'Release with Maven' LIMIT 1").getOnlyValue();
+        assertThat(runId).isGreaterThan(0);
+        long jobId = (long) runner.execute(format("SELECT id FROM jobs WHERE owner = 'nineinchnick' AND repo = 'trino-rest' AND run_id = %d LIMIT 1", runId)).getOnlyValue();
+        assertThat(jobId).isGreaterThan(0);
+        long logLength = (long) runner.execute(format("SELECT length(contents) FROM job_logs WHERE owner = 'nineinchnick' AND repo = 'trino-rest' AND job_id = %d", jobId)).getOnlyValue();
+        assertThat(logLength).isGreaterThan(0);
+
+        assertQuery(format("SELECT owner FROM steps WHERE owner = 'nineinchnick' AND repo = 'trino-rest' AND run_id = %d LIMIT 1", runId),
+                "VALUES ('nineinchnick')");
+        // can't check results, since currently no jobs produce artifacts
+        assertQuerySucceeds(format("SELECT owner FROM artifacts WHERE owner = 'nineinchnick' AND repo = 'trino-rest' AND run_id = %d", runId));
         // TODO this doesn't work with the default token available in GHA
-        //assertQuerySucceeds("SELECT * FROM runners WHERE owner = 'nineinchnick' AND repo = 'trino-rest'");
+        //assertQuery("SELECT * FROM runners WHERE owner = 'nineinchnick' AND repo = 'trino-rest'");
         // TODO this require admin rights
-        //assertQuerySucceeds("SELECT * FROM runners WHERE org = 'trinodb'");
+        //assertQuery("SELECT * FROM runners WHERE org = 'trinodb'");
         assertQuerySucceeds("SELECT * FROM check_runs WHERE owner = 'nineinchnick' AND repo = 'trino-rest' AND ref = '5e53296c8f8124168d1a9e37fc310e9c517d3ec5'");
         assertQuerySucceeds("SELECT * FROM check_run_annotations WHERE owner = 'nineinchnick' AND repo = 'trino-rest' AND check_run_id = 1");
     }
 
     @Test
+    public void selectJoinDynamicFilter()
+    {
+        assertQuery("WITH " +
+                        "r AS (SELECT * FROM repos WHERE owner_login = 'nineinchnick' AND name IN ('trino-git', 'trino-rest')) " +
+                        "SELECT count(*) > 0 " +
+                        "FROM r " +
+                        "JOIN workflows w ON w.owner = r.owner_login AND w.repo = r.name",
+                "VALUES (true)");
+        assertQuery("SELECT count(*) > 0 " +
+                        "FROM workflows w " +
+                        "JOIN runs r ON r.workflow_id = w.id " +
+                        "WHERE w.owner = 'nineinchnick' AND w.repo = 'trino-rest' " +
+                        "AND r.owner = 'nineinchnick' AND r.repo = 'trino-rest'",
+                "VALUES (true)");
+        assertQuery("WITH " +
+                        "r AS (SELECT * FROM runs WHERE owner = 'nineinchnick' AND repo = 'trino-rest' LIMIT 5) " +
+                        "SELECT count(*) > 0 " +
+                        "FROM r " +
+                        "JOIN jobs j ON j.run_id = r.id " +
+                        "WHERE j.owner = 'nineinchnick' AND j.repo = 'trino-rest'",
+                "VALUES (true)");
+    }
+
+    @Test
     public void selectMissingRequired()
     {
-        assertQueryFails("SELECT * FROM orgs", "Missing required constraint for login");
-        assertQueryFails("SELECT * FROM users", "Missing required constraint for login");
-        assertQueryFails("SELECT * FROM repos", "Missing required constraint for owner_login");
-        assertQueryFails("SELECT * FROM issues", "Missing required constraint for owner");
-        assertQueryFails("SELECT * FROM issue_comments", "Missing required constraint for owner");
-        assertQueryFails("SELECT * FROM pulls", "Missing required constraint for owner");
-        assertQueryFails("SELECT * FROM pull_commits", "Missing required constraint for owner");
-        assertQueryFails("SELECT * FROM reviews", "Missing required constraint for owner");
-        assertQueryFails("SELECT * FROM review_comments", "Missing required constraint for owner");
-        assertQueryFails("SELECT * FROM workflows", "Missing required constraint for owner");
-        assertQueryFails("SELECT * FROM runs", "Missing required constraint for owner");
-        assertQueryFails("SELECT * FROM jobs", "Missing required constraint for owner");
-        assertQueryFails("SELECT * FROM job_logs", "Missing required constraint for owner");
-        assertQueryFails("SELECT * FROM steps", "Missing required constraint for owner");
-        assertQueryFails("SELECT * FROM artifacts", "Missing required constraint for owner");
-        assertQueryFails("SELECT * FROM runners", "Missing required constraint for org");
-        assertQueryFails("SELECT * FROM check_runs", "Missing required constraint for owner");
-        assertQueryFails("SELECT * FROM check_run_annotations", "Missing required constraint for owner");
+        assertQueryFails("SELECT * FROM orgs", "Missing required constraint for orgs.login");
+        assertQueryFails("SELECT * FROM users", "Missing required constraint for users.login");
+        assertQueryFails("SELECT * FROM repos", "Missing required constraint for repos.owner_login");
+        assertQueryFails("SELECT * FROM issues", "Missing required constraint for issues.owner");
+        assertQueryFails("SELECT * FROM issue_comments", "Missing required constraint for issue_comments.owner");
+        assertQueryFails("SELECT * FROM pulls", "Missing required constraint for pulls.owner");
+        assertQueryFails("SELECT * FROM pull_commits", "Missing required constraint for pull_commits.owner");
+        assertQueryFails("SELECT * FROM reviews", "Missing required constraint for reviews.owner");
+        assertQueryFails("SELECT * FROM review_comments", "Missing required constraint for review_comments.owner");
+        assertQueryFails("SELECT * FROM workflows", "Missing required constraint for workflows.owner");
+        assertQueryFails("SELECT * FROM runs", "Missing required constraint for runs.owner");
+        assertQueryFails("SELECT * FROM jobs", "Missing required constraint for jobs.owner");
+        assertQueryFails("SELECT * FROM job_logs", "Missing required constraint for job_logs.owner");
+        assertQueryFails("SELECT * FROM steps", "Missing required constraint for steps.owner");
+        assertQueryFails("SELECT * FROM artifacts", "Missing required constraint for artifacts.owner");
+        assertQueryFails("SELECT * FROM runners", "Missing required constraint for runners.org");
+        assertQueryFails("SELECT * FROM check_runs", "Missing required constraint for check_runs.owner");
+        assertQueryFails("SELECT * FROM check_run_annotations", "Missing required constraint for check_run_annotations.owner");
     }
 
     @Test

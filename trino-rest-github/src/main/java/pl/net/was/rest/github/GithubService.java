@@ -241,6 +241,13 @@ public interface GithubService
             @Query("since") long sinceId);
 
     @Headers("accept: application/vnd.github.v3+json")
+    @GET("/repos/{owner}/{repo}")
+    Call<Repository> getRepo(
+            @Header("Authorization") String auth,
+            @Path("owner") String owner,
+            @Path("repo") String repo);
+
+    @Headers("accept: application/vnd.github.v3+json")
     @GET("/orgs/{org}/repos")
     Call<List<Repository>> listOrgRepos(
             @Header("Authorization") String auth,

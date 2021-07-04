@@ -23,6 +23,7 @@ import io.trino.spi.predicate.Domain;
 import io.trino.spi.predicate.Range;
 import io.trino.spi.predicate.TupleDomain;
 import io.trino.spi.predicate.ValueSet;
+import io.trino.spi.type.StandardTypes;
 import io.trino.spi.type.TimeZoneKey;
 import pl.net.was.rest.RestColumnHandle;
 import pl.net.was.rest.RestTableHandle;
@@ -168,46 +169,36 @@ public interface FilterApplier
 
     default Object getFilter(RestColumnHandle column, TupleDomain<ColumnHandle> constraint)
     {
+        return getFilter(column, constraint, null);
+    }
+
+    default Object getFilter(RestColumnHandle column, TupleDomain<ColumnHandle> constraint, Object defaultValue)
+    {
         Domain domain = null;
         if (constraint.getDomains().isPresent()) {
             domain = constraint.getDomains().get().get(column);
         }
-        // TODO don't use column names here, just types
-        switch (column.getName()) {
-            case "updated_at":
+        switch (column.getType().getBaseName()) {
+            case StandardTypes.TIMESTAMP:
+            case StandardTypes.TIMESTAMP_WITH_TIME_ZONE:
                 if (domain == null) {
-                    return "1970-01-01T00:00:00Z";
+                    return defaultValue;
                 }
                 long since = (long) domain.getValues().getRanges().getSpan().getLowBoundedValue();
                 return ISO_LOCAL_DATE_TIME.format(fromTrinoTimestamp(since)) + "Z";
-            case "login":
-            case "owner_login":
+            case StandardTypes.VARCHAR:
                 if (domain == null) {
-                    throw new TrinoException(INVALID_ROW_FILTER, "Missing required constraint for " + column.getName());
+                    return defaultValue;
                 }
                 return ((Slice) domain.getSingleValue()).toStringUtf8();
-            case "org":
-            case "owner":
-            case "repo":
-            case "ref":
+            case StandardTypes.BIGINT:
+            case StandardTypes.INTEGER:
                 if (domain == null) {
-                    return null;
-                }
-                return ((Slice) domain.getSingleValue()).toStringUtf8();
-            case "pull_number":
-                if (domain == null) {
-                    throw new TrinoException(INVALID_ROW_FILTER, "Missing required constraint for " + column.getName());
-                }
-                return domain.getSingleValue();
-            case "run_id":
-            case "job_id":
-            case "check_run_id":
-                if (domain == null) {
-                    return null;
+                    return defaultValue;
                 }
                 return domain.getSingleValue();
             default:
-                throw new TrinoException(INVALID_ROW_FILTER, "Unexpected constraint for " + column.getName());
+                throw new TrinoException(INVALID_ROW_FILTER, "Unexpected constraint for " + column.getName() + "(" + column.getType().getBaseName() + ")");
         }
     }
 
