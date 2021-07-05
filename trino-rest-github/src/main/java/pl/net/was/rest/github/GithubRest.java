@@ -1186,7 +1186,7 @@ public class GithubRest
         String repo = (String) filter.getFilter((RestColumnHandle) columns.get("repo"), constraint);
         requirePredicate(owner, "pulls.owner");
         requirePredicate(repo, "pulls.repo");
-        // TODO allow filtering by state (many, comma separated, or all), requires https://github.com/nineinchnick/trino-rest/issues/30
+        String state = (String) filter.getFilter((RestColumnHandle) columns.get("state"), constraint, "all");
         SortItem sortOrder = getSortItem(table);
         return getRowsFromPages(
                 page -> service.listPulls(
@@ -1197,7 +1197,7 @@ public class GithubRest
                         page,
                         sortOrder.getName(),
                         sortOrder.getSortOrder().isAscending() ? "asc" : "desc",
-                        "all"),
+                        state),
                 item -> {
                     item.setOwner(owner);
                     item.setRepo(repo);
@@ -1329,6 +1329,7 @@ public class GithubRest
         requirePredicate(owner, "issues.owner");
         requirePredicate(repo, "issues.repo");
         String since = (String) filter.getFilter((RestColumnHandle) columns.get("updated_at"), constraint, "1970-01-01T00:00:00Z");
+        String state = (String) filter.getFilter((RestColumnHandle) columns.get("state"), constraint, "all");
         SortItem sortOrder = getSortItem(table);
         return getRowsFromPages(
                 page -> service.listIssues(
@@ -1339,6 +1340,7 @@ public class GithubRest
                         page,
                         sortOrder.getName(),
                         sortOrder.getSortOrder().isAscending() ? "asc" : "desc",
+                        state,
                         since),
                 item -> {
                     item.setOwner(owner);

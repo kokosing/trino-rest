@@ -26,6 +26,7 @@ public class IssueFilter
         return ImmutableMap.of(
                 "owner", FilterType.EQUAL,
                 "repo", FilterType.EQUAL,
-                "updated_at", FilterType.GREATER_THAN_EQUAL);
+                "updated_at", FilterType.GREATER_THAN_EQUAL,
+                "state", FilterType.EQUAL);
     }
 }

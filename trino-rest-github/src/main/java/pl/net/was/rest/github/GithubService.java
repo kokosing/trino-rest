@@ -96,6 +96,7 @@ public interface GithubService
             @Query("page") int page,
             @Query("sort") String sort,
             @Query("direction") String direction,
+            @Query("state") String state,
             @Query("since") String since);
 
     @Headers("accept: application/vnd.github.v3+json")

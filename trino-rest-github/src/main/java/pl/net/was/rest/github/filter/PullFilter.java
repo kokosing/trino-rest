@@ -25,6 +25,7 @@ public class PullFilter
     {
         return ImmutableMap.of(
                 "owner", FilterType.EQUAL,
-                "repo", FilterType.EQUAL);
+                "repo", FilterType.EQUAL,
+                "state", FilterType.EQUAL);
     }
 }

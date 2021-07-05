@@ -67,6 +67,7 @@ public class Issues
                 (int) page,
                 "updated",
                 "asc",
+                "all",
                 ISO_LOCAL_DATE_TIME.format(fromTrinoTimestamp(since)) + "Z").execute();
         if (response.code() == HTTP_NOT_FOUND) {
             return null;
