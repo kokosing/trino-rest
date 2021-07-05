@@ -14,6 +14,7 @@
 
 package pl.net.was.rest;
 
+import com.google.common.collect.Iterables;
 import io.trino.spi.connector.ColumnHandle;
 import io.trino.spi.connector.ColumnMetadata;
 import io.trino.spi.connector.ConnectorRecordSetProvider;
@@ -28,7 +29,6 @@ import io.trino.spi.type.Type;
 
 import javax.inject.Inject;
 
-import java.util.Collection;
 import java.util.List;
 
 import static java.util.stream.Collectors.toList;
@@ -60,7 +60,7 @@ public class RestRecordSetProvider
 
         // use the split's table handle, since
         RestTableHandle restTable = split.getTableHandle();
-        Collection<? extends List<?>> rows = rest.getRows(restTable);
+        Iterable<List<?>> rows = rest.getRows(restTable);
         ConnectorTableMetadata tableMetadata = rest.getTableMetadata(restTable.getSchemaTableName());
 
         List<Integer> columnIndexes = restColumnHandles
@@ -77,13 +77,11 @@ public class RestRecordSetProvider
                 })
                 .collect(toList());
 
-        Collection<? extends List<?>> mappedRows = rows
+        //noinspection StaticPseudoFunctionalStyleMethod
+        Iterable<List<?>> mappedRows = Iterables.transform(rows, row -> columnIndexes
                 .stream()
-                .map(row -> columnIndexes
-                        .stream()
-                        .map(row::get)
-                        .collect(toList()))
-                .collect(toList());
+                .map(row::get)
+                .collect(toList()));
 
         List<Type> mappedTypes = restColumnHandles
                 .stream()

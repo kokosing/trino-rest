@@ -36,7 +36,6 @@ import pl.net.was.rest.slack.rest.SlackService;
 import javax.inject.Inject;
 
 import java.io.IOException;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -137,7 +136,7 @@ public class SlackRest
     }
 
     @Override
-    public Collection<? extends List<?>> getRows(RestTableHandle table)
+    public Iterable<List<?>> getRows(RestTableHandle table)
     {
         SchemaTableName schemaTableName = table.getSchemaTableName();
         History history = getHistory(schemaTableName);
@@ -147,8 +146,7 @@ public class SlackRest
         }
         return history
                 .getMessages().stream()
-                .map(message -> asList(message.getType(), message.getUser(), message.getText()))
-                .collect(toList());
+                .map(message -> asList(message.getType(), message.getUser(), message.getText())).collect(toList());
     }
 
     private History getHistory(SchemaTableName schemaTableName)
