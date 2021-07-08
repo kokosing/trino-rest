@@ -1541,11 +1541,11 @@ public class GithubRest
             return List.of();
         }
         checkServiceResponse(response);
-        ResponseBody body = requireNonNull(response.body());
+        ResponseBody body = requireNonNull(response.body(), "response body is null");
         String size = response.headers().get("Content-Length");
         long sizeBytes = size != null ? Long.parseLong(size) : 0;
 
-        ImmutableList.Builder<List<?>> result = ImmutableList.builder();
+        ImmutableList.Builder<List<?>> result = new ImmutableList.Builder<>();
         int i = 1;
         try {
             for (Slice slice : JobLogs.getParts(body.byteStream())) {
@@ -1605,7 +1605,7 @@ public class GithubRest
                 break;
             }
             checkServiceResponse(response);
-            List<Job> items = requireNonNull(response.body()).getItems();
+            List<Job> items = requireNonNull(response.body(), "response body is null").getItems();
             if (items.size() == 0) {
                 break;
             }
@@ -1617,7 +1617,7 @@ public class GithubRest
             }
         }
 
-        ImmutableList.Builder<List<?>> result = ImmutableList.builder();
+        ImmutableList.Builder<List<?>> result = new ImmutableList.Builder<>();
         int resultSize = 0;
         for (Job job : jobs.build()) {
             List<List<?>> steps = job.getSteps().stream().map(Step::toRow).collect(toList());
@@ -1628,7 +1628,7 @@ public class GithubRest
             else {
                 stepsToUse = steps.size();
             }
-            steps.forEach(result::add);
+            result.addAll(steps);
             resultSize += stepsToUse;
         }
         return result.build();
@@ -1949,7 +1949,7 @@ public class GithubRest
                     return false;
                 }
                 checkServiceResponse(response);
-                List<T> items = requireNonNull(response.body());
+                List<T> items = requireNonNull(response.body(), "response body is null");
                 if (items.size() == 0) {
                     return false;
                 }
@@ -2008,7 +2008,7 @@ public class GithubRest
                     return false;
                 }
                 checkServiceResponse(response);
-                E envelope = requireNonNull(response.body());
+                E envelope = requireNonNull(response.body(), "response body is null");
                 List<T> items = envelope.getItems();
                 if (items.size() == 0) {
                     return false;
@@ -2049,7 +2049,7 @@ public class GithubRest
             return 0;
         }
         checkServiceResponse(response);
-        E envelope = requireNonNull(response.body());
+        E envelope = requireNonNull(response.body(), "response body is null");
         return envelope.getTotalCount();
     }
 

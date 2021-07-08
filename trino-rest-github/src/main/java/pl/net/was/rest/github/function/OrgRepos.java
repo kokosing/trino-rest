@@ -69,7 +69,7 @@ public class OrgRepos
                 break;
             }
             checkServiceResponse(response);
-            List<Repository> items = requireNonNull(response.body());
+            List<Repository> items = requireNonNull(response.body(), "response body is null");
             if (items.size() == 0) {
                 break;
             }

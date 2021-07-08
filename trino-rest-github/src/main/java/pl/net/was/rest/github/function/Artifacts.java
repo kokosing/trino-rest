@@ -89,7 +89,7 @@ public class Artifacts
             }
             checkServiceResponse(response);
             ArtifactsList envelope = response.body();
-            total = requireNonNull(envelope).getTotalCount();
+            total = requireNonNull(envelope, "response body is null").getTotalCount();
             List<Artifact> items = envelope.getItems();
             if (items.size() == 0) {
                 break;
@@ -120,7 +120,7 @@ public class Artifacts
             return ImmutableList.of(artifact);
         }
         checkServiceResponse(response);
-        ResponseBody body = requireNonNull(response.body());
+        ResponseBody body = requireNonNull(response.body(), "response body is null");
         InputStream zipContents = body.byteStream();
 
         ImmutableList.Builder<Artifact> result = new ImmutableList.Builder<>();

@@ -66,7 +66,7 @@ public class Runs
         }
         checkServiceResponse(response);
         RunsList envelope = response.body();
-        List<Run> items = requireNonNull(envelope).getItems();
+        List<Run> items = requireNonNull(envelope, "response body is null").getItems();
         items.forEach(i -> i.setOwner(owner.toStringUtf8()));
         items.forEach(i -> i.setRepo(repo.toStringUtf8()));
         return buildBlock(items);
@@ -90,7 +90,7 @@ public class Runs
         }
         checkServiceResponse(response);
         RunsList envelope = response.body();
-        List<Run> items = requireNonNull(envelope).getItems();
+        List<Run> items = requireNonNull(envelope, "response body is null").getItems();
         items.forEach(i -> i.setOwner(owner.toStringUtf8()));
         items.forEach(i -> i.setRepo(repo.toStringUtf8()));
         return buildBlock(items);

@@ -73,7 +73,7 @@ public class Reviews
                 break;
             }
             checkServiceResponse(response);
-            List<Review> items = requireNonNull(response.body());
+            List<Review> items = requireNonNull(response.body(), "response body is null");
             if (items.size() == 0) {
                 break;
             }

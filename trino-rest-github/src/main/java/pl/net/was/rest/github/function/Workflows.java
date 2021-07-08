@@ -66,7 +66,7 @@ public class Workflows
         }
         checkServiceResponse(response);
         WorkflowsList envelope = response.body();
-        List<Workflow> items = requireNonNull(envelope).getItems();
+        List<Workflow> items = requireNonNull(envelope, "response body is null").getItems();
         items.forEach(i -> i.setOwner(owner.toStringUtf8()));
         items.forEach(i -> i.setRepo(repo.toStringUtf8()));
         return buildBlock(items);

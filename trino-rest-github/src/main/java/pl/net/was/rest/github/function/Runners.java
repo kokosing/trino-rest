@@ -66,7 +66,7 @@ public class Runners
         }
         checkServiceResponse(response);
         RunnersList envelope = response.body();
-        List<Runner> items = requireNonNull(envelope).getItems();
+        List<Runner> items = requireNonNull(envelope, "response body is null").getItems();
         items.forEach(i -> i.setOwner(owner.toStringUtf8()));
         items.forEach(i -> i.setRepo(repo.toStringUtf8()));
         return buildBlock(items);

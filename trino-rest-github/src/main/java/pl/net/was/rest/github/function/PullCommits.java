@@ -73,7 +73,7 @@ public class PullCommits
                 break;
             }
             checkServiceResponse(response);
-            List<PullCommit> items = requireNonNull(response.body());
+            List<PullCommit> items = requireNonNull(response.body(), "response body is null");
             if (items.size() == 0) {
                 break;
             }

@@ -35,13 +35,12 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static io.trino.spi.type.BigintType.BIGINT;
 import static io.trino.spi.type.VarcharType.createUnboundedVarcharType;
 import static java.util.Arrays.asList;
 import static java.util.Objects.requireNonNull;
+import static java.util.stream.Collectors.toList;
 
 public class TwitterRest
         implements Rest
@@ -109,19 +108,20 @@ public class TwitterRest
     public Iterable<List<?>> getRows(RestTableHandle table)
     {
         SchemaTableName schemaTableName = table.getSchemaTableName();
-        return searchTweets("#" + schemaTableName.getTableName()).collect(Collectors.toList());
+        return searchTweets("#" + schemaTableName.getTableName());
     }
 
-    private Stream<? extends List<?>> searchTweets(String query)
+    private Iterable<List<?>> searchTweets(String query)
     {
         try {
             Response<SearchResult> response = service.searchTweets(query, 100, "recent").execute();
             if (!response.isSuccessful()) {
                 throw new IllegalStateException("Unable to search tweets for '" + query + "' dues: " + response.message());
             }
-            List<Status> statuses = response.body().getStatuses();
+            List<Status> statuses = requireNonNull(response.body(), "response body is null").getStatuses();
             return statuses.stream()
-                    .map(status -> asList(status.getId(), status.getText(), status.getRetweetCount(), status.getUser().getName(), status.getUser().getScreenName()));
+                    .map(status -> asList(status.getId(), status.getText(), status.getRetweetCount(), status.getUser().getName(), status.getUser().getScreenName()))
+                    .collect(toList());
         }
         catch (IOException e) {
             throw Throwables.propagate(e);
