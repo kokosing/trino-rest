@@ -66,7 +66,7 @@ public class OrgRunners
         }
         checkServiceResponse(response);
         RunnersList envelope = response.body();
-        List<Runner> items = requireNonNull(envelope).getItems();
+        List<Runner> items = requireNonNull(envelope, "response body is null").getItems();
         items.forEach(i -> i.setOrg(org.toStringUtf8()));
         return buildBlock(items);
     }

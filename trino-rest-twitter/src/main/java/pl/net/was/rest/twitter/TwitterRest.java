@@ -32,7 +32,6 @@ import retrofit2.Response;
 import javax.inject.Inject;
 
 import java.io.IOException;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -106,20 +105,20 @@ public class TwitterRest
     }
 
     @Override
-    public Collection<? extends List<?>> getRows(RestTableHandle table)
+    public Iterable<List<?>> getRows(RestTableHandle table)
     {
         SchemaTableName schemaTableName = table.getSchemaTableName();
         return searchTweets("#" + schemaTableName.getTableName());
     }
 
-    private Collection<? extends List<?>> searchTweets(String query)
+    private Iterable<List<?>> searchTweets(String query)
     {
         try {
             Response<SearchResult> response = service.searchTweets(query, 100, "recent").execute();
             if (!response.isSuccessful()) {
                 throw new IllegalStateException("Unable to search tweets for '" + query + "' dues: " + response.message());
             }
-            List<Status> statuses = response.body().getStatuses();
+            List<Status> statuses = requireNonNull(response.body(), "response body is null").getStatuses();
             return statuses.stream()
                     .map(status -> asList(status.getId(), status.getText(), status.getRetweetCount(), status.getUser().getName(), status.getUser().getScreenName()))
                     .collect(toList());

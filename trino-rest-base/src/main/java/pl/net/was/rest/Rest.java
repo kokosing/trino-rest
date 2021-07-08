@@ -36,7 +36,6 @@ import io.trino.spi.connector.TopNApplicationResult;
 import io.trino.spi.statistics.TableStatistics;
 import io.trino.spi.type.Type;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -61,7 +60,7 @@ public interface Rest
 
     Map<SchemaTableName, List<ColumnMetadata>> listTableColumns(SchemaTablePrefix schemaTablePrefix);
 
-    Collection<? extends List<?>> getRows(RestTableHandle table);
+    Iterable<List<?>> getRows(RestTableHandle table);
 
     Consumer<List> createRowSink(SchemaTableName schemaTableName);
 

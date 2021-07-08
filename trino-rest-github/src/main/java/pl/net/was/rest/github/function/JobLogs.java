@@ -74,7 +74,7 @@ public class JobLogs
             return null;
         }
         checkServiceResponse(response);
-        ResponseBody body = requireNonNull(response.body());
+        ResponseBody body = requireNonNull(response.body(), "response body is null");
         String size = response.headers().get("Content-Length");
         return buildBytesBlock(owner.toStringUtf8(),
                 repo.toStringUtf8(),

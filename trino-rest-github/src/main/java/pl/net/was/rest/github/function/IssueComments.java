@@ -72,7 +72,7 @@ public class IssueComments
             return null;
         }
         checkServiceResponse(response);
-        List<IssueComment> items = requireNonNull(response.body());
+        List<IssueComment> items = requireNonNull(response.body(), "response body is null");
         items.forEach(i -> i.setOwner(owner.toStringUtf8()));
         items.forEach(i -> i.setRepo(repo.toStringUtf8()));
         return buildBlock(items);

@@ -16,6 +16,7 @@ package pl.net.was.rest.github;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Iterables;
 import com.google.common.collect.Lists;
 import io.airlift.slice.Slice;
 import io.trino.spi.HostAddress;
@@ -96,8 +97,8 @@ import javax.inject.Inject;
 
 import java.io.IOException;
 import java.util.AbstractMap;
-import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -525,7 +526,7 @@ public class GithubRest
         FOREIGN_KEY
     }
 
-    private final Map<GithubTable, Function<RestTableHandle, Collection<? extends List<?>>>> rowGetters = new ImmutableMap.Builder<GithubTable, Function<RestTableHandle, Collection<? extends List<?>>>>()
+    private final Map<GithubTable, Function<RestTableHandle, Iterable<List<?>>>> rowGetters = new ImmutableMap.Builder<GithubTable, Function<RestTableHandle, Iterable<List<?>>>>()
             .put(GithubTable.ORGS, this::getOrgs)
             .put(GithubTable.USERS, this::getUsers)
             .put(GithubTable.REPOS, this::getRepos)
@@ -1094,7 +1095,7 @@ public class GithubRest
     }
 
     @Override
-    public Collection<? extends List<?>> getRows(RestTableHandle table)
+    public Iterable<List<?>> getRows(RestTableHandle table)
     {
         GithubTable tableName = GithubTable.valueOf(table);
         return rowGetters.get(tableName).apply(table);
@@ -1111,10 +1112,10 @@ public class GithubRest
         return OptionalInt.of((int) (totalCount + PER_PAGE - 1) / PER_PAGE);
     }
 
-    private Collection<? extends List<?>> getOrgs(RestTableHandle table)
+    private Iterable<List<?>> getOrgs(RestTableHandle table)
     {
         if (table.getLimit() == 0) {
-            return ImmutableList.of();
+            return List.of();
         }
         GithubTable tableName = GithubTable.valueOf(table);
         Map<String, ColumnHandle> columns = columnHandles.get(tableName);
@@ -1125,10 +1126,10 @@ public class GithubRest
         return getRow(() -> service.getOrg("Bearer " + token, login), Organization::toRow);
     }
 
-    private Collection<? extends List<?>> getUsers(RestTableHandle table)
+    private Iterable<List<?>> getUsers(RestTableHandle table)
     {
         if (table.getLimit() == 0) {
-            return ImmutableList.of();
+            return List.of();
         }
         GithubTable tableName = GithubTable.valueOf(table);
         Map<String, ColumnHandle> columns = columnHandles.get(tableName);
@@ -1139,7 +1140,7 @@ public class GithubRest
         return getRow(() -> service.getUser("Bearer " + token, login), User::toRow);
     }
 
-    private Collection<? extends List<?>> getRepos(RestTableHandle table)
+    private Iterable<List<?>> getRepos(RestTableHandle table)
     {
         GithubTable tableName = GithubTable.valueOf(table);
         Map<String, ColumnHandle> columns = columnHandles.get(tableName);
@@ -1148,7 +1149,7 @@ public class GithubRest
         String owner = (String) filter.getFilter((RestColumnHandle) columns.get("owner_login"), table.getConstraint());
         requirePredicate(owner, "repos.owner_login");
         SortItem sortOrder = getSortItem(table);
-        Collection<? extends List<?>> userRepos = getRowsFromPages(
+        Iterable<List<?>> userRepos = getRowsFromPages(
                 page -> service.listUserRepos(
                         "Bearer " + token,
                         owner,
@@ -1160,7 +1161,7 @@ public class GithubRest
                 table.getOffset(),
                 table.getLimit(),
                 table.getPageIncrement());
-        Collection<? extends List<?>> orgRepos = getRowsFromPages(
+        Iterable<List<?>> orgRepos = getRowsFromPages(
                 page -> service.listOrgRepos(
                         "Bearer " + token,
                         owner,
@@ -1172,10 +1173,10 @@ public class GithubRest
                 table.getOffset(),
                 table.getLimit(),
                 table.getPageIncrement());
-        return Stream.concat(userRepos.stream(), orgRepos.stream()).collect(toList());
+        return Iterables.concat(userRepos, orgRepos);
     }
 
-    private Collection<? extends List<?>> getPulls(RestTableHandle table)
+    private Iterable<List<?>> getPulls(RestTableHandle table)
     {
         GithubTable tableName = GithubTable.valueOf(table);
         TupleDomain<ColumnHandle> constraint = table.getConstraint();
@@ -1231,7 +1232,7 @@ public class GithubRest
         return new SortItem(sortName, sortOrder.get(0).getSortOrder());
     }
 
-    private Collection<? extends List<?>> getPullCommits(RestTableHandle table)
+    private Iterable<List<?>> getPullCommits(RestTableHandle table)
     {
         GithubTable tableName = GithubTable.valueOf(table);
         TupleDomain<ColumnHandle> constraint = table.getConstraint();
@@ -1258,7 +1259,7 @@ public class GithubRest
                 table.getPageIncrement());
     }
 
-    private Collection<? extends List<?>> getReviews(RestTableHandle table)
+    private Iterable<List<?>> getReviews(RestTableHandle table)
     {
         GithubTable tableName = GithubTable.valueOf(table);
         TupleDomain<ColumnHandle> constraint = table.getConstraint();
@@ -1283,7 +1284,7 @@ public class GithubRest
                 table.getPageIncrement());
     }
 
-    private Collection<? extends List<?>> getReviewComments(RestTableHandle table)
+    private Iterable<List<?>> getReviewComments(RestTableHandle table)
     {
         GithubTable tableName = GithubTable.valueOf(table);
         TupleDomain<ColumnHandle> constraint = table.getConstraint();
@@ -1317,7 +1318,7 @@ public class GithubRest
                 table.getPageIncrement());
     }
 
-    private Collection<? extends List<?>> getIssues(RestTableHandle table)
+    private Iterable<List<?>> getIssues(RestTableHandle table)
     {
         GithubTable tableName = GithubTable.valueOf(table);
         TupleDomain<ColumnHandle> constraint = table.getConstraint();
@@ -1352,7 +1353,7 @@ public class GithubRest
                 table.getPageIncrement());
     }
 
-    private Collection<? extends List<?>> getIssueComments(RestTableHandle table)
+    private Iterable<List<?>> getIssueComments(RestTableHandle table)
     {
         GithubTable tableName = GithubTable.valueOf(table);
         TupleDomain<ColumnHandle> constraint = table.getConstraint();
@@ -1385,7 +1386,7 @@ public class GithubRest
                 table.getPageIncrement());
     }
 
-    private Collection<? extends List<?>> getWorkflows(RestTableHandle table)
+    private Iterable<List<?>> getWorkflows(RestTableHandle table)
     {
         Map<String, String> filters = getWorkflowsFilters(table);
         String owner = filters.get("owner");
@@ -1426,7 +1427,7 @@ public class GithubRest
                 "repo", repo);
     }
 
-    private Collection<? extends List<?>> getRuns(RestTableHandle table)
+    private Iterable<List<?>> getRuns(RestTableHandle table)
     {
         Map<String, String> filters = getRunsFilters(table);
         String owner = filters.get("owner");
@@ -1467,7 +1468,7 @@ public class GithubRest
                 "repo", repo);
     }
 
-    private Collection<? extends List<?>> getJobs(RestTableHandle table)
+    private Iterable<List<?>> getJobs(RestTableHandle table)
     {
         Map<String, Object> filters = getJobsFilters(table);
         String owner = (String) filters.get("owner");
@@ -1518,7 +1519,7 @@ public class GithubRest
                 "runId", runId);
     }
 
-    private Collection<? extends List<?>> getJobLogs(RestTableHandle table)
+    private Iterable<List<?>> getJobLogs(RestTableHandle table)
     {
         Map<String, Object> filters = getJobLogsFilters(table);
         String owner = (String) filters.get("owner");
@@ -1540,7 +1541,7 @@ public class GithubRest
             return List.of();
         }
         checkServiceResponse(response);
-        ResponseBody body = requireNonNull(response.body());
+        ResponseBody body = requireNonNull(response.body(), "response body is null");
         String size = response.headers().get("Content-Length");
         long sizeBytes = size != null ? Long.parseLong(size) : 0;
 
@@ -1582,7 +1583,7 @@ public class GithubRest
                 "jobId", jobId);
     }
 
-    private Collection<? extends List<?>> getSteps(RestTableHandle table)
+    private Iterable<List<?>> getSteps(RestTableHandle table)
     {
         Map<String, Object> filters = getStepsFilters(table);
         String owner = (String) filters.get("owner");
@@ -1604,7 +1605,7 @@ public class GithubRest
                 break;
             }
             checkServiceResponse(response);
-            List<Job> items = requireNonNull(response.body()).getItems();
+            List<Job> items = requireNonNull(response.body(), "response body is null").getItems();
             if (items.size() == 0) {
                 break;
             }
@@ -1666,7 +1667,7 @@ public class GithubRest
                 "runId", runId);
     }
 
-    private Collection<? extends List<?>> getArtifacts(RestTableHandle table)
+    private Iterable<List<?>> getArtifacts(RestTableHandle table)
     {
         Map<String, Object> filters = getArtifactsFilters(table);
         String owner = (String) filters.get("owner");
@@ -1736,7 +1737,7 @@ public class GithubRest
                 "runId", runId);
     }
 
-    private Collection<? extends List<?>> getRunners(RestTableHandle table)
+    private Iterable<List<?>> getRunners(RestTableHandle table)
     {
         Map<String, Optional<String>> filters = getRunnersFilters(table);
         Optional<String> org = filters.get("org");
@@ -1744,6 +1745,8 @@ public class GithubRest
         Optional<String> repo = filters.get("repo");
 
         IntFunction<Call<RunnersList>> fetcher;
+
+        //noinspection OptionalIsPresent
         if (org.isPresent()) {
             fetcher = page -> service.listOrgRunners("Bearer " + token, org.get(), PER_PAGE, page);
         }
@@ -1803,7 +1806,7 @@ public class GithubRest
                 "repo", Optional.ofNullable(repo));
     }
 
-    private Collection<? extends List<?>> getCheckRuns(RestTableHandle table)
+    private Iterable<List<?>> getCheckRuns(RestTableHandle table)
     {
         Map<String, String> filters = getCheckRunsFilters(table);
         String owner = filters.get("owner");
@@ -1853,7 +1856,7 @@ public class GithubRest
                 "ref", ref);
     }
 
-    private Collection<? extends List<?>> getCheckRunAnnotations(RestTableHandle table)
+    private Iterable<List<?>> getCheckRunAnnotations(RestTableHandle table)
     {
         GithubTable tableName = GithubTable.valueOf(table);
         TupleDomain<ColumnHandle> constraint = table.getConstraint();
@@ -1885,13 +1888,13 @@ public class GithubRest
                 table.getPageIncrement());
     }
 
-    private <T> Collection<? extends List<?>> getRow(Supplier<Call<T>> fetcher, Function<T, List<?>> mapper)
+    private <T> Iterable<List<?>> getRow(Supplier<Call<T>> fetcher, Function<T, List<?>> mapper)
     {
         T record = getRecord(fetcher);
         if (record == null) {
-            return ImmutableList.of();
+            return List.of();
         }
-        return ImmutableList.of(mapper.apply(record));
+        return List.of(mapper.apply(record));
     }
 
     private <T> T getRecord(Supplier<Call<T>> fetcher)
@@ -1911,93 +1914,126 @@ public class GithubRest
     }
 
     // TODO this abomination should be in a base class implementing a cursor
-    private <T> Collection<? extends List<?>> getRowsFromPages(
+    private <T> Iterable<List<?>> getRowsFromPages(
             IntFunction<Call<List<T>>> fetcher,
             Function<T, List<?>> mapper,
             int offset,
-            int limit,
+            final int limit,
             int pageIncrement)
     {
-        ImmutableList.Builder<List<?>> result = new ImmutableList.Builder<>();
-        int resultSize = 0;
+        return () -> new Iterator<>()
+        {
+            int resultSize;
+            int page = offset + 1;
+            Iterator<List<?>> rows;
 
-        int page = offset + 1;
-        while (true) {
-            Response<List<T>> response;
-            try {
-                response = fetcher.apply(page).execute();
-                page += pageIncrement;
-            }
-            catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-            if (response.code() == HTTP_NOT_FOUND) {
-                break;
-            }
-            checkServiceResponse(response);
-            List<T> items = requireNonNull(response.body());
-            if (items.size() == 0) {
-                break;
-            }
-            int itemsToUse = Math.min(
-                    Math.max(0, limit - resultSize),
-                    items.size());
-            List<List<?>> rows = items.subList(0, itemsToUse).stream().map(mapper).collect(toList());
+            @Override
+            public boolean hasNext()
+            {
+                if (rows != null && rows.hasNext()) {
+                    return true;
+                }
+                if (resultSize >= limit) {
+                    return false;
+                }
+                // TODO only do this if no more records in batch
+                Response<List<T>> response;
+                try {
+                    response = fetcher.apply(page).execute();
+                    page += pageIncrement;
+                }
+                catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+                if (response.code() == HTTP_NOT_FOUND) {
+                    return false;
+                }
+                checkServiceResponse(response);
+                List<T> items = requireNonNull(response.body(), "response body is null");
+                if (items.size() == 0) {
+                    return false;
+                }
+                int itemsToUse = Math.min(
+                        Math.max(0, limit - resultSize),
+                        items.size());
+                rows = items.subList(0, itemsToUse).stream().map(mapper).collect(toList()).iterator();
 
-            result.addAll(rows);
-            resultSize += itemsToUse;
-            if (resultSize >= limit || items.size() < PER_PAGE) {
-                break;
+                resultSize += itemsToUse;
+                if (items.size() < PER_PAGE) {
+                    resultSize = limit;
+                }
+                return true;
             }
-        }
 
-        return result.build();
+            @Override
+            public List<?> next()
+            {
+                return rows.next();
+            }
+        };
     }
 
     // TODO this abomination is even worse
-    private <T, E extends Envelope<T>> Collection<? extends List<?>> getRowsFromPagesEnvelope(
+    private <T, E extends Envelope<T>> Iterable<List<?>> getRowsFromPagesEnvelope(
             IntFunction<Call<E>> fetcher,
             Function<T, Stream<List<?>>> mapper,
             int offset,
             int limit,
             int pageIncrement)
     {
-        ImmutableList.Builder<List<?>> result = new ImmutableList.Builder<>();
-        int resultSize = 0;
+        return () -> new Iterator<>()
+        {
+            int resultSize;
+            int page = offset + 1;
+            Iterator<List<?>> rows;
 
-        int page = offset + 1;
-        while (true) {
-            Response<E> response;
-            try {
-                response = fetcher.apply(page).execute();
-                page += pageIncrement;
-            }
-            catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-            if (response.code() == HTTP_NOT_FOUND) {
-                break;
-            }
-            checkServiceResponse(response);
-            E envelope = requireNonNull(response.body());
-            List<T> items = envelope.getItems();
-            if (items.size() == 0) {
-                break;
-            }
-            int itemsToUse = Math.min(
-                    Math.max(0, limit - resultSize),
-                    items.size());
-            List<List<?>> rows = items.subList(0, itemsToUse).stream().flatMap(mapper).collect(toList());
+            @Override
+            public boolean hasNext()
+            {
+                if (rows != null && rows.hasNext()) {
+                    return true;
+                }
+                if (resultSize >= limit) {
+                    return false;
+                }
+                Response<E> response;
+                try {
+                    response = fetcher.apply(page).execute();
+                    page += pageIncrement;
+                }
+                catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+                if (response.code() == HTTP_NOT_FOUND) {
+                    return false;
+                }
+                checkServiceResponse(response);
+                E envelope = requireNonNull(response.body(), "response body is null");
+                List<T> items = envelope.getItems();
+                if (items.size() == 0) {
+                    return false;
+                }
+                int itemsToUse = Math.min(
+                        Math.max(0, limit - resultSize),
+                        items.size());
+                List<List<?>> rows = items.subList(0, itemsToUse).stream().flatMap(mapper).collect(toList());
 
-            // mapper can produce 1 or more rows per item, so subList them again
-            result.addAll(rows.subList(0, itemsToUse));
-            resultSize += itemsToUse;
-            if (resultSize >= limit || resultSize >= envelope.getTotalCount()) {
-                break;
+                // mapper can produce 1 or more rows per item, so subList them again
+                rows = rows.subList(0, itemsToUse);
+                this.rows = rows.iterator();
+                resultSize += itemsToUse;
+                if (resultSize >= envelope.getTotalCount()) {
+                    resultSize = limit;
+                }
+                return true;
             }
-        }
 
-        return result.build();
+            @Override
+            public List<?> next()
+            {
+                return rows.next();
+            }
+        };
     }
 
     private <T, E extends Envelope<T>> long getTotalCountFromPagesEnvelope(Supplier<Call<E>> fetcher)
@@ -2013,7 +2049,7 @@ public class GithubRest
             return 0;
         }
         checkServiceResponse(response);
-        E envelope = requireNonNull(response.body());
+        E envelope = requireNonNull(response.body(), "response body is null");
         return envelope.getTotalCount();
     }
 

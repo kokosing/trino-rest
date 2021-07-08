@@ -74,7 +74,7 @@ public class Jobs
             }
             checkServiceResponse(response);
             JobsList envelope = response.body();
-            total = requireNonNull(envelope).getTotalCount();
+            total = requireNonNull(envelope, "response body is null").getTotalCount();
             List<Job> items = envelope.getItems();
             if (items.size() == 0) {
                 break;
