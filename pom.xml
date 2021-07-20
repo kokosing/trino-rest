@@ -58,10 +58,10 @@
         <air.check.skip-checkstyle>false</air.check.skip-checkstyle>
 
         <dep.trino.version>359</dep.trino.version>
-        <dep.airlift.version>207</dep.airlift.version>
+        <dep.airlift.version>208</dep.airlift.version>
         <dep.packaging.version>${dep.airlift.version}</dep.packaging.version>
         <dep.errorprone.version>2.7.1</dep.errorprone.version>
-        <dep.jackson.version>2.12.3</dep.jackson.version>
+        <dep.jackson.version>2.12.4</dep.jackson.version>
         <dep.testng.version>6.10</dep.testng.version>
 
         <project.scm.id>github</project.scm.id>
@@ -80,7 +80,7 @@
             <dependency>
                 <groupId>org.checkerframework</groupId>
                 <artifactId>checker-qual</artifactId>
-                <version>3.11.0</version>
+                <version>3.16.0</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
