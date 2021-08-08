@@ -12,7 +12,7 @@
  * limitations under the License.
  */
 
-package pl.net.was.rest.github.filter;
+package pl.net.was.rest.filter;
 
 public enum FilterType
 {

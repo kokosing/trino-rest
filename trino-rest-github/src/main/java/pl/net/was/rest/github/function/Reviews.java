@@ -23,6 +23,7 @@ import io.trino.spi.function.ScalarFunction;
 import io.trino.spi.function.SqlType;
 import io.trino.spi.type.ArrayType;
 import io.trino.spi.type.RowType;
+import pl.net.was.rest.Rest;
 import pl.net.was.rest.github.GithubTable;
 import pl.net.was.rest.github.model.Review;
 import retrofit2.Response;
@@ -36,7 +37,6 @@ import static io.trino.spi.type.StandardTypes.VARCHAR;
 import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
 import static java.util.Objects.requireNonNull;
 import static pl.net.was.rest.github.GithubRest.REVIEWS_TABLE_TYPE;
-import static pl.net.was.rest.github.GithubRest.checkServiceResponse;
 import static pl.net.was.rest.github.GithubRest.getRowType;
 
 @ScalarFunction(value = "reviews", deterministic = false)
@@ -72,7 +72,7 @@ public class Reviews
             if (response.code() == HTTP_NOT_FOUND) {
                 break;
             }
-            checkServiceResponse(response);
+            Rest.checkServiceResponse(response);
             List<Review> items = requireNonNull(response.body(), "response body is null");
             if (items.size() == 0) {
                 break;

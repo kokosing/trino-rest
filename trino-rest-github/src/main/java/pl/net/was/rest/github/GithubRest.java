@@ -62,8 +62,8 @@ import pl.net.was.rest.RestTableHandle;
 import pl.net.was.rest.github.filter.ArtifactFilter;
 import pl.net.was.rest.github.filter.CheckRunAnnotationFilter;
 import pl.net.was.rest.github.filter.CheckRunFilter;
-import pl.net.was.rest.github.filter.FilterApplier;
-import pl.net.was.rest.github.filter.FilterType;
+import pl.net.was.rest.filter.FilterApplier;
+import pl.net.was.rest.filter.FilterType;
 import pl.net.was.rest.github.filter.IssueCommentFilter;
 import pl.net.was.rest.github.filter.IssueFilter;
 import pl.net.was.rest.github.filter.JobFilter;
@@ -112,7 +112,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.google.common.base.Verify.verify;
-import static io.trino.spi.StandardErrorCode.GENERIC_INTERNAL_ERROR;
 import static io.trino.spi.StandardErrorCode.INVALID_ORDER_BY;
 import static io.trino.spi.StandardErrorCode.INVALID_ROW_FILTER;
 import static io.trino.spi.type.BigintType.BIGINT;
@@ -1040,25 +1039,6 @@ public class GithubRest
         return token;
     }
 
-    public static <T> void checkServiceResponse(Response<T> response)
-    {
-        if (response.isSuccessful()) {
-            return;
-        }
-        ResponseBody error = response.errorBody();
-        String message = "Unable to read: ";
-        if (error != null) {
-            try {
-                // TODO unserialize the JSON in error: https://github.com/nineinchnick/trino-rest/issues/33
-                message += error.string();
-            }
-            catch (IOException e) {
-                // pass
-            }
-        }
-        throw new TrinoException(GENERIC_INTERNAL_ERROR, message);
-    }
-
     @Override
     public ConnectorTableMetadata getTableMetadata(SchemaTableName schemaTableName)
     {
@@ -1541,7 +1521,7 @@ public class GithubRest
         if (response.code() == HTTP_NOT_FOUND) {
             return List.of();
         }
-        checkServiceResponse(response);
+        Rest.checkServiceResponse(response);
         ResponseBody body = requireNonNull(response.body(), "response body is null");
         String size = response.headers().get("Content-Length");
         long sizeBytes = size != null ? Long.parseLong(size) : 0;
@@ -1605,7 +1585,7 @@ public class GithubRest
             if (response.code() == HTTP_NOT_FOUND) {
                 break;
             }
-            checkServiceResponse(response);
+            Rest.checkServiceResponse(response);
             List<Job> items = requireNonNull(response.body(), "response body is null").getItems();
             if (items.size() == 0) {
                 break;
@@ -1910,7 +1890,7 @@ public class GithubRest
         if (response.code() == HTTP_NOT_FOUND) {
             return null;
         }
-        checkServiceResponse(response);
+        Rest.checkServiceResponse(response);
         return response.body();
     }
 
@@ -1949,7 +1929,7 @@ public class GithubRest
                 if (response.code() == HTTP_NOT_FOUND) {
                     return false;
                 }
-                checkServiceResponse(response);
+                Rest.checkServiceResponse(response);
                 List<T> items = requireNonNull(response.body(), "response body is null");
                 if (items.size() == 0) {
                     return false;
@@ -2008,7 +1988,7 @@ public class GithubRest
                 if (response.code() == HTTP_NOT_FOUND) {
                     return false;
                 }
-                checkServiceResponse(response);
+                Rest.checkServiceResponse(response);
                 E envelope = requireNonNull(response.body(), "response body is null");
                 List<T> items = envelope.getItems();
                 if (items.size() == 0) {
@@ -2049,7 +2029,7 @@ public class GithubRest
         if (response.code() == HTTP_NOT_FOUND) {
             return 0;
         }
-        checkServiceResponse(response);
+        Rest.checkServiceResponse(response);
         E envelope = requireNonNull(response.body(), "response body is null");
         return envelope.getTotalCount();
     }

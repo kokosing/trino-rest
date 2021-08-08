@@ -12,22 +12,17 @@
  * limitations under the License.
  */
 
-package pl.net.was.rest.github.filter;
+package pl.net.was.rest.slack.model;
 
-import com.google.common.collect.ImmutableMap;
-import pl.net.was.rest.filter.FilterApplier;
-import pl.net.was.rest.filter.FilterType;
+import java.util.List;
 
-import java.util.Map;
-
-public class IssueCommentFilter
-        implements FilterApplier
+public interface Envelope<T>
 {
-    public Map<String, FilterType> getSupportedFilters()
-    {
-        return ImmutableMap.of(
-                "owner", FilterType.EQUAL,
-                "repo", FilterType.EQUAL,
-                "updated_at", FilterType.GREATER_THAN_EQUAL);
-    }
+    List<T> getItems();
+
+    boolean isOk();
+
+    String getError();
+
+    String getNextCursor();
 }

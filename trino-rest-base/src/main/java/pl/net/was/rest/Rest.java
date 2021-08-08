@@ -17,6 +17,7 @@ package pl.net.was.rest;
 import io.trino.spi.HostAddress;
 import io.trino.spi.Node;
 import io.trino.spi.NodeManager;
+import io.trino.spi.TrinoException;
 import io.trino.spi.connector.ColumnHandle;
 import io.trino.spi.connector.ColumnMetadata;
 import io.trino.spi.connector.ConnectorSession;
@@ -35,16 +36,39 @@ import io.trino.spi.connector.SortItem;
 import io.trino.spi.connector.TopNApplicationResult;
 import io.trino.spi.statistics.TableStatistics;
 import io.trino.spi.type.Type;
+import okhttp3.ResponseBody;
+import retrofit2.Response;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
 
+import static io.trino.spi.StandardErrorCode.GENERIC_INTERNAL_ERROR;
 import static java.util.stream.Collectors.toList;
 
 public interface Rest
 {
+    static <T> void checkServiceResponse(Response<T> response)
+    {
+        if (response.isSuccessful()) {
+            return;
+        }
+        ResponseBody error = response.errorBody();
+        String message = "Unable to read: ";
+        if (error != null) {
+            try {
+                // TODO unserialize the JSON in error: https://github.com/nineinchnick/trino-rest/issues/33
+                message += error.string();
+            }
+            catch (IOException e) {
+                // pass
+            }
+        }
+        throw new TrinoException(GENERIC_INTERNAL_ERROR, message);
+    }
+
     ConnectorTableMetadata getTableMetadata(SchemaTableName schemaTableName);
 
     List<String> listSchemas();

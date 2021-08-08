@@ -12,22 +12,24 @@
  * limitations under the License.
  */
 
-package pl.net.was.rest.github.filter;
+package pl.net.was.rest.slack.model;
 
-import com.google.common.collect.ImmutableMap;
-import pl.net.was.rest.filter.FilterApplier;
-import pl.net.was.rest.filter.FilterType;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 
-import java.util.Map;
-
-public class IssueCommentFilter
-        implements FilterApplier
+@JsonIgnoreProperties(ignoreUnknown = true)
+public class ResponseMetadata
 {
-    public Map<String, FilterType> getSupportedFilters()
+    private final String nextCursor;
+
+    public ResponseMetadata(
+            @JsonProperty("next_cursor") String nextCursor)
     {
-        return ImmutableMap.of(
-                "owner", FilterType.EQUAL,
-                "repo", FilterType.EQUAL,
-                "updated_at", FilterType.GREATER_THAN_EQUAL);
+        this.nextCursor = nextCursor;
+    }
+
+    public String getNextCursor()
+    {
+        return nextCursor;
     }
 }

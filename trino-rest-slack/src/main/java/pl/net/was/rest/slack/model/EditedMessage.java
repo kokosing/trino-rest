@@ -19,18 +19,18 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class Im
+public class EditedMessage
 {
-    private final String id;
     private final String user;
+    private final String ts;
 
     @JsonCreator
-    public Im(
-            @JsonProperty("id") String id,
-            @JsonProperty("user") String user)
+    public EditedMessage(
+            @JsonProperty("user") String user,
+            @JsonProperty("ts") String ts)
     {
-        this.id = id;
         this.user = user;
+        this.ts = ts;
     }
 
     public String getUser()
@@ -38,8 +38,8 @@ public class Im
         return user;
     }
 
-    public String getId()
+    public String getTs()
     {
-        return id;
+        return ts;
     }
 }

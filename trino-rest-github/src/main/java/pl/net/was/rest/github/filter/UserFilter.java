@@ -15,6 +15,8 @@
 package pl.net.was.rest.github.filter;
 
 import com.google.common.collect.ImmutableMap;
+import pl.net.was.rest.filter.FilterApplier;
+import pl.net.was.rest.filter.FilterType;
 
 import java.util.Map;
 
