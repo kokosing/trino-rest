@@ -23,6 +23,7 @@ import io.trino.spi.function.Description;
 import io.trino.spi.function.ScalarFunction;
 import io.trino.spi.function.SqlType;
 import io.trino.spi.type.RowType;
+import pl.net.was.rest.Rest;
 import pl.net.was.rest.github.GithubTable;
 import pl.net.was.rest.github.model.BlockWriter;
 import pl.net.was.rest.github.model.User;
@@ -33,7 +34,6 @@ import java.io.IOException;
 import static io.trino.spi.type.StandardTypes.VARCHAR;
 import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
 import static pl.net.was.rest.github.GithubRest.USER_ROW_TYPE;
-import static pl.net.was.rest.github.GithubRest.checkServiceResponse;
 import static pl.net.was.rest.github.GithubRest.getRowType;
 
 @ScalarFunction(value = "user", deterministic = false)
@@ -59,7 +59,7 @@ public class UserGetter
         if (response.code() == HTTP_NOT_FOUND) {
             return null;
         }
-        checkServiceResponse(response);
+        Rest.checkServiceResponse(response);
         User item = response.body();
         return buildBlock(item);
     }

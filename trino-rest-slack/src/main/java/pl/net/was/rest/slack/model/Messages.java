@@ -18,23 +18,23 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
 
-public class Channels
+public class Messages
         extends SlackResponse
-        implements Envelope<Channel>
+        implements Envelope<Message>
 {
-    private final List<Channel> items;
+    private final List<Message> items;
 
-    public Channels(
+    public Messages(
             @JsonProperty("ok") boolean ok,
             @JsonProperty("error") String error,
             @JsonProperty("response_metadata") ResponseMetadata responseMetadata,
-            @JsonProperty("channels") List<Channel> channels)
+            @JsonProperty("messages") List<Message> messages)
     {
         super(ok, error, responseMetadata);
-        this.items = channels;
+        this.items = messages;
     }
 
-    public List<Channel> getItems()
+    public List<Message> getItems()
     {
         return items;
     }

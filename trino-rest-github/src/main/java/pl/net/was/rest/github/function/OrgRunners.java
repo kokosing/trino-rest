@@ -23,6 +23,7 @@ import io.trino.spi.function.ScalarFunction;
 import io.trino.spi.function.SqlType;
 import io.trino.spi.type.ArrayType;
 import io.trino.spi.type.RowType;
+import pl.net.was.rest.Rest;
 import pl.net.was.rest.github.GithubTable;
 import pl.net.was.rest.github.model.Runner;
 import pl.net.was.rest.github.model.RunnersList;
@@ -36,7 +37,6 @@ import static io.trino.spi.type.StandardTypes.VARCHAR;
 import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
 import static java.util.Objects.requireNonNull;
 import static pl.net.was.rest.github.GithubRest.RUNNERS_TABLE_TYPE;
-import static pl.net.was.rest.github.GithubRest.checkServiceResponse;
 import static pl.net.was.rest.github.GithubRest.getRowType;
 
 @ScalarFunction(value = "org_runners", deterministic = false)
@@ -64,7 +64,7 @@ public class OrgRunners
         if (response.code() == HTTP_NOT_FOUND) {
             return null;
         }
-        checkServiceResponse(response);
+        Rest.checkServiceResponse(response);
         RunnersList envelope = response.body();
         List<Runner> items = requireNonNull(envelope, "response body is null").getItems();
         items.forEach(i -> i.setOrg(org.toStringUtf8()));

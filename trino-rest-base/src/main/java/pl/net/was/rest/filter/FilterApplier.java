@@ -12,7 +12,7 @@
  * limitations under the License.
  */
 
-package pl.net.was.rest.github.filter;
+package pl.net.was.rest.filter;
 
 import io.airlift.slice.Slice;
 import io.trino.spi.TrinoException;
@@ -45,7 +45,7 @@ import static java.lang.Math.floorDiv;
 import static java.lang.Math.floorMod;
 import static java.lang.String.format;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME;
-import static pl.net.was.rest.github.filter.FilterType.EQUAL;
+import static pl.net.was.rest.filter.FilterType.EQUAL;
 
 public interface FilterApplier
 {

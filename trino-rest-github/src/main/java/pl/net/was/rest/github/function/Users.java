@@ -22,6 +22,7 @@ import io.trino.spi.function.ScalarFunction;
 import io.trino.spi.function.SqlType;
 import io.trino.spi.type.ArrayType;
 import io.trino.spi.type.RowType;
+import pl.net.was.rest.Rest;
 import pl.net.was.rest.github.GithubTable;
 import pl.net.was.rest.github.model.User;
 import retrofit2.Response;
@@ -32,7 +33,6 @@ import java.util.List;
 import static io.trino.spi.type.StandardTypes.BIGINT;
 import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
 import static pl.net.was.rest.github.GithubRest.USERS_TABLE_TYPE;
-import static pl.net.was.rest.github.GithubRest.checkServiceResponse;
 import static pl.net.was.rest.github.GithubRest.getRowType;
 
 @ScalarFunction(value = "users", deterministic = false)
@@ -58,7 +58,7 @@ public class Users
         if (response.code() == HTTP_NOT_FOUND) {
             return null;
         }
-        checkServiceResponse(response);
+        Rest.checkServiceResponse(response);
         List<User> items = response.body();
         return buildBlock(items);
     }

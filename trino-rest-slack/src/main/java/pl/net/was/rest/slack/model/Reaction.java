@@ -14,28 +14,38 @@
 
 package pl.net.was.rest.slack.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
 
-@JsonIgnoreProperties(ignoreUnknown = true)
-public class Ims
-        extends SlackResponse
+public class Reaction
 {
-    private final List<Im> ims;
+    private final String name;
+    private final int count;
+    private final List<String> users;
 
-    public Ims(
-            @JsonProperty("ok") boolean ok,
-            @JsonProperty("error") String error,
-            @JsonProperty("channels") List<Im> ims)
+    private Reaction(
+            @JsonProperty("name") String name,
+            @JsonProperty("count") int count,
+            @JsonProperty("users") List<String> users)
     {
-        super(ok, error);
-        this.ims = ims;
+        this.name = name;
+        this.count = count;
+        this.users = users;
     }
 
-    public List<Im> getIms()
+    public String getName()
     {
-        return ims;
+        return name;
+    }
+
+    public int getCount()
+    {
+        return count;
+    }
+
+    public List<String> getUsers()
+    {
+        return users;
     }
 }

@@ -44,22 +44,26 @@ public class TestSlackQueries
     @Test
     public void showTables()
     {
-        assertQuery("SHOW SCHEMAS FROM slack", "VALUES 'channel', 'im', 'information_schema'");
-        computeActual("SHOW TABLES FROM slack.channel");
-        computeActual("SHOW TABLES FROM slack.im");
+        assertQuery("SHOW SCHEMAS FROM slack", "VALUES 'default', 'information_schema'");
+        assertQuery("SHOW TABLES FROM slack.default", "VALUES 'users', 'channels', 'channel_members', 'messages', 'replies'");
     }
 
     @Test
     public void selectFromGeneral()
     {
-        computeActual("SELECT * FROM slack.channel.general");
-        computeActual("SELECT text FROM slack.channel.general");
+        assertQuery("SELECT name FROM channels WHERE is_member ORDER BY name",
+                "VALUES 'general', 'trino_rest'");
+        assertQuery("SELECT name FROM slack.default.users ORDER BY name",
+                "VALUES 'jan', 'test', 'slackbot'");
+        assertQuery("SELECT member FROM channel_members WHERE channel = 'C024ZB0UMBJ' ORDER BY member",
+                "VALUES 'U0242PCE55L', 'U0249TNJUDR'");
+        computeActual("SELECT * FROM messages WHERE channel = 'C024ZB0UMBJ'");
+        computeActual("SELECT * FROM replies WHERE channel = 'C024ZB0UMBJ' AND ts = '1623095713.000400'");
     }
 
     @Test
     public void selectFromIm()
     {
-        computeActual("SELECT * FROM slack.im.jan");
-        computeActual("SELECT text FROM slack.im.jan");
+        computeActual("SELECT id FROM channels WHERE type = 'im' ORDER BY id");
     }
 }

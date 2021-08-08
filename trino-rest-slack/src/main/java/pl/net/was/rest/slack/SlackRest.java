@@ -14,36 +14,56 @@
 
 package pl.net.was.rest.slack;
 
-import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
+import io.trino.spi.TrinoException;
+import io.trino.spi.connector.ColumnHandle;
 import io.trino.spi.connector.ColumnMetadata;
+import io.trino.spi.connector.ConnectorSession;
+import io.trino.spi.connector.ConnectorTableHandle;
 import io.trino.spi.connector.ConnectorTableMetadata;
+import io.trino.spi.connector.Constraint;
+import io.trino.spi.connector.ConstraintApplicationResult;
 import io.trino.spi.connector.SchemaTableName;
 import io.trino.spi.connector.SchemaTablePrefix;
+import io.trino.spi.predicate.TupleDomain;
+import io.trino.spi.type.ArrayType;
+import io.trino.spi.type.MapType;
+import io.trino.spi.type.TimestampWithTimeZoneType;
+import io.trino.spi.type.TypeOperators;
 import pl.net.was.rest.Rest;
+import pl.net.was.rest.RestColumnHandle;
 import pl.net.was.rest.RestConfig;
 import pl.net.was.rest.RestTableHandle;
-import pl.net.was.rest.slack.model.Channel;
-import pl.net.was.rest.slack.model.Channels;
-import pl.net.was.rest.slack.model.History;
-import pl.net.was.rest.slack.model.Im;
-import pl.net.was.rest.slack.model.Ims;
-import pl.net.was.rest.slack.model.SlackResponse;
-import pl.net.was.rest.slack.model.User;
-import pl.net.was.rest.slack.model.Users;
-import pl.net.was.rest.slack.rest.SlackService;
+import pl.net.was.rest.filter.FilterApplier;
+import pl.net.was.rest.slack.filter.ChannelFilter;
+import pl.net.was.rest.slack.filter.ChannelMemberFilter;
+import pl.net.was.rest.slack.filter.MessageFilter;
+import pl.net.was.rest.slack.filter.ReplyFilter;
+import pl.net.was.rest.slack.model.Envelope;
+import retrofit2.Call;
+import retrofit2.Response;
 
 import javax.inject.Inject;
 
 import java.io.IOException;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.logging.Logger;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-import static io.trino.spi.type.VarcharType.createUnboundedVarcharType;
-import static java.util.Arrays.asList;
+import static io.trino.spi.StandardErrorCode.GENERIC_INTERNAL_ERROR;
+import static io.trino.spi.StandardErrorCode.INVALID_ROW_FILTER;
+import static io.trino.spi.type.BooleanType.BOOLEAN;
+import static io.trino.spi.type.IntegerType.INTEGER;
+import static io.trino.spi.type.VarcharType.VARCHAR;
+import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
 import static java.util.Objects.requireNonNull;
-import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static pl.net.was.rest.RestModule.getService;
@@ -51,152 +71,400 @@ import static pl.net.was.rest.RestModule.getService;
 public class SlackRest
         implements Rest
 {
-    private static final String CHANNEL_SCHEMA = "channel";
-    private static final String IM_SCHEMA = "im";
+    Logger log = Logger.getLogger(SlackRest.class.getName());
+    public static final String SCHEMA_NAME = "default";
+    private static final int PER_PAGE = 200;
 
+    private static String token;
     private final SlackService service = getService(SlackService.class, "https://slack.com/api/");
 
-    private final Map<String, Channel> channels;
-    private final Map<String, User> users;
-    private final Map<String, Im> ims;
-    private final String auth;
+    public static final Map<SlackTable, List<ColumnMetadata>> columns = new ImmutableMap.Builder<SlackTable, List<ColumnMetadata>>()
+            .put(SlackTable.USERS, ImmutableList.of(
+                    new ColumnMetadata("id", VARCHAR),
+                    new ColumnMetadata("team_id", VARCHAR),
+                    new ColumnMetadata("name", VARCHAR),
+                    new ColumnMetadata("deleted", BOOLEAN),
+                    new ColumnMetadata("color", VARCHAR),
+                    new ColumnMetadata("real_name", VARCHAR),
+                    new ColumnMetadata("tz", VARCHAR),
+                    new ColumnMetadata("tz_label", VARCHAR),
+                    new ColumnMetadata("tz_offset", INTEGER),
+                    new ColumnMetadata("avatar_hash", VARCHAR),
+                    new ColumnMetadata("status_text", VARCHAR),
+                    new ColumnMetadata("status_emoji", VARCHAR),
+                    new ColumnMetadata("profile_real_name", VARCHAR),
+                    new ColumnMetadata("display_name", VARCHAR),
+                    new ColumnMetadata("real_name_normalized", VARCHAR),
+                    new ColumnMetadata("display_name_normalized", VARCHAR),
+                    new ColumnMetadata("email", VARCHAR),
+                    new ColumnMetadata("image_24", VARCHAR),
+                    new ColumnMetadata("image_32", VARCHAR),
+                    new ColumnMetadata("image_48", VARCHAR),
+                    new ColumnMetadata("image_72", VARCHAR),
+                    new ColumnMetadata("image_192", VARCHAR),
+                    new ColumnMetadata("image_512", VARCHAR),
+                    new ColumnMetadata("team", VARCHAR),
+                    new ColumnMetadata("is_admin", BOOLEAN),
+                    new ColumnMetadata("is_owner", BOOLEAN),
+                    new ColumnMetadata("is_primary_owner", BOOLEAN),
+                    new ColumnMetadata("is_restricted", BOOLEAN),
+                    new ColumnMetadata("is_ultra_restricted", BOOLEAN),
+                    new ColumnMetadata("is_bot", BOOLEAN),
+                    new ColumnMetadata("updated", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
+                    new ColumnMetadata("is_app_user", BOOLEAN),
+                    new ColumnMetadata("has_2fa", BOOLEAN)))
+            .put(SlackTable.CHANNELS, ImmutableList.of(
+                    new ColumnMetadata("type", VARCHAR),
+                    new ColumnMetadata("id", VARCHAR),
+                    new ColumnMetadata("name", VARCHAR),
+                    new ColumnMetadata("is_channel", BOOLEAN),
+                    new ColumnMetadata("is_group", BOOLEAN),
+                    new ColumnMetadata("is_im", BOOLEAN),
+                    new ColumnMetadata("created", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
+                    new ColumnMetadata("creator", VARCHAR),
+                    new ColumnMetadata("is_archived", BOOLEAN),
+                    new ColumnMetadata("is_general", BOOLEAN),
+                    new ColumnMetadata("unlinked", INTEGER),
+                    new ColumnMetadata("name_normalized", VARCHAR),
+                    new ColumnMetadata("is_shared", BOOLEAN),
+                    new ColumnMetadata("is_ext_shared", BOOLEAN),
+                    new ColumnMetadata("is_org_shared", BOOLEAN),
+                    new ColumnMetadata("pending_shared", new ArrayType(VARCHAR)),
+                    new ColumnMetadata("is_pending_ext_shared", BOOLEAN),
+                    new ColumnMetadata("is_member", BOOLEAN),
+                    new ColumnMetadata("is_private", BOOLEAN),
+                    new ColumnMetadata("is_mpim", BOOLEAN),
+                    new ColumnMetadata("topic_value", VARCHAR),
+                    new ColumnMetadata("topic_creatro", VARCHAR),
+                    new ColumnMetadata("topic_last_set", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
+                    new ColumnMetadata("purpose_value", VARCHAR),
+                    new ColumnMetadata("purpose_creatro", VARCHAR),
+                    new ColumnMetadata("purpose_last_set", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
+                    new ColumnMetadata("previous_names", new ArrayType(VARCHAR)),
+                    new ColumnMetadata("num_members", INTEGER)))
+            .put(SlackTable.CHANNEL_MEMBERS, ImmutableList.of(
+                    new ColumnMetadata("channel", VARCHAR),
+                    new ColumnMetadata("member", VARCHAR)))
+            .put(SlackTable.MESSAGES, ImmutableList.of(
+                    new ColumnMetadata("type", VARCHAR),
+                    new ColumnMetadata("subtype", VARCHAR),
+                    new ColumnMetadata("hidden", BOOLEAN),
+                    new ColumnMetadata("channel", VARCHAR),
+                    new ColumnMetadata("user", VARCHAR),
+                    new ColumnMetadata("text", VARCHAR),
+                    new ColumnMetadata("thread_ts", VARCHAR),
+                    new ColumnMetadata("reply_count", INTEGER),
+                    new ColumnMetadata("subscribed", BOOLEAN),
+                    new ColumnMetadata("last_read", VARCHAR),
+                    new ColumnMetadata("unread_count", INTEGER),
+                    new ColumnMetadata("parent_user_id", VARCHAR),
+                    new ColumnMetadata("ts", VARCHAR),
+                    new ColumnMetadata("edited_user", VARCHAR),
+                    new ColumnMetadata("edited_ts", VARCHAR),
+                    new ColumnMetadata("deleted_ts", VARCHAR),
+                    new ColumnMetadata("event_ts", VARCHAR),
+                    new ColumnMetadata("is_starred", BOOLEAN),
+                    new ColumnMetadata("pinned_to", new ArrayType(VARCHAR)),
+                    new ColumnMetadata("reactions", new MapType(VARCHAR, INTEGER, new TypeOperators()))))
+            .put(SlackTable.REPLIES, ImmutableList.of(
+                    new ColumnMetadata("type", VARCHAR),
+                    new ColumnMetadata("subtype", VARCHAR),
+                    new ColumnMetadata("hidden", BOOLEAN),
+                    new ColumnMetadata("channel", VARCHAR),
+                    new ColumnMetadata("user", VARCHAR),
+                    new ColumnMetadata("text", VARCHAR),
+                    new ColumnMetadata("thread_ts", VARCHAR),
+                    new ColumnMetadata("reply_count", INTEGER),
+                    new ColumnMetadata("subscribed", BOOLEAN),
+                    new ColumnMetadata("last_read", VARCHAR),
+                    new ColumnMetadata("unread_count", INTEGER),
+                    new ColumnMetadata("parent_user_id", VARCHAR),
+                    new ColumnMetadata("ts", VARCHAR),
+                    new ColumnMetadata("edited_user", VARCHAR),
+                    new ColumnMetadata("edited_ts", VARCHAR),
+                    new ColumnMetadata("deleted_ts", VARCHAR),
+                    new ColumnMetadata("event_ts", VARCHAR),
+                    new ColumnMetadata("is_starred", BOOLEAN),
+                    new ColumnMetadata("pinned_to", new ArrayType(VARCHAR)),
+                    new ColumnMetadata("reactions", new MapType(VARCHAR, INTEGER, new TypeOperators()))))
+            .build();
 
-    private final List<ColumnMetadata> columns = ImmutableList.of(
-            new ColumnMetadata("type", createUnboundedVarcharType()),
-            new ColumnMetadata("user", createUnboundedVarcharType()),
-            new ColumnMetadata("text", createUnboundedVarcharType()));
+    private final Map<SlackTable, Function<RestTableHandle, Iterable<List<?>>>> rowGetters = new ImmutableMap.Builder<SlackTable, Function<RestTableHandle, Iterable<List<?>>>>()
+            .put(SlackTable.USERS, this::getUsers)
+            .put(SlackTable.CHANNELS, this::getChannels)
+            .put(SlackTable.CHANNEL_MEMBERS, this::getChannelMembers)
+            .put(SlackTable.MESSAGES, this::getMessages)
+            .put(SlackTable.REPLIES, this::getReplies)
+            .build();
+
+    private final Map<SlackTable, Map<String, ColumnHandle>> columnHandles;
+
+    private final Map<SlackTable, ? extends FilterApplier> filterAppliers = new ImmutableMap.Builder<SlackTable, FilterApplier>()
+            .put(SlackTable.CHANNELS, new ChannelFilter())
+            .put(SlackTable.CHANNEL_MEMBERS, new ChannelMemberFilter())
+            .put(SlackTable.MESSAGES, new MessageFilter())
+            .put(SlackTable.REPLIES, new ReplyFilter())
+            .build();
 
     @Inject
     public SlackRest(RestConfig config)
     {
         requireNonNull(config, "config is null");
-        this.auth = "Bearer " + config.getToken();
-        try {
-            Channels channels = service.listChannels(auth).execute().body();
-            if (channels.getError() != null) {
-                throw new IllegalStateException("Error during communication with slack: " + channels.getError());
-            }
-            this.channels = channels.getChannels().stream()
-                    .filter(Channel::isMember)
-                    .collect(toMap(Channel::getName, identity()));
+        SlackRest.token = config.getToken();
 
-            Users users = service.listUsers(auth).execute().body();
-            if (users.getError() != null) {
-                throw new IllegalStateException("Error during communication with slack: " + channels.getError());
-            }
-            this.users = users.getUsers().stream()
-                    .collect(toMap(User::getName, identity()));
-
-            Ims ims = service.listIms(auth).execute().body();
-            if (ims.getError() != null) {
-                throw new IllegalStateException("Error during communication with slack: " + channels.getError());
-            }
-            this.ims = ims.getIms().stream()
-                    .collect(toMap(Im::getUser, identity()));
-        }
-        catch (IOException e) {
-            throw Throwables.propagate(e);
-        }
+        columnHandles = columns.keySet()
+                .stream()
+                .collect(Collectors.toMap(
+                        tableName -> tableName,
+                        tableName -> columns.get(tableName)
+                                .stream()
+                                .collect(toMap(
+                                        ColumnMetadata::getName,
+                                        column -> new RestColumnHandle(column.getName(), column.getType())))));
     }
 
     @Override
     public ConnectorTableMetadata getTableMetadata(SchemaTableName schemaTableName)
     {
+        SlackTable tableName = SlackTable.valueOf(schemaTableName);
         return new ConnectorTableMetadata(
                 schemaTableName,
-                columns);
+                columns.get(tableName));
     }
 
     @Override
     public List<String> listSchemas()
     {
-        return ImmutableList.of(CHANNEL_SCHEMA, IM_SCHEMA);
+        return ImmutableList.of(SCHEMA_NAME);
     }
 
     @Override
     public List<SchemaTableName> listTables(String schema)
     {
-        if (CHANNEL_SCHEMA.equalsIgnoreCase(schema)) {
-            return channels.keySet().stream()
-                    .map(tableName -> new SchemaTableName(CHANNEL_SCHEMA, tableName))
-                    .collect(toList());
-        }
-        if (IM_SCHEMA.equalsIgnoreCase(schema)) {
-            return users.keySet().stream()
-                    .map(tableName -> new SchemaTableName(IM_SCHEMA, tableName))
-                    .collect(toList());
-        }
-        return ImmutableList.of();
+        return columns
+                .keySet()
+                .stream()
+                .map(table -> new SchemaTableName(SCHEMA_NAME, table.getName()))
+                .collect(toList());
     }
 
     @Override
     public Map<SchemaTableName, List<ColumnMetadata>> listTableColumns(SchemaTablePrefix schemaTablePrefix)
     {
-        return null;
+        return columns.entrySet()
+                .stream()
+                .collect(Collectors.toMap(
+                        e -> new SchemaTableName(schemaTablePrefix.getSchema().orElse(""), e.getKey().getName()),
+                        Map.Entry::getValue));
     }
 
     @Override
     public Iterable<List<?>> getRows(RestTableHandle table)
     {
-        SchemaTableName schemaTableName = table.getSchemaTableName();
-        History history = getHistory(schemaTableName);
-
-        if (history.getError() != null) {
-            throw new IllegalStateException("Unable to read from '" + schemaTableName + "' dues: " + history.getError());
-        }
-        return history
-                .getMessages().stream()
-                .map(message -> asList(message.getType(), message.getUser(), message.getText())).collect(toList());
+        SlackTable tableName = SlackTable.valueOf(table);
+        return rowGetters.get(tableName).apply(table);
     }
 
-    private History getHistory(SchemaTableName schemaTableName)
+    private Iterable<List<?>> getUsers(RestTableHandle table)
     {
-        String schemaName = schemaTableName.getSchemaName();
-        try {
-            if (CHANNEL_SCHEMA.equalsIgnoreCase(schemaName)) {
-                return service.channelHistory(auth, getChannelId(schemaTableName))
-                        .execute()
-                        .body();
-            }
-            if (IM_SCHEMA.equalsIgnoreCase(schemaName)) {
-                return service.imHistory(auth, getChannelId(schemaTableName))
-                        .execute()
-                        .body();
-            }
+        if (table.getLimit() == 0) {
+            return List.of();
         }
-        catch (IOException e) {
-            throw Throwables.propagate(e);
-        }
-        return new History(true, "no such schema", ImmutableList.of());
+        return getRowsFromPagesEnvelope(
+                cursor -> service.listUsers(
+                        "Bearer " + token,
+                        cursor,
+                        PER_PAGE),
+                item -> Stream.of(item.toRow()),
+                table.getLimit());
     }
 
-    private String getChannelId(SchemaTableName schemaTableName)
+    private Iterable<List<?>> getChannels(RestTableHandle table)
     {
-        String schemaName = schemaTableName.getSchemaName();
-        String tableName = schemaTableName.getTableName();
-        if (CHANNEL_SCHEMA.equalsIgnoreCase(schemaName)) {
-            return channels.get(tableName).getId();
+        if (table.getLimit() == 0) {
+            return List.of();
         }
-        if (IM_SCHEMA.equalsIgnoreCase(schemaName)) {
-            String userId = users.get(tableName).getId();
-            return ims.get(userId).getId();
+        SlackTable tableName = SlackTable.valueOf(table);
+        TupleDomain<ColumnHandle> constraint = table.getConstraint();
+        Map<String, ColumnHandle> columns = columnHandles.get(tableName);
+        FilterApplier filter = filterAppliers.get(tableName);
+
+        String type = (String) filter.getFilter((RestColumnHandle) columns.get("type"), constraint, "public_channel");
+        return getRowsFromPagesEnvelope(
+                cursor -> service.listChannels(
+                        "Bearer " + token,
+                        cursor,
+                        PER_PAGE,
+                        type),
+                item -> {
+                    item.setType(type);
+                    return Stream.of(item.toRow());
+                },
+                table.getLimit());
+    }
+
+    private Iterable<List<?>> getChannelMembers(RestTableHandle table)
+    {
+        if (table.getLimit() == 0) {
+            return List.of();
         }
-        throw new IllegalArgumentException("Unknown schema: " + schemaName);
+        SlackTable tableName = SlackTable.valueOf(table);
+        TupleDomain<ColumnHandle> constraint = table.getConstraint();
+        Map<String, ColumnHandle> columns = columnHandles.get(tableName);
+        FilterApplier filter = filterAppliers.get(tableName);
+
+        String channel = (String) filter.getFilter((RestColumnHandle) columns.get("channel"), constraint);
+        requirePredicate(channel, "channel_members.channel");
+        return getRowsFromPagesEnvelope(
+                cursor -> service.listChannelMembers(
+                        "Bearer " + token,
+                        cursor,
+                        PER_PAGE,
+                        channel),
+                item -> Stream.of(ImmutableList.of(channel, item)),
+                table.getLimit());
+    }
+
+    private Iterable<List<?>> getMessages(RestTableHandle table)
+    {
+        if (table.getLimit() == 0) {
+            return List.of();
+        }
+        SlackTable tableName = SlackTable.valueOf(table);
+        TupleDomain<ColumnHandle> constraint = table.getConstraint();
+        Map<String, ColumnHandle> columns = columnHandles.get(tableName);
+        FilterApplier filter = filterAppliers.get(tableName);
+
+        String channel = (String) filter.getFilter((RestColumnHandle) columns.get("channel"), constraint);
+        requirePredicate(channel, "messages.channel");
+        return getRowsFromPagesEnvelope(
+                cursor -> service.listMessages(
+                        "Bearer " + token,
+                        cursor,
+                        PER_PAGE,
+                        channel),
+                item -> Stream.of(item.toRow()),
+                table.getLimit());
+    }
+
+    private Iterable<List<?>> getReplies(RestTableHandle table)
+    {
+        if (table.getLimit() == 0) {
+            return List.of();
+        }
+        SlackTable tableName = SlackTable.valueOf(table);
+        TupleDomain<ColumnHandle> constraint = table.getConstraint();
+        Map<String, ColumnHandle> columns = columnHandles.get(tableName);
+        FilterApplier filter = filterAppliers.get(tableName);
+
+        String channel = (String) filter.getFilter((RestColumnHandle) columns.get("channel"), constraint);
+        String ts = (String) filter.getFilter((RestColumnHandle) columns.get("ts"), constraint);
+        requirePredicate(channel, "replies.channel");
+        requirePredicate(ts, "replies.ts");
+        return getRowsFromPagesEnvelope(
+                cursor -> service.listReplies(
+                        "Bearer " + token,
+                        cursor,
+                        PER_PAGE,
+                        channel,
+                        ts),
+                item -> Stream.of(item.toRow()),
+                table.getLimit());
+    }
+
+    private void requirePredicate(Object value, String name)
+    {
+        if (value == null) {
+            throw new TrinoException(INVALID_ROW_FILTER, "Missing required constraint for " + name);
+        }
+    }
+
+    private <T, E extends Envelope<T>> Iterable<List<?>> getRowsFromPagesEnvelope(
+            Function<String, Call<E>> fetcher,
+            Function<T, Stream<List<?>>> mapper,
+            int limit)
+    {
+        return () -> new Iterator<>()
+        {
+            int resultSize;
+            String cursor = "";
+            Iterator<List<?>> rows;
+
+            @Override
+            public boolean hasNext()
+            {
+                if (rows != null && rows.hasNext()) {
+                    return true;
+                }
+                if (resultSize >= limit) {
+                    return false;
+                }
+                Response<E> response;
+                try {
+                    response = fetcher.apply(cursor).execute();
+                }
+                catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+                if (response.code() == HTTP_NOT_FOUND) {
+                    return false;
+                }
+                Rest.checkServiceResponse(response);
+                E envelope = requireNonNull(response.body(), "response body is null");
+                if (!envelope.isOk()) {
+                    throw new TrinoException(GENERIC_INTERNAL_ERROR, envelope.getError());
+                }
+                List<T> items = envelope.getItems();
+                if (items.size() == 0) {
+                    return false;
+                }
+                int itemsToUse = Math.min(
+                        Math.max(0, limit - resultSize),
+                        items.size());
+                List<List<?>> rows = items.subList(0, itemsToUse).stream().flatMap(mapper).collect(toList());
+
+                // mapper can produce 1 or more rows per item, so subList them again
+                rows = rows.subList(0, itemsToUse);
+                this.rows = rows.iterator();
+                resultSize += itemsToUse;
+                cursor = envelope.getNextCursor();
+                if (cursor.isEmpty()) {
+                    resultSize = limit;
+                }
+                return true;
+            }
+
+            @Override
+            public List<?> next()
+            {
+                return rows.next();
+            }
+        };
+    }
+
+    @Override
+    public Optional<ConstraintApplicationResult<ConnectorTableHandle>> applyFilter(
+            ConnectorSession session,
+            ConnectorTableHandle table,
+            Constraint constraint)
+    {
+        RestTableHandle restTable = (RestTableHandle) table;
+        SlackTable tableName = SlackTable.valueOf(restTable);
+
+        FilterApplier filterApplier = filterAppliers.get(tableName);
+        if (filterApplier == null) {
+            return Optional.empty();
+        }
+        return filterApplier.applyFilter(
+                restTable,
+                columnHandles.get(tableName),
+                filterApplier.getSupportedFilters(),
+                constraint.getSummary());
     }
 
     @Override
     public Consumer<List> createRowSink(SchemaTableName schemaTableName)
     {
-        return list -> {
-            try {
-                SlackResponse body = service.postMessage(auth, getChannelId(schemaTableName), (String) list.get(2)).execute().body();
-                if (body.getError() != null) {
-                    throw new IllegalStateException("Unable to write to '" + schemaTableName + "' dues: " + body.getError());
-                }
-            }
-            catch (IOException e) {
-                throw Throwables.propagate(e);
-            }
-        };
+        throw new IllegalStateException("This connector does not support write");
     }
 }

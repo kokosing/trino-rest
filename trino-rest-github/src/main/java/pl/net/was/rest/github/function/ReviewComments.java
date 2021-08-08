@@ -23,6 +23,7 @@ import io.trino.spi.function.ScalarFunction;
 import io.trino.spi.function.SqlType;
 import io.trino.spi.type.ArrayType;
 import io.trino.spi.type.RowType;
+import pl.net.was.rest.Rest;
 import pl.net.was.rest.github.GithubTable;
 import pl.net.was.rest.github.model.ReviewComment;
 import retrofit2.Response;
@@ -36,7 +37,6 @@ import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
 import static java.time.format.DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 import static java.util.Objects.requireNonNull;
 import static pl.net.was.rest.github.GithubRest.REVIEW_COMMENTS_TABLE_TYPE;
-import static pl.net.was.rest.github.GithubRest.checkServiceResponse;
 import static pl.net.was.rest.github.GithubRest.getRowType;
 
 @ScalarFunction(value = "review_comments", deterministic = false)
@@ -71,7 +71,7 @@ public class ReviewComments
         if (response.code() == HTTP_NOT_FOUND) {
             return null;
         }
-        checkServiceResponse(response);
+        Rest.checkServiceResponse(response);
         List<ReviewComment> items = requireNonNull(response.body(), "response body is null");
         items.forEach(i -> i.setOwner(owner.toStringUtf8()));
         items.forEach(i -> i.setRepo(repo.toStringUtf8()));

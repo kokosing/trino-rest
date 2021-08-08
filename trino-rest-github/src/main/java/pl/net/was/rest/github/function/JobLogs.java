@@ -28,6 +28,7 @@ import io.trino.spi.type.BigintType;
 import io.trino.spi.type.RowType;
 import io.trino.spi.type.VarcharType;
 import okhttp3.ResponseBody;
+import pl.net.was.rest.Rest;
 import pl.net.was.rest.github.GithubTable;
 import retrofit2.Response;
 
@@ -42,7 +43,6 @@ import static io.trino.spi.type.VarbinaryType.VARBINARY;
 import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
 import static java.util.Objects.requireNonNull;
 import static pl.net.was.rest.github.GithubRest.JOBS_TABLE_TYPE;
-import static pl.net.was.rest.github.GithubRest.checkServiceResponse;
 import static pl.net.was.rest.github.GithubRest.getRowType;
 
 @ScalarFunction(value = "job_logs", deterministic = false)
@@ -73,7 +73,7 @@ public class JobLogs
         if (response.code() == HTTP_NOT_FOUND) {
             return null;
         }
-        checkServiceResponse(response);
+        Rest.checkServiceResponse(response);
         ResponseBody body = requireNonNull(response.body(), "response body is null");
         String size = response.headers().get("Content-Length");
         return buildBytesBlock(owner.toStringUtf8(),

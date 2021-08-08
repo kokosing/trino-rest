@@ -22,7 +22,10 @@ import io.trino.Session;
 import io.trino.testing.DistributedQueryRunner;
 import io.trino.testing.QueryRunner;
 
+import java.util.Map;
+
 import static io.trino.testing.TestingSession.testSessionBuilder;
+import static java.util.Objects.requireNonNullElse;
 
 public class SlackQueryRunner
 {
@@ -37,14 +40,20 @@ public class SlackQueryRunner
                 .build();
 
         QueryRunner queryRunner = DistributedQueryRunner.builder(defaultSession)
+                .setExtraProperties(Map.of(
+                        "http-server.http.port", requireNonNullElse(System.getenv("TRINO_PORT"), "8082")))
                 .setNodeCount(1)
                 .build();
         queryRunner.installPlugin(new SlackPlugin());
 
+        String token = requireNonNullElse(
+                System.getenv("SLACK_TOKEN"),
+                "");
         queryRunner.createCatalog(
                 "slack",
                 "slack",
-                ImmutableMap.of("token", System.getenv("SLACK_TOKEN")));
+                ImmutableMap.of(
+                        "token", token));
 
         return queryRunner;
     }

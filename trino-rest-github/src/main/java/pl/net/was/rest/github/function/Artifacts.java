@@ -25,6 +25,7 @@ import io.trino.spi.type.ArrayType;
 import io.trino.spi.type.RowType;
 import okhttp3.ResponseBody;
 import org.apache.tika.Tika;
+import pl.net.was.rest.Rest;
 import pl.net.was.rest.github.GithubService;
 import pl.net.was.rest.github.GithubTable;
 import pl.net.was.rest.github.model.Artifact;
@@ -45,7 +46,6 @@ import static io.trino.spi.type.StandardTypes.VARCHAR;
 import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
 import static java.util.Objects.requireNonNull;
 import static pl.net.was.rest.github.GithubRest.ARTIFACTS_TABLE_TYPE;
-import static pl.net.was.rest.github.GithubRest.checkServiceResponse;
 import static pl.net.was.rest.github.GithubRest.getRowType;
 
 @ScalarFunction(value = "artifacts", deterministic = false)
@@ -87,7 +87,7 @@ public class Artifacts
             if (response.code() == HTTP_NOT_FOUND) {
                 break;
             }
-            checkServiceResponse(response);
+            Rest.checkServiceResponse(response);
             ArtifactsList envelope = response.body();
             total = requireNonNull(envelope, "response body is null").getTotalCount();
             List<Artifact> items = envelope.getItems();
@@ -119,7 +119,7 @@ public class Artifacts
         if (response.code() == HTTP_NOT_FOUND) {
             return ImmutableList.of(artifact);
         }
-        checkServiceResponse(response);
+        Rest.checkServiceResponse(response);
         ResponseBody body = requireNonNull(response.body(), "response body is null");
         InputStream zipContents = body.byteStream();
 

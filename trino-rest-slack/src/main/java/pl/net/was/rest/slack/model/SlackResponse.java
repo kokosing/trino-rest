@@ -22,13 +22,21 @@ public class SlackResponse
 {
     private final boolean ok;
     private final String error;
+    private final ResponseMetadata responseMetadata;
 
     public SlackResponse(
             @JsonProperty("ok") boolean ok,
-            @JsonProperty("error") String error)
+            @JsonProperty("error") String error,
+            @JsonProperty("response_metadata") ResponseMetadata responseMetadata)
     {
         this.ok = ok;
         this.error = error;
+        this.responseMetadata = responseMetadata;
+    }
+
+    public boolean isOk()
+    {
+        return ok;
     }
 
     public String getError()
@@ -36,8 +44,8 @@ public class SlackResponse
         return error;
     }
 
-    public boolean isOk()
+    public String getNextCursor()
     {
-        return ok;
+        return responseMetadata != null ? responseMetadata.getNextCursor() : "";
     }
 }

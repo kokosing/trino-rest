@@ -19,20 +19,28 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
 
+import static java.util.Objects.requireNonNull;
+
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class Users
         extends SlackResponse
+        implements Envelope<User>
 {
-    private final List<User> users;
+    private final List<User> items;
 
-    public Users(@JsonProperty("ok") boolean ok, @JsonProperty("error") String error, @JsonProperty("members") List<User> users)
+    public Users(
+            @JsonProperty("ok") boolean ok,
+            @JsonProperty("error") String error,
+            @JsonProperty("response_metadata") ResponseMetadata responseMetadata,
+            @JsonProperty("members") List<User> users)
     {
-        super(ok, error);
-        this.users = users;
+        super(ok, error, responseMetadata);
+        requireNonNull(users, "users are null");
+        this.items = users;
     }
 
-    public List<User> getUsers()
+    public List<User> getItems()
     {
-        return users;
+        return items;
     }
 }

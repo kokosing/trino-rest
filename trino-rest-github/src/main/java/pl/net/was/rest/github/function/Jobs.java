@@ -23,6 +23,7 @@ import io.trino.spi.function.ScalarFunction;
 import io.trino.spi.function.SqlType;
 import io.trino.spi.type.ArrayType;
 import io.trino.spi.type.RowType;
+import pl.net.was.rest.Rest;
 import pl.net.was.rest.github.GithubTable;
 import pl.net.was.rest.github.model.Job;
 import pl.net.was.rest.github.model.JobsList;
@@ -37,7 +38,6 @@ import static io.trino.spi.type.StandardTypes.VARCHAR;
 import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
 import static java.util.Objects.requireNonNull;
 import static pl.net.was.rest.github.GithubRest.JOBS_TABLE_TYPE;
-import static pl.net.was.rest.github.GithubRest.checkServiceResponse;
 import static pl.net.was.rest.github.GithubRest.getRowType;
 
 @ScalarFunction(value = "jobs", deterministic = false)
@@ -72,7 +72,7 @@ public class Jobs
             if (response.code() == HTTP_NOT_FOUND) {
                 break;
             }
-            checkServiceResponse(response);
+            Rest.checkServiceResponse(response);
             JobsList envelope = response.body();
             total = requireNonNull(envelope, "response body is null").getTotalCount();
             List<Job> items = envelope.getItems();

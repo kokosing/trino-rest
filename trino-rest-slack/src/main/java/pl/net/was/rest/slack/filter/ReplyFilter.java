@@ -12,7 +12,7 @@
  * limitations under the License.
  */
 
-package pl.net.was.rest.github.filter;
+package pl.net.was.rest.slack.filter;
 
 import com.google.common.collect.ImmutableMap;
 import pl.net.was.rest.filter.FilterApplier;
@@ -20,14 +20,13 @@ import pl.net.was.rest.filter.FilterType;
 
 import java.util.Map;
 
-public class IssueCommentFilter
+public class ReplyFilter
         implements FilterApplier
 {
     public Map<String, FilterType> getSupportedFilters()
     {
         return ImmutableMap.of(
-                "owner", FilterType.EQUAL,
-                "repo", FilterType.EQUAL,
-                "updated_at", FilterType.GREATER_THAN_EQUAL);
+                "channel", FilterType.EQUAL,
+                "ts", FilterType.EQUAL);
     }
 }

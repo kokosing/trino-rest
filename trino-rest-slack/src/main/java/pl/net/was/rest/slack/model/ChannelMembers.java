@@ -14,28 +14,28 @@
 
 package pl.net.was.rest.slack.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
 
-@JsonIgnoreProperties(ignoreUnknown = true)
-public class History
+public class ChannelMembers
         extends SlackResponse
+        implements Envelope<String>
 {
-    private final List<Message> messages;
+    private final List<String> items;
 
-    public History(
+    public ChannelMembers(
             @JsonProperty("ok") boolean ok,
             @JsonProperty("error") String error,
-            @JsonProperty("messages") List<Message> messages)
+            @JsonProperty("response_metadata") ResponseMetadata responseMetadata,
+            @JsonProperty("members") List<String> members)
     {
-        super(ok, error);
-        this.messages = messages;
+        super(ok, error, responseMetadata);
+        this.items = members;
     }
 
-    public List<Message> getMessages()
+    public List<String> getItems()
     {
-        return messages;
+        return items;
     }
 }
