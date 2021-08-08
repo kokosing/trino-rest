@@ -1277,6 +1277,7 @@ public class GithubRest
                 item -> {
                     item.setOwner(owner);
                     item.setRepo(repo);
+                    item.setPullNumber(pullNumber);
                     return item.toRow();
                 },
                 table.getOffset(),
