@@ -251,9 +251,11 @@ public class Sync
     {
         Connection conn = options.conn;
         String destSchema = options.destSchema;
-        ResultSet result = conn.prepareStatement(
-                "SELECT COALESCE(MAX(updated_at), TIMESTAMP '1970-01-01') AS latest FROM " + destSchema + "." + name)
-                .executeQuery();
+        PreparedStatement lastUpdatedStatement = conn.prepareStatement(
+                "SELECT COALESCE(MAX(updated_at), TIMESTAMP '1970-01-01') AS latest FROM " + destSchema + "." + name + " WHERE owner = ? AND repo = ?");
+        lastUpdatedStatement.setString(1, options.owner);
+        lastUpdatedStatement.setString(2, options.repo);
+        ResultSet result = lastUpdatedStatement.executeQuery();
         result.next();
         String lastUpdated = result.getString(1);
         PreparedStatement statement = conn.prepareStatement(
@@ -295,9 +297,11 @@ public class Sync
             // DELETE FROM pulls a USING pulls b WHERE a.updated_at < b.updated_at AND a.id = b.id;
 
             // there's no "since" filter, but we can sort by updated_at, so keep inserting records where this is greater than max
-            ResultSet result = conn.prepareStatement(
-                    "SELECT COALESCE(MAX(updated_at), TIMESTAMP '0000-01-01') AS latest FROM " + destSchema + ".pulls")
-                    .executeQuery();
+            PreparedStatement lastUpdatedStatement = conn.prepareStatement(
+                    "SELECT COALESCE(MAX(updated_at), TIMESTAMP '0000-01-01') AS latest FROM " + destSchema + ".pulls WHERE owner = ? AND repo = ?");
+            lastUpdatedStatement.setString(1, options.owner);
+            lastUpdatedStatement.setString(2, options.repo);
+            ResultSet result = lastUpdatedStatement.executeQuery();
             result.next();
             String lastUpdated = result.getString(1);
 
@@ -348,13 +352,15 @@ public class Sync
                     "SELECT p.number " +
                             "FROM " + destSchema + ".pulls p " +
                             "LEFT JOIN " + destSchema + ".reviews r ON r.pull_number = p.number " +
-                            "WHERE p.number < ? " +
+                            "WHERE p.owner = ? AND p.repo = ? AND p.number < ? " +
                             "GROUP BY p.number " +
                             "HAVING COUNT(r.id) = 0 " +
                             "ORDER BY p.number DESC LIMIT %d", 30);
             // since there's no difference between pulls without reviews and those we have not checked or yet,
             // we need to know the last checked pull number and add a condition to fetch lesser numbers
             PreparedStatement idStatement = conn.prepareStatement("SELECT min(p.number) FROM (" + runsQuery + ") p");
+            idStatement.setString(1, options.owner);
+            idStatement.setString(2, options.repo);
 
             // TODO this only gets missing reviews - doesn't allow to fetch updated reviews
             PreparedStatement insertStatement = conn.prepareStatement(
@@ -364,13 +370,15 @@ public class Sync
                             "CROSS JOIN unnest(reviews(?, ?, p.number)) src " +
                             "LEFT JOIN " + destSchema + ".reviews dst ON dst.id = src.id " +
                             "WHERE dst.id IS NULL");
-            insertStatement.setString(2, options.owner);
-            insertStatement.setString(3, options.repo);
+            insertStatement.setString(1, options.owner);
+            insertStatement.setString(2, options.repo);
+            insertStatement.setString(4, options.owner);
+            insertStatement.setString(5, options.repo);
 
             long previousId = Long.MAX_VALUE;
             while (true) {
-                idStatement.setLong(1, previousId);
-                insertStatement.setLong(1, previousId);
+                idStatement.setLong(3, previousId);
+                insertStatement.setLong(3, previousId);
 
                 log.info("Checking for next pulls without reviews");
                 ResultSet resultSet = idStatement.executeQuery();
@@ -463,7 +471,7 @@ public class Sync
                             "SELECT r.id " +
                             "FROM " + destSchema + ".runs r " +
                             "LEFT JOIN " + destSchema + ".jobs j ON j.run_id = r.id " +
-                            "WHERE r.status = 'completed' AND r.created_at > NOW() - INTERVAL '2' MONTH " +
+                            "WHERE r.owner = ? AND r.repo = ? AND r.status = 'completed' AND r.created_at > NOW() - INTERVAL '2' MONTH " +
                             "GROUP BY r.id " +
                             "HAVING COUNT(j.id) = 0 " +
                             "ORDER BY r.id DESC LIMIT 20" +
@@ -473,6 +481,8 @@ public class Sync
                             "WHERE dst.id IS NULL");
             statement.setString(1, options.owner);
             statement.setString(2, options.repo);
+            statement.setString(3, options.owner);
+            statement.setString(4, options.repo);
 
             while (true) {
                 log.info("Fetching jobs");
@@ -515,13 +525,15 @@ public class Sync
                             "FROM " + destSchema + ".runs r " +
                             "JOIN " + destSchema + ".jobs j ON j.run_id = r.id " +
                             "LEFT JOIN " + destSchema + ".steps s ON s.job_id = j.id " +
-                            "WHERE r.status = 'completed' AND r.created_at > NOW() - INTERVAL '2' MONTH " +
+                            "WHERE r.owner = ? AND r.repo = ? AND r.status = 'completed' AND r.created_at > NOW() - INTERVAL '2' MONTH " +
                             "GROUP BY r.id " +
                             "HAVING COUNT(s.number) = 0 " +
                             "ORDER BY r.id DESC";
             // since there's no difference between jobs without steps and those we have not checked or yet,
             // we need to know the last checked run id and add a condition to fetch lesser ids
             PreparedStatement idStatement = conn.prepareStatement(runsQuery);
+            idStatement.setString(1, options.owner);
+            idStatement.setString(2, options.repo);
 
             String insertQuery =
                     "INSERT INTO " + destSchema + ".steps " +
@@ -576,13 +588,15 @@ public class Sync
                             "FROM " + destSchema + ".runs r " +
                             "JOIN " + destSchema + ".jobs j ON j.run_id = r.id " +
                             "LEFT JOIN " + destSchema + ".steps s ON s.job_id = j.id " +
-                            "WHERE r.status = 'completed' AND r.created_at > NOW() - INTERVAL '2' MONTH AND r.id < ? " +
+                            "WHERE r.owner = ? AND r.repo = ? AND r.status = 'completed' AND r.created_at > NOW() - INTERVAL '2' MONTH AND r.id < ? " +
                             "GROUP BY r.id " +
                             "HAVING COUNT(s.number) = 0 " +
                             "ORDER BY r.id DESC LIMIT %d", batchSize);
             // since there's no difference between jobs without steps and those we have not checked or yet,
             // we need to know the last checked run id and add a condition to fetch lesser ids
             PreparedStatement idStatement = conn.prepareStatement("SELECT min(r.id) FROM (" + runsQuery + ") r");
+            idStatement.setString(1, options.owner);
+            idStatement.setString(2, options.repo);
 
             PreparedStatement insertStatement = conn.prepareStatement(
                     "INSERT INTO " + destSchema + ".steps " +
@@ -591,13 +605,15 @@ public class Sync
                             "CROSS JOIN unnest(steps(?, ?, r.id)) src " +
                             "LEFT JOIN " + destSchema + ".steps dst ON dst.run_id = r.id AND (dst.job_id, dst.number) = (src.job_id, src.number) " +
                             "WHERE dst.number IS NULL");
-            insertStatement.setString(2, options.owner);
-            insertStatement.setString(3, options.repo);
+            insertStatement.setString(1, options.owner);
+            insertStatement.setString(2, options.repo);
+            insertStatement.setString(4, options.owner);
+            insertStatement.setString(5, options.repo);
 
             long previousId = Long.MAX_VALUE;
             while (true) {
-                idStatement.setLong(1, previousId);
-                insertStatement.setLong(1, previousId);
+                idStatement.setLong(3, previousId);
+                insertStatement.setLong(3, previousId);
 
                 log.info("Checking for next runs with jobs without steps");
                 ResultSet resultSet = idStatement.executeQuery();
@@ -639,14 +655,18 @@ public class Sync
             String runsQuery = "SELECT r.id " +
                     "FROM " + destSchema + ".runs r " +
                     "LEFT JOIN " + destSchema + ".artifacts a ON a.run_id = r.id " +
-                    "WHERE r.status = 'completed' AND r.created_at > NOW() - INTERVAL '2' MONTH " +
+                    "WHERE r.owner = ? AND r.repo = ? AND r.status = 'completed' AND r.created_at > NOW() - INTERVAL '2' MONTH " +
                     "GROUP BY r.id " +
                     "HAVING COUNT(a.id) != 0 " +
                     "ORDER BY r.id DESC LIMIT 1";
             PreparedStatement idStatement = conn.prepareStatement("SELECT r.id " +
                     "FROM " + destSchema + ".runs r " +
-                    "WHERE r.id > COALESCE((" + runsQuery + "), 0) AND r.status = 'completed' AND r.created_at > NOW() - INTERVAL '2' MONTH " +
+                    "WHERE r.owner = ? AND r.repo = ? AND r.id > COALESCE((" + runsQuery + "), 0) AND r.status = 'completed' AND r.created_at > NOW() - INTERVAL '2' MONTH " +
                     "ORDER BY r.id ASC");
+            idStatement.setString(1, options.owner);
+            idStatement.setString(2, options.repo);
+            idStatement.setString(3, options.owner);
+            idStatement.setString(4, options.repo);
 
             String query = "INSERT INTO " + destSchema + ".artifacts " +
                     "SELECT src.* " +
@@ -654,8 +674,10 @@ public class Sync
                     "LEFT JOIN " + destSchema + ".artifacts dst ON dst.run_id = ? AND (dst.id, dst.path, dst.part_number) = (src.id, src.path, src.part_number) " +
                     "WHERE src.owner = ? AND src.repo = ? AND src.run_id = ? AND dst.id IS NULL";
             PreparedStatement insertStatement = conn.prepareStatement(query);
-            insertStatement.setString(2, options.owner);
-            insertStatement.setString(3, options.repo);
+            insertStatement.setString(1, options.owner);
+            insertStatement.setString(2, options.repo);
+            insertStatement.setString(4, options.owner);
+            insertStatement.setString(5, options.repo);
 
             log.info("Fetching run ids to get artifacts for");
             if (!idStatement.execute()) {
@@ -664,8 +686,8 @@ public class Sync
             ResultSet resultSet = idStatement.getResultSet();
             while (resultSet.next()) {
                 long runId = resultSet.getLong(1);
-                insertStatement.setLong(1, runId);
-                insertStatement.setLong(4, runId);
+                insertStatement.setLong(3, runId);
+                insertStatement.setLong(6, runId);
 
                 log.info(format("Fetching artifacts for jobs of run %d", runId));
                 long startTime = System.currentTimeMillis();
@@ -695,14 +717,18 @@ public class Sync
             String runsQuery = "SELECT j.id " +
                     "FROM " + destSchema + ".jobs j " +
                     "LEFT JOIN " + destSchema + ".job_logs l ON l.job_id = j.id " +
-                    "WHERE j.status = 'completed' AND j.conclusion != 'success' AND j.started_at > NOW() - INTERVAL '2' MONTH " +
+                    "WHERE j.owner = ? AND j.repo = ? AND j.status = 'completed' AND j.conclusion != 'success' AND j.started_at > NOW() - INTERVAL '2' MONTH " +
                     "GROUP BY j.id " +
                     "HAVING COUNT(l.job_id) != 0 " +
                     "ORDER BY j.id DESC LIMIT 1";
             PreparedStatement idStatement = conn.prepareStatement("SELECT j.id " +
                     "FROM " + destSchema + ".jobs j " +
-                    "WHERE j.id > COALESCE((" + runsQuery + "), 0) AND j.status = 'completed' AND j.started_at > NOW() - INTERVAL '2' MONTH " +
+                    "WHERE j.owner = ? AND j.repo = ? AND j.id > COALESCE((" + runsQuery + "), 0) AND j.status = 'completed' AND j.started_at > NOW() - INTERVAL '2' MONTH " +
                     "ORDER BY j.id ASC");
+            idStatement.setString(1, options.owner);
+            idStatement.setString(2, options.repo);
+            idStatement.setString(3, options.owner);
+            idStatement.setString(4, options.repo);
 
             String query = "INSERT INTO " + destSchema + ".job_logs " +
                     "SELECT src.* " +
@@ -752,14 +778,18 @@ public class Sync
             String runsQuery = "SELECT r.id " +
                     "FROM " + destSchema + ".runs r " +
                     "LEFT JOIN " + destSchema + ".check_runs c ON c.ref = r.head_sha " +
-                    "WHERE r.status = 'completed' AND r.created_at > NOW() - INTERVAL '2' MONTH " +
+                    "WHERE r.owner = ? AND r.repo = ? AND r.status = 'completed' AND r.created_at > NOW() - INTERVAL '2' MONTH " +
                     "GROUP BY r.id " +
                     "HAVING COUNT(c.id) != 0 " +
                     "ORDER BY r.id DESC LIMIT 1";
             PreparedStatement idStatement = conn.prepareStatement("SELECT r.head_sha " +
                     "FROM " + destSchema + ".runs r " +
-                    "WHERE r.id > COALESCE((" + runsQuery + "), 0) AND r.status = 'completed' AND r.created_at > NOW() - INTERVAL '2' MONTH " +
+                    "WHERE r.owner = ? AND r.repo = ? AND r.id > COALESCE((" + runsQuery + "), 0) AND r.status = 'completed' AND r.created_at > NOW() - INTERVAL '2' MONTH " +
                     "ORDER BY r.id ASC");
+            idStatement.setString(1, options.owner);
+            idStatement.setString(2, options.repo);
+            idStatement.setString(3, options.owner);
+            idStatement.setString(4, options.repo);
 
             String query = "INSERT INTO " + destSchema + ".check_runs " +
                     "SELECT DISTINCT src.* " +
@@ -810,14 +840,18 @@ public class Sync
             String runsQuery = "SELECT c.id " +
                     "FROM " + destSchema + ".check_runs c " +
                     "LEFT JOIN " + destSchema + ".check_run_annotations a ON a.check_run_id = c.id " +
-                    "WHERE c.status = 'completed' AND c.started_at > NOW() - INTERVAL '2' MONTH " +
+                    "WHERE c.owner = ? AND c.repo = ? AND c.status = 'completed' AND c.started_at > NOW() - INTERVAL '2' MONTH " +
                     "GROUP BY c.id " +
                     "HAVING COUNT(a.check_run_id) != 0 " +
                     "ORDER BY c.id DESC LIMIT 1";
             PreparedStatement idStatement = conn.prepareStatement("SELECT c.id " +
                     "FROM " + destSchema + ".check_runs c " +
-                    "WHERE c.id > COALESCE((" + runsQuery + "), 0) AND c.status = 'completed' AND c.annotations_count != 0 AND c.started_at > NOW() - INTERVAL '2' MONTH " +
+                    "WHERE c.owner = ? AND c.repo = ? AND c.id > COALESCE((" + runsQuery + "), 0) AND c.status = 'completed' AND c.annotations_count != 0 AND c.started_at > NOW() - INTERVAL '2' MONTH " +
                     "ORDER BY c.id ASC");
+            idStatement.setString(1, options.owner);
+            idStatement.setString(2, options.repo);
+            idStatement.setString(3, options.owner);
+            idStatement.setString(4, options.repo);
 
             String query = "INSERT INTO " + destSchema + ".check_run_annotations " +
                     "SELECT DISTINCT src.* " +
