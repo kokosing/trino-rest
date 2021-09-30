@@ -62,7 +62,6 @@ public class RestConnectorFactory
                         rest));
 
         Injector injector = app
-                .strictConfig()
                 .doNotInitializeLogging()
                 .setRequiredConfigurationProperties(requiredConfig)
                 .initialize();

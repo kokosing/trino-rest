@@ -74,8 +74,9 @@ public class TestGithubQueries
         assertThat(runId).isGreaterThan(0);
         long jobId = (long) runner.execute(format("SELECT id FROM jobs WHERE owner = 'nineinchnick' AND repo = 'trino-rest' AND run_id = %d LIMIT 1", runId)).getOnlyValue();
         assertThat(jobId).isGreaterThan(0);
-        long logLength = (long) runner.execute(format("SELECT length(contents) FROM job_logs WHERE owner = 'nineinchnick' AND repo = 'trino-rest' AND job_id = %d", jobId)).getOnlyValue();
-        assertThat(logLength).isGreaterThan(0);
+        // TODO this is unreliable, as old job logs can get pruned by Github
+        //long logLength = (long) runner.execute(format("SELECT length(contents) FROM job_logs WHERE owner = 'nineinchnick' AND repo = 'trino-rest' AND job_id = %d", jobId)).getOnlyValue();
+        //assertThat(logLength).isGreaterThan(0);
 
         assertQuery(format("SELECT owner FROM steps WHERE owner = 'nineinchnick' AND repo = 'trino-rest' AND run_id = %d LIMIT 1", runId),
                 "VALUES ('nineinchnick')");
