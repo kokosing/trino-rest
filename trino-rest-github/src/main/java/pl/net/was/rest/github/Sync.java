@@ -674,10 +674,8 @@ public class Sync
                     "LEFT JOIN " + destSchema + ".artifacts dst ON dst.run_id = ? AND (dst.id, dst.path, dst.part_number) = (src.id, src.path, src.part_number) " +
                     "WHERE src.owner = ? AND src.repo = ? AND src.run_id = ? AND dst.id IS NULL";
             PreparedStatement insertStatement = conn.prepareStatement(query);
-            insertStatement.setString(1, options.owner);
-            insertStatement.setString(2, options.repo);
-            insertStatement.setString(4, options.owner);
-            insertStatement.setString(5, options.repo);
+            insertStatement.setString(2, options.owner);
+            insertStatement.setString(3, options.repo);
 
             log.info("Fetching run ids to get artifacts for");
             if (!idStatement.execute()) {
@@ -686,8 +684,8 @@ public class Sync
             ResultSet resultSet = idStatement.getResultSet();
             while (resultSet.next()) {
                 long runId = resultSet.getLong(1);
-                insertStatement.setLong(3, runId);
-                insertStatement.setLong(6, runId);
+                insertStatement.setLong(1, runId);
+                insertStatement.setLong(4, runId);
 
                 log.info(format("Fetching artifacts for jobs of run %d", runId));
                 long startTime = System.currentTimeMillis();
