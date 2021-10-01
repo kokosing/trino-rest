@@ -35,7 +35,7 @@ public class TestGithubQueries
     public void showTables()
     {
         assertQuery("SHOW SCHEMAS FROM github", "VALUES 'default', 'information_schema'");
-        assertQuery("SHOW TABLES FROM github.default", "VALUES 'orgs', 'users', 'repos', 'issues', 'issue_comments', 'pulls', 'pull_commits', 'reviews', 'review_comments', 'workflows', 'runs', 'jobs', 'job_logs', 'steps', 'artifacts', 'runners', 'check_runs', 'check_run_annotations'");
+        assertQuery("SHOW TABLES FROM github.default", "VALUES 'orgs', 'users', 'repos', 'issues', 'issue_comments', 'pulls', 'pull_commits', 'reviews', 'review_comments', 'workflows', 'runs', 'jobs', 'job_logs', 'steps', 'artifacts', 'runners', 'check_suites', 'check_runs', 'check_run_annotations'");
     }
 
     @Test
@@ -86,6 +86,7 @@ public class TestGithubQueries
         //assertQuery("SELECT * FROM runners WHERE owner = 'nineinchnick' AND repo = 'trino-rest'");
         // TODO this require admin rights
         //assertQuery("SELECT * FROM runners WHERE org = 'trinodb'");
+        assertQuerySucceeds("SELECT * FROM check_suites WHERE owner = 'nineinchnick' AND repo = 'trino-rest' AND ref = '5e53296c8f8124168d1a9e37fc310e9c517d3ec5'");
         assertQuerySucceeds("SELECT * FROM check_runs WHERE owner = 'nineinchnick' AND repo = 'trino-rest' AND ref = '5e53296c8f8124168d1a9e37fc310e9c517d3ec5'");
         assertQuerySucceeds("SELECT * FROM check_run_annotations WHERE owner = 'nineinchnick' AND repo = 'trino-rest' AND check_run_id = 1");
     }
@@ -133,6 +134,7 @@ public class TestGithubQueries
         assertQueryFails("SELECT * FROM steps", "Missing required constraint for steps.owner");
         assertQueryFails("SELECT * FROM artifacts", "Missing required constraint for artifacts.owner");
         assertQueryFails("SELECT * FROM runners", "Missing required constraint for runners.org");
+        assertQueryFails("SELECT * FROM check_suites", "Missing required constraint for check_suites.owner");
         assertQueryFails("SELECT * FROM check_runs", "Missing required constraint for check_runs.owner");
         assertQueryFails("SELECT * FROM check_run_annotations", "Missing required constraint for check_run_annotations.owner");
     }

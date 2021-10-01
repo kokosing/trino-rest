@@ -64,6 +64,7 @@ import pl.net.was.rest.filter.FilterType;
 import pl.net.was.rest.github.filter.ArtifactFilter;
 import pl.net.was.rest.github.filter.CheckRunAnnotationFilter;
 import pl.net.was.rest.github.filter.CheckRunFilter;
+import pl.net.was.rest.github.filter.CheckSuiteFilter;
 import pl.net.was.rest.github.filter.IssueCommentFilter;
 import pl.net.was.rest.github.filter.IssueFilter;
 import pl.net.was.rest.github.filter.JobFilter;
@@ -444,6 +445,26 @@ public class GithubRest
                     new ColumnMetadata("busy", BOOLEAN),
                     new ColumnMetadata("label_ids", new ArrayType(BIGINT)),
                     new ColumnMetadata("label_names", new ArrayType(VARCHAR))))
+            .put(GithubTable.CHECK_SUITES, ImmutableList.of(
+                    new ColumnMetadata("owner", VARCHAR),
+                    new ColumnMetadata("repo", VARCHAR),
+                    new ColumnMetadata("ref", VARCHAR),
+                    new ColumnMetadata("id", BIGINT),
+                    new ColumnMetadata("head_sha", VARCHAR),
+                    new ColumnMetadata("head_branch", VARCHAR),
+                    new ColumnMetadata("status", VARCHAR),
+                    new ColumnMetadata("conclusion", VARCHAR),
+                    new ColumnMetadata("url", VARCHAR),
+                    new ColumnMetadata("before", VARCHAR),
+                    new ColumnMetadata("after", VARCHAR),
+                    new ColumnMetadata("pull_request_numbers", new ArrayType(BIGINT)),
+                    new ColumnMetadata("app_id", BIGINT),
+                    new ColumnMetadata("app_slug", VARCHAR),
+                    new ColumnMetadata("app_name", VARCHAR),
+                    new ColumnMetadata("started_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
+                    new ColumnMetadata("completed_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
+                    new ColumnMetadata("latest_check_runs_count", BIGINT),
+                    new ColumnMetadata("check_runs_url", VARCHAR)))
             .put(GithubTable.CHECK_RUNS, ImmutableList.of(
                     new ColumnMetadata("owner", VARCHAR),
                     new ColumnMetadata("repo", VARCHAR),
@@ -511,6 +532,9 @@ public class GithubRest
                     "run_id", KeyType.FOREIGN_KEY))
             .put(GithubTable.RUNNERS, ImmutableMap.of(
                     "id", KeyType.PRIMARY_KEY))
+            .put(GithubTable.CHECK_SUITES, ImmutableMap.of(
+                    "id", KeyType.PRIMARY_KEY,
+                    "ref", KeyType.FOREIGN_KEY))
             .put(GithubTable.CHECK_RUNS, ImmutableMap.of(
                     "id", KeyType.PRIMARY_KEY,
                     "ref", KeyType.FOREIGN_KEY,
@@ -542,6 +566,7 @@ public class GithubRest
             .put(GithubTable.STEPS, this::getSteps)
             .put(GithubTable.ARTIFACTS, this::getArtifacts)
             .put(GithubTable.RUNNERS, this::getRunners)
+            .put(GithubTable.CHECK_SUITES, this::getCheckSuites)
             .put(GithubTable.CHECK_RUNS, this::getCheckRuns)
             .put(GithubTable.CHECK_RUN_ANNOTATIONS, this::getCheckRunAnnotations)
             .build();
@@ -553,6 +578,7 @@ public class GithubRest
             .put(GithubTable.STEPS, this::getStepsCount)
             .put(GithubTable.ARTIFACTS, this::getArtifactsCount)
             .put(GithubTable.RUNNERS, this::getRunnersCount)
+            .put(GithubTable.CHECK_SUITES, this::getCheckSuitesCount)
             .put(GithubTable.CHECK_RUNS, this::getCheckRunsCount)
             .build();
 
@@ -941,6 +967,28 @@ public class GithubRest
             "))";
 
     /* there are no functions that would use these
+    public static final String CHECK_SUITES_TABLE_TYPE = "array(row(" +
+            "owner varchar, " +
+            "repo varchar, " +
+            "ref varchar, " +
+            "id bigint, " +
+            "head_sha varchar, " +
+            "head_branch varchar, " +
+            "status varchar, " +
+            "conclusion varchar, " +
+            "url varchar, " +
+            "before varchar, " +
+            "after varchar, " +
+            "pull_request_numbers array(bigint), " +
+            "app_id bigint, " +
+            "app_slug varchar, " +
+            "app_name varchar, " +
+            "started_at timestamp(3) with time zone, " +
+            "completed_at timestamp(3) with time zone, " +
+            "latest_check_runs_count bigint, " +
+            "check_runs_url varchar" +
+        "))";
+
     public static final String CHECK_RUNS_TABLE_TYPE = "array(row(" +
             "owner varchar, " +
             "repo varchar, " +
@@ -1002,6 +1050,7 @@ public class GithubRest
             .put(GithubTable.ORGS, new OrgFilter())
             .put(GithubTable.USERS, new UserFilter())
             .put(GithubTable.REPOS, new RepoFilter())
+            .put(GithubTable.CHECK_SUITES, new CheckSuiteFilter())
             .put(GithubTable.CHECK_RUNS, new CheckRunFilter())
             .put(GithubTable.CHECK_RUN_ANNOTATIONS, new CheckRunAnnotationFilter())
             .build();
@@ -1787,6 +1836,56 @@ public class GithubRest
                 "repo", Optional.ofNullable(repo));
     }
 
+    private Iterable<List<?>> getCheckSuites(RestTableHandle table)
+    {
+        Map<String, String> filters = getCheckSuitesFilters(table);
+        String owner = filters.get("owner");
+        String repo = filters.get("repo");
+        String ref = filters.get("ref");
+
+        return getRowsFromPagesEnvelope(
+                page -> service.listCheckSuites("Bearer " + token, owner, repo, ref, PER_PAGE, page),
+                item -> {
+                    item.setOwner(owner);
+                    item.setRepo(repo);
+                    item.setRef(ref);
+                    return Stream.of(item.toRow());
+                },
+                table.getOffset(),
+                table.getLimit(),
+                table.getPageIncrement());
+    }
+
+    private long getCheckSuitesCount(RestTableHandle table)
+    {
+        Map<String, String> filters = getCheckSuitesFilters(table);
+        String owner = filters.get("owner");
+        String repo = filters.get("repo");
+        String ref = filters.get("ref");
+        return getTotalCountFromPagesEnvelope(
+                () -> service.listCheckSuites("Bearer " + token, owner, repo, ref, 0, 1));
+    }
+
+    private Map<String, String> getCheckSuitesFilters(RestTableHandle table)
+    {
+        GithubTable tableName = GithubTable.valueOf(table);
+        TupleDomain<ColumnHandle> constraint = table.getConstraint();
+        Map<String, ColumnHandle> columns = columnHandles.get(tableName);
+        FilterApplier filter = filterAppliers.get(tableName);
+
+        String owner = (String) filter.getFilter((RestColumnHandle) columns.get("owner"), constraint);
+        String repo = (String) filter.getFilter((RestColumnHandle) columns.get("repo"), constraint);
+        String ref = (String) filter.getFilter((RestColumnHandle) columns.get("ref"), constraint);
+        requirePredicate(owner, "check_suites.owner");
+        requirePredicate(repo, "check_suites.repo");
+        requirePredicate(ref, "check_suites.ref");
+
+        return ImmutableMap.of(
+                "owner", owner,
+                "repo", repo,
+                "ref", ref);
+    }
+
     private Iterable<List<?>> getCheckRuns(RestTableHandle table)
     {
         Map<String, String> filters = getCheckRunsFilters(table);
@@ -2243,7 +2342,9 @@ public class GithubRest
                     for (int i = 0; i < maxPage.getAsInt(); i++) {
                         RestTableHandle tableHandle = split.getTableHandle();
                         splits.add(new RestConnectorSplit(
-                                tableHandle.cloneWithLimit(Math.min(tableHandle.getLimit(), PER_PAGE)),
+                                tableHandle
+                                        .cloneWithOffset(i, 1)
+                                        .cloneWithLimit(Math.min(tableHandle.getLimit(), PER_PAGE)),
                                 List.of(addresses.get(i % addresses.size()))));
                     }
                 }

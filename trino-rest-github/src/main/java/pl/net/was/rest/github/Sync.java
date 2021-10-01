@@ -135,6 +135,7 @@ public class Sync
         availableTables.put("job_logs", Sync::syncJobLogs);
         availableTables.put("steps", Sync::syncSteps);
         availableTables.put("artifacts", Sync::syncArtifacts);
+        availableTables.put("check_suites", Sync::syncCheckSuites);
         availableTables.put("check_runs", Sync::syncCheckRuns);
         availableTables.put("check_run_annotations", Sync::syncCheckRunAnnotations);
 
@@ -557,6 +558,7 @@ public class Sync
 
             log.info("Fetching run ids to get steps for");
             if (!idStatement.execute()) {
+                log.info("No results!");
                 return;
             }
             ResultSet resultSet = idStatement.getResultSet();
@@ -650,12 +652,14 @@ public class Sync
             // CREATE INDEX ON artifacts(owner, repo);
             // CREATE INDEX ON artifacts(run_id);
 
-            // get largest run id of those with an artifact and move up
+            // assuming that all runs should finish in at least 2 hours
+            // find the last run id at least 2 hours old with a check_run present
+            // and move up
             // TODO because dynamic filtering is not supported yet, CROSS JOIN LATERAL between runs and artifacts would not push down filter on run_id
             String runsQuery = "SELECT r.id " +
                     "FROM " + destSchema + ".runs r " +
                     "LEFT JOIN " + destSchema + ".artifacts a ON a.run_id = r.id " +
-                    "WHERE r.owner = ? AND r.repo = ? AND r.status = 'completed' AND r.created_at > NOW() - INTERVAL '2' MONTH " +
+                    "WHERE r.owner = ? AND r.repo = ? AND r.status = 'completed' AND r.created_at > NOW() - INTERVAL '2' MONTH AND r.created_at < NOW() - INTERVAL '2' HOUR " +
                     "GROUP BY r.id " +
                     "HAVING COUNT(a.id) != 0 " +
                     "ORDER BY r.id DESC LIMIT 1";
@@ -679,6 +683,7 @@ public class Sync
 
             log.info("Fetching run ids to get artifacts for");
             if (!idStatement.execute()) {
+                log.info("No results!");
                 return;
             }
             ResultSet resultSet = idStatement.getResultSet();
@@ -710,12 +715,12 @@ public class Sync
             // ALTER TABLE job_logs ADD PRIMARY KEY (job_id, part_number);
             // CREATE INDEX ON job_logs(owner, repo);
 
-            // get largest jobb id of those with a log and move up
+            // get largest job id of those with a log, older than 2 hours and move up
             // TODO because dynamic filtering is not supported yet, CROSS JOIN LATERAL between jobs and logs would not push down filter on job_id
             String runsQuery = "SELECT j.id " +
                     "FROM " + destSchema + ".jobs j " +
                     "LEFT JOIN " + destSchema + ".job_logs l ON l.job_id = j.id " +
-                    "WHERE j.owner = ? AND j.repo = ? AND j.status = 'completed' AND j.conclusion != 'success' AND j.started_at > NOW() - INTERVAL '2' MONTH " +
+                    "WHERE j.owner = ? AND j.repo = ? AND j.status = 'completed' AND j.conclusion != 'success' AND j.started_at > NOW() - INTERVAL '2' MONTH AND j.started_at < NOW() - INTERVAL '2' HOUR " +
                     "GROUP BY j.id " +
                     "HAVING COUNT(l.job_id) != 0 " +
                     "ORDER BY j.id DESC LIMIT 1";
@@ -739,6 +744,7 @@ public class Sync
 
             log.info("Fetching job ids to get logs for");
             if (!idStatement.execute()) {
+                log.info("No results!");
                 return;
             }
             ResultSet resultSet = idStatement.getResultSet();
@@ -748,6 +754,70 @@ public class Sync
                 insertStatement.setLong(4, jobId);
 
                 log.info(format("Fetching logs of job %d", jobId));
+                long startTime = System.currentTimeMillis();
+                int rows = retryExecute(insertStatement);
+                log.info(format("Inserted %d rows, took %s", rows, Duration.ofMillis(System.currentTimeMillis() - startTime)));
+            }
+        }
+        catch (Exception e) {
+            log.severe(e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private static void syncCheckSuites(Options options)
+    {
+        Connection conn = options.conn;
+        String destSchema = options.destSchema;
+        String srcSchema = options.srcSchema;
+        try {
+            conn.createStatement().executeUpdate(
+                    "CREATE TABLE IF NOT EXISTS " + destSchema + ".check_suites AS SELECT * FROM " + srcSchema + ".check_suites WITH NO DATA");
+            // consider adding some indexes:
+            // ALTER TABLE check_suites ADD PRIMARY KEY (id, ref);
+            // CREATE INDEX ON check_suites(owner, repo);
+
+            // assuming that all runs should finish in at least 2 hours
+            // find the last run id at least 2 hours old with a check_run present
+            // and move up
+            // TODO because dynamic filtering is not supported yet, CROSS JOIN LATERAL between runs and checks would not push down filter on ref
+            String runsQuery = "SELECT r.id " +
+                    "FROM " + destSchema + ".runs r " +
+                    "LEFT JOIN " + destSchema + ".check_suites c ON c.ref = r.head_sha " +
+                    "WHERE r.owner = ? AND r.repo = ? AND r.status = 'completed' AND r.created_at > NOW() - INTERVAL '2' MONTH AND r.created_at < NOW() - INTERVAL '2' HOUR " +
+                    "GROUP BY r.id " +
+                    "HAVING COUNT(c.id) != 0 " +
+                    "ORDER BY r.id DESC LIMIT 1";
+            PreparedStatement idStatement = conn.prepareStatement("SELECT r.head_sha " +
+                    "FROM " + destSchema + ".runs r " +
+                    "WHERE r.owner = ? AND r.repo = ? AND r.id > COALESCE((" + runsQuery + "), 0) AND r.status = 'completed' AND r.created_at > NOW() - INTERVAL '2' MONTH " +
+                    "ORDER BY r.id ASC");
+            idStatement.setString(1, options.owner);
+            idStatement.setString(2, options.repo);
+            idStatement.setString(3, options.owner);
+            idStatement.setString(4, options.repo);
+
+            String query = "INSERT INTO " + destSchema + ".check_suites " +
+                    "SELECT DISTINCT src.* " +
+                    "FROM check_suites src " +
+                    "LEFT JOIN " + destSchema + ".check_suites dst ON dst.ref = ? AND dst.id = src.id " +
+                    "WHERE src.owner = ? AND src.repo = ? AND src.ref = ? AND dst.id IS NULL";
+            PreparedStatement insertStatement = conn.prepareStatement(query);
+            insertStatement.setString(2, options.owner);
+            insertStatement.setString(3, options.repo);
+
+            log.info("Fetching run refs to get check suites for");
+            if (!idStatement.execute()) {
+                log.info("No results!");
+                return;
+            }
+            ResultSet resultSet = idStatement.getResultSet();
+            while (resultSet.next()) {
+                String runRef = resultSet.getString(1);
+                insertStatement.setString(1, runRef);
+                insertStatement.setString(4, runRef);
+
+                log.info(format("Fetching check suites for ref %s", runRef));
                 long startTime = System.currentTimeMillis();
                 int rows = retryExecute(insertStatement);
                 log.info(format("Inserted %d rows, took %s", rows, Duration.ofMillis(System.currentTimeMillis() - startTime)));
@@ -771,12 +841,14 @@ public class Sync
             // ALTER TABLE check_runs ADD PRIMARY KEY (id, ref);
             // CREATE INDEX ON check_runs(owner, repo);
 
-            // get largest run id of those with a check and move up
+            // assuming that all runs should finish in at least 2 hours
+            // find the last run id at least 2 hours old with a check_run present
+            // and move up
             // TODO because dynamic filtering is not supported yet, CROSS JOIN LATERAL between runs and checks would not push down filter on ref
             String runsQuery = "SELECT r.id " +
                     "FROM " + destSchema + ".runs r " +
                     "LEFT JOIN " + destSchema + ".check_runs c ON c.ref = r.head_sha " +
-                    "WHERE r.owner = ? AND r.repo = ? AND r.status = 'completed' AND r.created_at > NOW() - INTERVAL '2' MONTH " +
+                    "WHERE r.owner = ? AND r.repo = ? AND r.status = 'completed' AND r.created_at > NOW() - INTERVAL '2' MONTH AND r.created_at < NOW() - INTERVAL '2' HOUR " +
                     "GROUP BY r.id " +
                     "HAVING COUNT(c.id) != 0 " +
                     "ORDER BY r.id DESC LIMIT 1";
@@ -798,8 +870,9 @@ public class Sync
             insertStatement.setString(2, options.owner);
             insertStatement.setString(3, options.repo);
 
-            log.info("Fetching run refs to get checks for");
+            log.info("Fetching run refs to get check runs for");
             if (!idStatement.execute()) {
+                log.info("No results!");
                 return;
             }
             ResultSet resultSet = idStatement.getResultSet();
@@ -808,7 +881,7 @@ public class Sync
                 insertStatement.setString(1, runRef);
                 insertStatement.setString(4, runRef);
 
-                log.info(format("Fetching checks for ref %s", runRef));
+                log.info(format("Fetching check runs for ref %s", runRef));
                 long startTime = System.currentTimeMillis();
                 int rows = retryExecute(insertStatement);
                 log.info(format("Inserted %d rows, took %s", rows, Duration.ofMillis(System.currentTimeMillis() - startTime)));
@@ -861,6 +934,7 @@ public class Sync
 
             log.info("Fetching check ids to get annotations for");
             if (!idStatement.execute()) {
+                log.info("No results!");
                 return;
             }
             ResultSet resultSet = idStatement.getResultSet();

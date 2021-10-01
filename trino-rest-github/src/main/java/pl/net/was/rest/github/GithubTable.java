@@ -35,6 +35,7 @@ public enum GithubTable
     STEPS("steps"),
     ARTIFACTS("artifacts"),
     RUNNERS("runners"),
+    CHECK_SUITES("check_suites"),
     CHECK_RUNS("check_runs"),
     CHECK_RUN_ANNOTATIONS("check_run_annotations");
 

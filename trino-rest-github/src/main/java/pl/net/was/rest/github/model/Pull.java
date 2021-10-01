@@ -144,6 +144,11 @@ public class Pull
         this.repo = repo;
     }
 
+    public long getNumber()
+    {
+        return number;
+    }
+
     public List<?> toRow()
     {
         BlockBuilder labelIds = BIGINT.createBlockBuilder(null, labels.size());

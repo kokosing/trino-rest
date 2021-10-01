@@ -18,6 +18,7 @@ import okhttp3.ResponseBody;
 import pl.net.was.rest.github.model.ArtifactsList;
 import pl.net.was.rest.github.model.CheckRunAnnotation;
 import pl.net.was.rest.github.model.CheckRunsList;
+import pl.net.was.rest.github.model.CheckSuitesList;
 import pl.net.was.rest.github.model.Issue;
 import pl.net.was.rest.github.model.IssueComment;
 import pl.net.was.rest.github.model.JobsList;
@@ -191,6 +192,16 @@ public interface GithubService
             @Header("Authorization") String auth,
             @Path("owner") String owner,
             @Path("repo") String repo,
+            @Query("per_page") int perPage,
+            @Query("page") int page);
+
+    @Headers("accept: application/vnd.github.v3+json")
+    @GET("/repos/{owner}/{repo}/commits/{ref}/check-suites")
+    Call<CheckSuitesList> listCheckSuites(
+            @Header("Authorization") String auth,
+            @Path("owner") String owner,
+            @Path("repo") String repo,
+            @Path("ref") String ref,
             @Query("per_page") int perPage,
             @Query("page") int page);
 
