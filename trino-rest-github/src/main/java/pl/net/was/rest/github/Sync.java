@@ -14,6 +14,8 @@
 
 package pl.net.was.rest.github;
 
+import com.google.common.collect.ImmutableList;
+
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -74,7 +76,7 @@ public class Sync
                 "TRINO_USERNAME", username,
                 "TRINO_PASSWORD", password,
                 // notice that jog_logs and artifacts are not enabled by default
-                "SYNC_TABLES", "issues,issue_comments,pulls,reviews,review_comments,runs,jobs,steps,check_runs,check_run_annotations",
+                "SYNC_TABLES", "issues,issue_comments,pulls,reviews,review_comments,runs,jobs,steps,check_suites,check_runs,check_run_annotations",
                 "LOG_LEVEL", "INFO",
                 "EMPTY_INSERT_LIMIT", "1",
                 "CHECK_STEPS_DUPLICATES", "false",
@@ -124,6 +126,7 @@ public class Sync
         Options options = new Options(null, owner, repo, destSchema, srcSchema);
 
         // TODO missing pull commits
+        // Note that the order in which these functions are called is determined by enabledTables, not availableTables
         Map<String, Consumer<Options>> availableTables = new LinkedHashMap<>();
         availableTables.put("issues", Sync::syncIssues);
         availableTables.put("issue_comments", Sync::syncIssueComments);
@@ -770,6 +773,7 @@ public class Sync
         Connection conn = options.conn;
         String destSchema = options.destSchema;
         String srcSchema = options.srcSchema;
+        int batchSize = 10;
         try {
             conn.createStatement().executeUpdate(
                     "CREATE TABLE IF NOT EXISTS " + destSchema + ".check_suites AS SELECT * FROM " + srcSchema + ".check_suites WITH NO DATA");
@@ -797,14 +801,15 @@ public class Sync
             idStatement.setString(3, options.owner);
             idStatement.setString(4, options.repo);
 
+            String batchPlaceholders = "?" + ", ?".repeat(batchSize - 1);
             String query = "INSERT INTO " + destSchema + ".check_suites " +
-                    "SELECT DISTINCT src.* " +
+                    "SELECT src.* " +
                     "FROM check_suites src " +
-                    "LEFT JOIN " + destSchema + ".check_suites dst ON dst.ref = ? AND dst.id = src.id " +
-                    "WHERE src.owner = ? AND src.repo = ? AND src.ref = ? AND dst.id IS NULL";
+                    "LEFT JOIN " + destSchema + ".check_suites dst ON dst.ref = src.ref AND dst.id = src.id " +
+                    "WHERE src.owner = ? AND src.repo = ? AND src.ref IN (" + batchPlaceholders + ") AND dst.id IS NULL";
             PreparedStatement insertStatement = conn.prepareStatement(query);
-            insertStatement.setString(2, options.owner);
-            insertStatement.setString(3, options.repo);
+            insertStatement.setString(1, options.owner);
+            insertStatement.setString(2, options.repo);
 
             log.info("Fetching run refs to get check suites for");
             if (!idStatement.execute()) {
@@ -812,12 +817,16 @@ public class Sync
                 return;
             }
             ResultSet resultSet = idStatement.getResultSet();
-            while (resultSet.next()) {
-                String runRef = resultSet.getString(1);
-                insertStatement.setString(1, runRef);
-                insertStatement.setString(4, runRef);
+            while (true) {
+                List<String> runRefs = getStringBatch(resultSet, batchSize);
+                log.info(format("Fetching check suites for refs: %s", runRefs));
+                if (runRefs.isEmpty()) {
+                    break;
+                }
+                for (int i = 0; i < runRefs.size(); i++) {
+                    insertStatement.setString(3 + i, runRefs.get(i));
+                }
 
-                log.info(format("Fetching check suites for ref %s", runRef));
                 long startTime = System.currentTimeMillis();
                 int rows = retryExecute(insertStatement);
                 log.info(format("Inserted %d rows, took %s", rows, Duration.ofMillis(System.currentTimeMillis() - startTime)));
@@ -834,6 +843,7 @@ public class Sync
         Connection conn = options.conn;
         String destSchema = options.destSchema;
         String srcSchema = options.srcSchema;
+        int batchSize = 10;
         try {
             conn.createStatement().executeUpdate(
                     "CREATE TABLE IF NOT EXISTS " + destSchema + ".check_runs AS SELECT * FROM " + srcSchema + ".check_runs WITH NO DATA");
@@ -861,14 +871,15 @@ public class Sync
             idStatement.setString(3, options.owner);
             idStatement.setString(4, options.repo);
 
+            String batchPlaceholders = "?" + ", ?".repeat(batchSize - 1);
             String query = "INSERT INTO " + destSchema + ".check_runs " +
-                    "SELECT DISTINCT src.* " +
+                    "SELECT src.* " +
                     "FROM check_runs src " +
-                    "LEFT JOIN " + destSchema + ".check_runs dst ON dst.ref = ? AND dst.id = src.id " +
-                    "WHERE src.owner = ? AND src.repo = ? AND src.ref = ? AND dst.id IS NULL";
+                    "LEFT JOIN " + destSchema + ".check_runs dst ON dst.ref = src.ref AND dst.id = src.id " +
+                    "WHERE src.owner = ? AND src.repo = ? AND src.ref IN (" + batchPlaceholders + ") AND dst.id IS NULL";
             PreparedStatement insertStatement = conn.prepareStatement(query);
-            insertStatement.setString(2, options.owner);
-            insertStatement.setString(3, options.repo);
+            insertStatement.setString(1, options.owner);
+            insertStatement.setString(2, options.repo);
 
             log.info("Fetching run refs to get check runs for");
             if (!idStatement.execute()) {
@@ -876,12 +887,16 @@ public class Sync
                 return;
             }
             ResultSet resultSet = idStatement.getResultSet();
-            while (resultSet.next()) {
-                String runRef = resultSet.getString(1);
-                insertStatement.setString(1, runRef);
-                insertStatement.setString(4, runRef);
+            while (true) {
+                List<String> runRefs = getStringBatch(resultSet, batchSize);
+                log.info(format("Fetching check runs for refs: %s", runRefs));
+                if (runRefs.isEmpty()) {
+                    break;
+                }
+                for (int i = 0; i < runRefs.size(); i++) {
+                    insertStatement.setString(3 + i, runRefs.get(i));
+                }
 
-                log.info(format("Fetching check runs for ref %s", runRef));
                 long startTime = System.currentTimeMillis();
                 int rows = retryExecute(insertStatement);
                 log.info(format("Inserted %d rows, took %s", rows, Duration.ofMillis(System.currentTimeMillis() - startTime)));
@@ -898,6 +913,7 @@ public class Sync
         Connection conn = options.conn;
         String destSchema = options.destSchema;
         String srcSchema = options.srcSchema;
+        int batchSize = 10;
         try {
             conn.createStatement().executeUpdate(
                     "CREATE TABLE IF NOT EXISTS " + destSchema + ".check_run_annotations AS SELECT * FROM " + srcSchema + ".check_run_annotations WITH NO DATA");
@@ -924,10 +940,11 @@ public class Sync
             idStatement.setString(3, options.owner);
             idStatement.setString(4, options.repo);
 
+            String batchPlaceholders = "?" + ", ?".repeat(batchSize - 1);
             String query = "INSERT INTO " + destSchema + ".check_run_annotations " +
-                    "SELECT DISTINCT src.* " +
+                    "SELECT src.* " +
                     "FROM check_run_annotations src " +
-                    "WHERE src.owner = ? AND src.repo = ? AND src.check_run_id = ?";
+                    "WHERE src.owner = ? AND src.repo = ? AND src.check_run_id IN (" + batchPlaceholders + ")";
             PreparedStatement insertStatement = conn.prepareStatement(query);
             insertStatement.setString(1, options.owner);
             insertStatement.setString(2, options.repo);
@@ -938,11 +955,16 @@ public class Sync
                 return;
             }
             ResultSet resultSet = idStatement.getResultSet();
-            while (resultSet.next()) {
-                long checkId = resultSet.getLong(1);
-                insertStatement.setLong(3, checkId);
+            while (true) {
+                List<Long> ids = getLongBatch(resultSet, batchSize);
+                log.info(format("Fetching annotations for check ids: %s", ids));
+                if (ids.isEmpty()) {
+                    break;
+                }
+                for (int i = 0; i < ids.size(); i++) {
+                    insertStatement.setLong(3 + i, ids.get(i));
+                }
 
-                log.info(format("Fetching annotations for check id %s", checkId));
                 long startTime = System.currentTimeMillis();
                 int rows = retryExecute(insertStatement);
                 log.info(format("Inserted %d rows, took %s", rows, Duration.ofMillis(System.currentTimeMillis() - startTime)));
@@ -979,5 +1001,47 @@ public class Sync
                 log.severe(format("Retrying %d more times", breaker));
             }
         }
+    }
+
+    private static List<String> getStringBatch(ResultSet resultSet, int desiredSize)
+            throws SQLException
+    {
+        ImmutableList.Builder<String> result = ImmutableList.builder();
+        int size = 0;
+        String lastValue = null;
+        while (resultSet.next() && size < desiredSize) {
+            lastValue = resultSet.getString(1);
+            result.add(lastValue);
+            size++;
+        }
+        if (size == 0) {
+            return result.build();
+        }
+        // pad with last value if read fewer than desiredSize items
+        for (; size < desiredSize; size++) {
+            result.add(lastValue);
+        }
+        return result.build();
+    }
+
+    private static List<Long> getLongBatch(ResultSet resultSet, int desiredSize)
+            throws SQLException
+    {
+        ImmutableList.Builder<Long> result = ImmutableList.builder();
+        int size = 0;
+        long lastValue = 0;
+        while (resultSet.next() && size < desiredSize) {
+            lastValue = resultSet.getLong(1);
+            result.add(lastValue);
+            size++;
+        }
+        if (size == 0) {
+            return result.build();
+        }
+        // pad with last value if read fewer than desiredSize items
+        for (; size < desiredSize; size++) {
+            result.add(lastValue);
+        }
+        return result.build();
     }
 }

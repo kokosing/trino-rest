@@ -1070,7 +1070,7 @@ public class GithubRest
                     GithubTable.PULLS,
                     GithubTable.ISSUES,
                     GithubTable.RUNS,
-                    GithubTable.CHECK_RUNS);
+                    GithubTable.CHECK_SUITES);
         }
         columnHandles = columns.keySet()
                 .stream()
