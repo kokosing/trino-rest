@@ -1009,7 +1009,7 @@ public class Sync
         ImmutableList.Builder<String> result = ImmutableList.builder();
         int size = 0;
         String lastValue = null;
-        while (resultSet.next() && size < desiredSize) {
+        while (size < desiredSize && resultSet.next()) {
             lastValue = resultSet.getString(1);
             result.add(lastValue);
             size++;
@@ -1030,7 +1030,7 @@ public class Sync
         ImmutableList.Builder<Long> result = ImmutableList.builder();
         int size = 0;
         long lastValue = 0;
-        while (resultSet.next() && size < desiredSize) {
+        while (size < desiredSize && resultSet.next()) {
             lastValue = resultSet.getLong(1);
             result.add(lastValue);
             size++;
