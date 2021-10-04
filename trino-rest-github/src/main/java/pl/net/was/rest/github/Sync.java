@@ -792,7 +792,7 @@ public class Sync
                     "GROUP BY r.id " +
                     "HAVING COUNT(c.id) != 0 " +
                     "ORDER BY r.id DESC LIMIT " + batchSize + ") a";
-            PreparedStatement idStatement = conn.prepareStatement("SELECT DISTINCT r.head_sha " +
+            PreparedStatement idStatement = conn.prepareStatement("SELECT r.head_sha " +
                     "FROM " + destSchema + ".runs r " +
                     "WHERE r.owner = ? AND r.repo = ? AND r.id > COALESCE((" + runsQuery + "), 0) AND r.status = 'completed' AND r.created_at > NOW() - INTERVAL '2' MONTH " +
                     "ORDER BY r.id ASC");
@@ -862,7 +862,7 @@ public class Sync
                     "GROUP BY r.id " +
                     "HAVING COUNT(c.id) != 0 " +
                     "ORDER BY r.id DESC LIMIT " + batchSize + ") a";
-            PreparedStatement idStatement = conn.prepareStatement("SELECT DISTINCT r.head_sha " +
+            PreparedStatement idStatement = conn.prepareStatement("SELECT r.head_sha " +
                     "FROM " + destSchema + ".runs r " +
                     "WHERE r.owner = ? AND r.repo = ? AND r.id > COALESCE((" + runsQuery + "), 0) AND r.status = 'completed' AND r.created_at > NOW() - INTERVAL '2' MONTH " +
                     "ORDER BY r.id ASC");
