@@ -785,14 +785,14 @@ public class Sync
             // find the last run id at least 2 hours old with a check_run present
             // and move up
             // TODO because dynamic filtering is not supported yet, CROSS JOIN LATERAL between runs and checks would not push down filter on ref
-            String runsQuery = "SELECT r.id " +
+            String runsQuery = "SELECT min(id) FROM (SELECT r.id " +
                     "FROM " + destSchema + ".runs r " +
                     "LEFT JOIN " + destSchema + ".check_suites c ON c.ref = r.head_sha " +
                     "WHERE r.owner = ? AND r.repo = ? AND r.status = 'completed' AND r.created_at > NOW() - INTERVAL '2' MONTH AND r.created_at < NOW() - INTERVAL '2' HOUR " +
                     "GROUP BY r.id " +
                     "HAVING COUNT(c.id) != 0 " +
-                    "ORDER BY r.id DESC LIMIT 1";
-            PreparedStatement idStatement = conn.prepareStatement("SELECT r.head_sha " +
+                    "ORDER BY r.id DESC LIMIT " + batchSize + ") a";
+            PreparedStatement idStatement = conn.prepareStatement("SELECT DISTINCT r.head_sha " +
                     "FROM " + destSchema + ".runs r " +
                     "WHERE r.owner = ? AND r.repo = ? AND r.id > COALESCE((" + runsQuery + "), 0) AND r.status = 'completed' AND r.created_at > NOW() - INTERVAL '2' MONTH " +
                     "ORDER BY r.id ASC");
@@ -855,14 +855,14 @@ public class Sync
             // find the last run id at least 2 hours old with a check_run present
             // and move up
             // TODO because dynamic filtering is not supported yet, CROSS JOIN LATERAL between runs and checks would not push down filter on ref
-            String runsQuery = "SELECT r.id " +
+            String runsQuery = "SELECT min(id) FROM (SELECT r.id " +
                     "FROM " + destSchema + ".runs r " +
                     "LEFT JOIN " + destSchema + ".check_runs c ON c.ref = r.head_sha " +
                     "WHERE r.owner = ? AND r.repo = ? AND r.status = 'completed' AND r.created_at > NOW() - INTERVAL '2' MONTH AND r.created_at < NOW() - INTERVAL '2' HOUR " +
                     "GROUP BY r.id " +
                     "HAVING COUNT(c.id) != 0 " +
-                    "ORDER BY r.id DESC LIMIT 1";
-            PreparedStatement idStatement = conn.prepareStatement("SELECT r.head_sha " +
+                    "ORDER BY r.id DESC LIMIT " + batchSize + ") a";
+            PreparedStatement idStatement = conn.prepareStatement("SELECT DISTINCT r.head_sha " +
                     "FROM " + destSchema + ".runs r " +
                     "WHERE r.owner = ? AND r.repo = ? AND r.id > COALESCE((" + runsQuery + "), 0) AND r.status = 'completed' AND r.created_at > NOW() - INTERVAL '2' MONTH " +
                     "ORDER BY r.id ASC");
