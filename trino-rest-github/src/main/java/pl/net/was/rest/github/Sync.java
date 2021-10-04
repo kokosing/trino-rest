@@ -922,23 +922,17 @@ public class Sync
             // CREATE INDEX ON check_run_annotations(owner, repo);
             // CREATE INDEX ON check_run_annotations(check_run_id);
 
-            // get largest check run id of those with an annotation and move up
+            // get smallest check run id of those with missing annotations and move up
             // TODO because dynamic filtering is not supported yet, CROSS JOIN LATERAL between checks and annotations would not push down filter on check_run_id
-            String runsQuery = "SELECT c.id " +
-                    "FROM " + destSchema + ".check_runs c " +
-                    "LEFT JOIN " + destSchema + ".check_run_annotations a ON a.check_run_id = c.id " +
-                    "WHERE c.owner = ? AND c.repo = ? AND c.status = 'completed' AND c.started_at > NOW() - INTERVAL '2' MONTH " +
-                    "GROUP BY c.id " +
-                    "HAVING COUNT(a.check_run_id) != 0 " +
-                    "ORDER BY c.id DESC LIMIT 1";
             PreparedStatement idStatement = conn.prepareStatement("SELECT c.id " +
                     "FROM " + destSchema + ".check_runs c " +
-                    "WHERE c.owner = ? AND c.repo = ? AND c.id > COALESCE((" + runsQuery + "), 0) AND c.status = 'completed' AND c.annotations_count != 0 AND c.started_at > NOW() - INTERVAL '2' MONTH " +
+                    "LEFT JOIN " + destSchema + ".check_run_annotations a ON a.check_run_id = c.id " +
+                    "WHERE c.owner = ? AND c.repo = ? AND c.status = 'completed' AND c.annotations_count != 0 AND c.started_at > NOW() - INTERVAL '2' MONTH " +
+                    "GROUP BY c.id " +
+                    "HAVING COUNT(a.check_run_id) = 0 " +
                     "ORDER BY c.id ASC");
             idStatement.setString(1, options.owner);
             idStatement.setString(2, options.repo);
-            idStatement.setString(3, options.owner);
-            idStatement.setString(4, options.repo);
 
             String batchPlaceholders = "?" + ", ?".repeat(batchSize - 1);
             String query = "INSERT INTO " + destSchema + ".check_run_annotations " +
