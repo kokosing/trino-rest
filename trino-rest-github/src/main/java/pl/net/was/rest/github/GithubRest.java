@@ -450,8 +450,8 @@ public class GithubRest
                     new ColumnMetadata("repo", VARCHAR),
                     new ColumnMetadata("ref", VARCHAR),
                     new ColumnMetadata("id", BIGINT),
-                    new ColumnMetadata("head_sha", VARCHAR),
                     new ColumnMetadata("head_branch", VARCHAR),
+                    new ColumnMetadata("head_sha", VARCHAR),
                     new ColumnMetadata("status", VARCHAR),
                     new ColumnMetadata("conclusion", VARCHAR),
                     new ColumnMetadata("url", VARCHAR),
@@ -461,8 +461,8 @@ public class GithubRest
                     new ColumnMetadata("app_id", BIGINT),
                     new ColumnMetadata("app_slug", VARCHAR),
                     new ColumnMetadata("app_name", VARCHAR),
-                    new ColumnMetadata("started_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
-                    new ColumnMetadata("completed_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
+                    new ColumnMetadata("created_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
+                    new ColumnMetadata("updated_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
                     new ColumnMetadata("latest_check_runs_count", BIGINT),
                     new ColumnMetadata("check_runs_url", VARCHAR)))
             .put(GithubTable.CHECK_RUNS, ImmutableList.of(
@@ -983,8 +983,8 @@ public class GithubRest
             "app_id bigint, " +
             "app_slug varchar, " +
             "app_name varchar, " +
-            "started_at timestamp(3) with time zone, " +
-            "completed_at timestamp(3) with time zone, " +
+            "created_at timestamp(3) with time zone, " +
+            "updated_at timestamp(3) with time zone, " +
             "latest_check_runs_count bigint, " +
             "check_runs_url varchar" +
         "))";
