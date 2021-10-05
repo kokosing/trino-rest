@@ -936,7 +936,7 @@ public class Sync
 
             String batchPlaceholders = "?" + ", ?".repeat(batchSize - 1);
             String query = "INSERT INTO " + destSchema + ".check_run_annotations " +
-                    "SELECT src.* " +
+                    "SELECT owner, repo, check_run_id, path, start_line, end_line, start_column, end_column, annotation_level, title, replace(message, U&'\\0000', ' '), replace(raw_details, U&'\\0000', ' '), blob_href " +
                     "FROM check_run_annotations src " +
                     "WHERE src.owner = ? AND src.repo = ? AND src.check_run_id IN (" + batchPlaceholders + ")";
             PreparedStatement insertStatement = conn.prepareStatement(query);
