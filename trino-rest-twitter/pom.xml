@@ -19,12 +19,12 @@
     <artifactId>trino-rest-twitter</artifactId>
     <description>Trino REST Twitter</description>
     <packaging>trino-plugin</packaging>
-    <version>0.37</version>
+    <version>0.38-SNAPSHOT</version>
 
     <parent>
         <groupId>pl.net.was</groupId>
         <artifactId>trino-rest</artifactId>
-        <version>0.37</version>
+        <version>0.38-SNAPSHOT</version>
     </parent>
 
     <properties>
