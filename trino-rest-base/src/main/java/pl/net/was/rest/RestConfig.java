@@ -17,6 +17,8 @@ package pl.net.was.rest;
 import io.airlift.configuration.Config;
 import io.airlift.configuration.ConfigSecuritySensitive;
 import io.airlift.units.DataSize;
+import io.airlift.units.Duration;
+import io.airlift.units.MinDuration;
 import okhttp3.Cache;
 import okhttp3.OkHttpClient;
 
@@ -24,9 +26,9 @@ import javax.validation.constraints.NotNull;
 
 import java.io.File;
 import java.nio.file.Paths;
-import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static com.google.common.base.Verify.verify;
@@ -39,8 +41,8 @@ public class RestConfig
     private String token;
     private String clientCachePath = Paths.get(System.getProperty("java.io.tmpdir"), "trino-rest-cache").toString();
     private DataSize clientCacheMaxSize = DataSize.of(10, DataSize.Unit.MEGABYTE);
-    private Duration clientConnectTimeout = Duration.ofSeconds(10);
-    private Duration clientReadTimeout = Duration.ofSeconds(10);
+    private Duration clientConnectTimeout = Duration.succinctDuration(10, TimeUnit.SECONDS);
+    private Duration clientReadTimeout = Duration.succinctDuration(10, TimeUnit.SECONDS);
     private int minSplits = 1;
     private List<String> minSplitTables = List.of();
 
@@ -129,6 +131,7 @@ public class RestConfig
     }
 
     @NotNull
+    @MinDuration("1ms")
     public Duration getClientConnectTimeout()
     {
         return clientConnectTimeout;
@@ -142,6 +145,7 @@ public class RestConfig
     }
 
     @NotNull
+    @MinDuration("1ms")
     public Duration getClientReadTimeout()
     {
         return clientReadTimeout;
@@ -162,8 +166,8 @@ public class RestConfig
         if (!clientCachePath.isEmpty() && clientCacheMaxSize.toBytes() != 0) {
             clientBuilder.cache(new Cache(new File(clientCachePath), clientCacheMaxSize.toBytes()));
         }
-        clientBuilder.connectTimeout(clientConnectTimeout);
-        clientBuilder.readTimeout(clientReadTimeout);
+        clientBuilder.connectTimeout(clientConnectTimeout.toMillis(), TimeUnit.MILLISECONDS);
+        clientBuilder.readTimeout(clientReadTimeout.toMillis(), TimeUnit.MILLISECONDS);
 
         return clientBuilder;
     }
