@@ -58,9 +58,9 @@
         <air.check.skip-checkstyle>false</air.check.skip-checkstyle>
 
         <dep.trino.version>364</dep.trino.version>
-        <dep.airlift.version>208</dep.airlift.version>
+        <dep.airlift.version>209</dep.airlift.version>
         <dep.packaging.version>${dep.airlift.version}</dep.packaging.version>
-        <dep.errorprone.version>2.9.0</dep.errorprone.version>
+        <dep.errorprone.version>2.10.0</dep.errorprone.version>
         <dep.jackson.version>2.13.0</dep.jackson.version>
         <dep.testng.version>6.10</dep.testng.version>
 
@@ -106,6 +106,13 @@
                 <groupId>org.slf4j</groupId>
                 <artifactId>slf4j-api</artifactId>
                 <version>1.7.32</version>
+            </dependency>
+
+            <!-- remove after Trino updates to Airlift 209 -->
+            <dependency>
+                <groupId>io.airlift</groupId>
+                <artifactId>json</artifactId>
+                <version>${dep.airlift.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -257,6 +264,17 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration combine.children="append">
+                    <compilerArgs>
+                        <arg>-XDcompilePolicy=simple</arg>
+                        <arg>-Xplugin:ErrorProne</arg>
+                    </compilerArgs>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>com.google.errorprone</groupId>
+                            <artifactId>error_prone_core</artifactId>
+                            <version>${dep.errorprone.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
                     <fork>false</fork>
                 </configuration>
             </plugin>
