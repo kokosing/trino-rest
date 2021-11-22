@@ -14,6 +14,7 @@
 
 package pl.net.was.rest.twitter.rest;
 
+import okhttp3.OkHttpClient;
 import pl.net.was.rest.twitter.model.SearchResult;
 import retrofit2.Call;
 import retrofit2.http.GET;
@@ -25,12 +26,18 @@ import static pl.net.was.rest.RestModule.getService;
 
 public interface TwitterService
 {
-    static TwitterService create(String consumerKey, String consumerSecret, String token, String secret)
+    static TwitterService create(
+            OkHttpClient.Builder clientBuilder,
+            String consumerKey,
+            String consumerSecret,
+            String token,
+            String secret)
     {
         OkHttpOAuthConsumer consumer = new OkHttpOAuthConsumer(consumerKey, consumerSecret);
         consumer.setTokenWithSecret(token, secret);
+        clientBuilder.addInterceptor(new SigningInterceptor(consumer));
 
-        return getService(TwitterService.class, "https://api.twitter.com/1.1/", new SigningInterceptor(consumer));
+        return getService(TwitterService.class, "https://api.twitter.com/1.1/", clientBuilder);
     }
 
     @GET("search/tweets.json")

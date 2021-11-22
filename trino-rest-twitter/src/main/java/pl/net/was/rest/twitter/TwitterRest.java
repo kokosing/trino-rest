@@ -61,6 +61,7 @@ public class TwitterRest
     {
         requireNonNull(config, "config is null");
         service = TwitterService.create(
+                config.getClientBuilder(),
                 config.getCustomerKey(),
                 config.getCustomerSecret(),
                 config.getToken(),

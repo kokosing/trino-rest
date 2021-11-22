@@ -53,7 +53,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -71,12 +70,11 @@ import static pl.net.was.rest.RestModule.getService;
 public class SlackRest
         implements Rest
 {
-    Logger log = Logger.getLogger(SlackRest.class.getName());
     public static final String SCHEMA_NAME = "default";
     private static final int PER_PAGE = 200;
 
     private static String token;
-    private final SlackService service = getService(SlackService.class, "https://slack.com/api/");
+    private static SlackService service;
 
     public static final Map<SlackTable, List<ColumnMetadata>> columns = new ImmutableMap.Builder<SlackTable, List<ColumnMetadata>>()
             .put(SlackTable.USERS, ImmutableList.of(
@@ -211,6 +209,7 @@ public class SlackRest
     {
         requireNonNull(config, "config is null");
         SlackRest.token = config.getToken();
+        SlackRest.service = getService(SlackService.class, "https://slack.com/api/", config.getClientBuilder());
 
         columnHandles = columns.keySet()
                 .stream()

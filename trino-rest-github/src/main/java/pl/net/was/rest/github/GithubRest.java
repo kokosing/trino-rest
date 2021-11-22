@@ -58,6 +58,7 @@ import pl.net.was.rest.Rest;
 import pl.net.was.rest.RestColumnHandle;
 import pl.net.was.rest.RestConfig;
 import pl.net.was.rest.RestConnectorSplit;
+import pl.net.was.rest.RestModule;
 import pl.net.was.rest.RestTableHandle;
 import pl.net.was.rest.filter.FilterApplier;
 import pl.net.was.rest.filter.FilterType;
@@ -125,7 +126,6 @@ import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
 import static java.util.Objects.requireNonNull;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
-import static pl.net.was.rest.RestModule.getService;
 import static pl.net.was.rest.github.function.Artifacts.download;
 
 public class GithubRest
@@ -145,7 +145,7 @@ public class GithubRest
     private static int minSplits;
     private static List<GithubTable> minSplitTables;
     private static String token;
-    private final GithubService service = getService(GithubService.class, "https://api.github.com/");
+    private static GithubService service;
 
     public static final Map<GithubTable, List<ColumnMetadata>> columns = new ImmutableMap.Builder<GithubTable, List<ColumnMetadata>>()
             .put(GithubTable.ORGS, ImmutableList.of(
@@ -1060,6 +1060,7 @@ public class GithubRest
     {
         requireNonNull(config, "config is null");
         GithubRest.token = config.getToken();
+        GithubRest.service = RestModule.getService(GithubService.class, "https://api.github.com/", config.getClientBuilder());
         GithubRest.minSplits = config.getMinSplits();
         GithubRest.minSplitTables = config.getMinSplitTables().stream()
                 .map(String::toUpperCase)
@@ -1086,6 +1087,11 @@ public class GithubRest
     public static String getToken()
     {
         return token;
+    }
+
+    public static GithubService getService()
+    {
+        return service;
     }
 
     @Override

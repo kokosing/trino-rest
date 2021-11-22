@@ -16,9 +16,15 @@ package pl.net.was.rest;
 
 import io.airlift.configuration.Config;
 import io.airlift.configuration.ConfigSecuritySensitive;
+import io.airlift.units.DataSize;
+import okhttp3.Cache;
+import okhttp3.OkHttpClient;
 
 import javax.validation.constraints.NotNull;
 
+import java.io.File;
+import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -31,6 +37,10 @@ public class RestConfig
     private String customerSecret;
     private String secret;
     private String token;
+    private String clientCachePath = Paths.get(System.getProperty("java.io.tmpdir"), "trino-rest-cache").toString();
+    private DataSize clientCacheMaxSize = DataSize.of(10, DataSize.Unit.MEGABYTE);
+    private Duration clientConnectTimeout = Duration.ofSeconds(10);
+    private Duration clientReadTimeout = Duration.ofSeconds(10);
     private int minSplits = 1;
     private List<String> minSplitTables = List.of();
 
@@ -84,6 +94,78 @@ public class RestConfig
     {
         this.token = token;
         return this;
+    }
+
+    @NotNull
+    public String getClientCachePath()
+    {
+        return clientCachePath;
+    }
+
+    @Config("client-cache-path")
+    public RestConfig setClientCachePath(String clientCachePath)
+    {
+        this.clientCachePath = clientCachePath;
+        return this;
+    }
+
+    @NotNull
+    public DataSize getClientCacheMaxSize()
+    {
+        return clientCacheMaxSize;
+    }
+
+    @NotNull
+    public long getClientCacheMaxSizeBytes()
+    {
+        return clientCacheMaxSize.toBytes();
+    }
+
+    @Config("client-cache-max-size")
+    public RestConfig setClientCacheMaxSize(DataSize clientCacheMaxSize)
+    {
+        this.clientCacheMaxSize = clientCacheMaxSize;
+        return this;
+    }
+
+    @NotNull
+    public Duration getClientConnectTimeout()
+    {
+        return clientConnectTimeout;
+    }
+
+    @Config("client-connect-timeout")
+    public RestConfig setClientConnectTimeout(Duration clientConnectTimeout)
+    {
+        this.clientConnectTimeout = clientConnectTimeout;
+        return this;
+    }
+
+    @NotNull
+    public Duration getClientReadTimeout()
+    {
+        return clientReadTimeout;
+    }
+
+    @Config("client-read-timeout")
+    public RestConfig setClientReadTimeout(Duration clientReadTimeout)
+    {
+        this.clientReadTimeout = clientReadTimeout;
+        return this;
+    }
+
+    @NotNull
+    public OkHttpClient.Builder getClientBuilder()
+    {
+        OkHttpClient.Builder clientBuilder = new OkHttpClient.Builder();
+
+        if (!clientCachePath.isEmpty() && clientCacheMaxSize.toBytes() != 0) {
+            clientBuilder.cache(new Cache(new File(clientCachePath), clientCacheMaxSize.toBytes()));
+        }
+        clientBuilder.connectTimeout(clientConnectTimeout);
+        clientBuilder.readTimeout(clientReadTimeout);
+
+        return clientBuilder;
     }
 
     public int getMinSplits()

@@ -22,15 +22,12 @@ import com.google.inject.Module;
 import com.google.inject.Scopes;
 import io.trino.spi.NodeManager;
 import io.trino.spi.type.TypeManager;
-import okhttp3.Cache;
 import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
 import okhttp3.logging.HttpLoggingInterceptor;
 import retrofit2.Retrofit;
 import retrofit2.converter.jackson.JacksonConverterFactory;
 
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -69,17 +66,17 @@ public class RestModule
     {
         OkHttpClient.Builder clientBuilder = new OkHttpClient.Builder();
 
-        // TODO make configurable? https://github.com/nineinchnick/trino-rest/issues/22
-        Path cacheDir = Paths.get(System.getProperty("java.io.tmpdir"), "trino-rest-cache");
-        clientBuilder.cache(new Cache(cacheDir.toFile(), 10 * 1024 * 1024));
+        for (Interceptor interceptor : interceptors) {
+            clientBuilder.addInterceptor(interceptor);
+        }
+        return getService(type, url, clientBuilder);
+    }
 
+    public static <T> T getService(Class<T> type, String url, OkHttpClient.Builder clientBuilder)
+    {
         if (getLogLevel().intValue() <= Level.FINE.intValue()) {
             HttpLoggingInterceptor interceptor = new HttpLoggingInterceptor();
             interceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
-            clientBuilder.addInterceptor(interceptor);
-        }
-
-        for (Interceptor interceptor : interceptors) {
             clientBuilder.addInterceptor(interceptor);
         }
 
