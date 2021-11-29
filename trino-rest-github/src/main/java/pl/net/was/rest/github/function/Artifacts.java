@@ -26,10 +26,10 @@ import io.trino.spi.type.RowType;
 import okhttp3.ResponseBody;
 import org.apache.tika.Tika;
 import pl.net.was.rest.Rest;
-import pl.net.was.rest.github.service.ArtifactService;
 import pl.net.was.rest.github.GithubTable;
 import pl.net.was.rest.github.model.Artifact;
 import pl.net.was.rest.github.model.ArtifactsList;
+import pl.net.was.rest.github.service.ArtifactService;
 import retrofit2.Response;
 
 import java.io.BufferedInputStream;

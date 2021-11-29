@@ -29,7 +29,6 @@ import java.util.List;
 public interface GithubService
         extends ArtifactService, PullService, IssueService, CheckService, WorkflowService
 {
-
     @Headers("accept: application/vnd.github.v3+json")
     @GET("/organizations")
     Call<List<Organization>> listOrgs(
