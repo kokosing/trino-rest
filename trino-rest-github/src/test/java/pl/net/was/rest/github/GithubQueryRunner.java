@@ -55,7 +55,9 @@ public class GithubQueryRunner
                 "github",
                 "github",
                 ImmutableMap.of(
-                        "token", token));
+                        "token", token,
+                        "client-cache-max-size", "100MB",
+                        "client-read-timeout", "2m"));
 
         return queryRunner;
     }

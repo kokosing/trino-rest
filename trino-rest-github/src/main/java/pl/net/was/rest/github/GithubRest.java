@@ -92,6 +92,7 @@ import pl.net.was.rest.github.model.Repository;
 import pl.net.was.rest.github.model.RunnersList;
 import pl.net.was.rest.github.model.Step;
 import pl.net.was.rest.github.model.User;
+import pl.net.was.rest.github.service.GithubService;
 import retrofit2.Call;
 import retrofit2.Response;
 
@@ -576,7 +577,7 @@ public class GithubRest
             .put(GithubTable.RUNS, this::getRunsCount)
             .put(GithubTable.JOBS, this::getJobsCount)
             .put(GithubTable.STEPS, this::getStepsCount)
-            .put(GithubTable.ARTIFACTS, this::getArtifactsCount)
+            // artifacts are in an envelope, but since artifact contents are denormalized into separate rows so there's no way to know how many actual rows there are
             .put(GithubTable.RUNNERS, this::getRunnersCount)
             .put(GithubTable.CHECK_SUITES, this::getCheckSuitesCount)
             .put(GithubTable.CHECK_RUNS, this::getCheckRunsCount)
@@ -1741,19 +1742,6 @@ public class GithubRest
                 table.getPageIncrement());
     }
 
-    private long getArtifactsCount(RestTableHandle table)
-    {
-        Map<String, Object> filters = getArtifactsFilters(table);
-        String owner = (String) filters.get("owner");
-        String repo = (String) filters.get("repo");
-        Long runId = (Long) filters.get("runId");
-        Supplier<Call<ArtifactsList>> fetcher = () -> service.listArtifacts("Bearer " + token, owner, repo, 0, 1);
-        if (runId != null) {
-            fetcher = () -> service.listRunArtifacts("Bearer " + token, owner, repo, runId, 0, 1);
-        }
-        return getTotalCountFromPagesEnvelope(fetcher);
-    }
-
     private Map<String, Object> getArtifactsFilters(RestTableHandle table)
     {
         GithubTable tableName = GithubTable.valueOf(table);
@@ -2070,6 +2058,7 @@ public class GithubRest
         return () -> new Iterator<>()
         {
             int resultSize;
+            int itemsSeen;
             int page = offset + 1;
             Iterator<List<?>> rows;
 
@@ -2103,12 +2092,19 @@ public class GithubRest
                         Math.max(0, limit - resultSize),
                         items.size());
                 List<List<?>> rows = items.subList(0, itemsToUse).stream().flatMap(mapper).collect(toList());
+                itemsSeen += items.size();
 
                 // mapper can produce 1 or more rows per item, so subList them again
-                rows = rows.subList(0, itemsToUse);
+                if (rows.size() != items.size()) {
+                    itemsToUse = Math.min(
+                            Math.max(0, limit - resultSize),
+                            rows.size());
+                    rows = rows.subList(0, itemsToUse);
+                }
                 this.rows = rows.iterator();
                 resultSize += itemsToUse;
-                if (resultSize >= envelope.getTotalCount()) {
+                // check against total count to avoid making a request that would return a 404
+                if (itemsSeen >= envelope.getTotalCount()) {
                     resultSize = limit;
                 }
                 return true;

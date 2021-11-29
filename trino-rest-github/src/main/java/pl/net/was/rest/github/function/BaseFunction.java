@@ -19,7 +19,7 @@ import io.trino.spi.block.Block;
 import io.trino.spi.block.BlockBuilder;
 import io.trino.spi.type.ArrayType;
 import pl.net.was.rest.github.GithubRest;
-import pl.net.was.rest.github.GithubService;
+import pl.net.was.rest.github.service.GithubService;
 import pl.net.was.rest.github.model.BlockWriter;
 
 import java.time.Instant;
