@@ -18,13 +18,11 @@ jobs:
           java-version: '11'
           distribution: 'adopt'
           server-id: github
-      - name: Cache local Maven repository
-        uses: actions/cache@v2
-        with:
-          path: ~/.m2/repository
-          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
-          restore-keys: |
-            ${{ runner.os }}-maven-
+          cache: 'maven'
+      - name: Configure Problem Matchers
+        run: |
+          echo "::add-matcher::.github/problem-matcher.json"
+          echo "::remove-matcher owner=java::"
       - name: Build with Maven
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -34,3 +32,8 @@ jobs:
           TWITTER_CUSTOMER_KEY: ${{ secrets.TWITTER_CUSTOMER_KEY }}
           TWITTER_CUSTOMER_SECRET: ${{ secrets.TWITTER_CUSTOMER_SECRET }}
         run: mvn -B package
+      - name: Annotate with test report
+        uses: nineinchnick/action-surefire-report@staging
+        if: always()
+        with:
+          create_check: 'false'
