@@ -38,5 +38,5 @@ jobs:
         with:
           name: test report ${{ github.job }}
           path: |
-            **/surefire-reports/TEST-TestSuite.xml
+            **/surefire-reports/TEST-*.xml
           retention-days: 5
