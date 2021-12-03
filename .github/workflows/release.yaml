@@ -57,8 +57,11 @@ jobs:
         run: ./mvnw -B release:perform -Darguments=-Dgpg.skip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Annotate with test report
-        uses: nineinchnick/action-surefire-report@staging
+      - name: Upload test report
+        uses: actions/upload-artifact@v2
         if: always()
         with:
-          create_check: 'false'
+          name: test report ${{ github.job }}
+          path: |
+            **/surefire-reports/TEST-TestSuite.xml
+          retention-days: 5

@@ -1,0 +1,51 @@
+name: Annotate checks
+
+on:
+  workflow_run:
+    workflows: ["Java CI with Maven", "Release with Maven"]
+    types:
+      - completed
+
+jobs:
+  annotate:
+    if: >
+      ${{ github.event.workflow_run.event == 'pull_request' }}
+    steps:
+      - name: 'Download artifact'
+        uses: actions/github-script@v5
+        with:
+          script: |
+            var fs = require('fs');
+            var artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+               owner: context.repo.owner,
+               repo: context.repo.repo,
+               run_id: ${{github.event.workflow_run.id }},
+            });
+            if (!artifacts || !artifacts.data) {
+              core.info('No artifacts found for run ${{github.event.workflow_run.id }}!');
+            }
+            artifacts.data.artifacts.forEach((artifact) => {
+              if (!artifact.name.startsWith('test report ')) {
+                return;
+              }
+              var download = await github.rest.actions.downloadArtifact({
+                 owner: context.repo.owner,
+                 repo: context.repo.repo,
+                 artifact_id: artifact.id,
+                 archive_format: 'zip',
+              });
+              fs.writeFileSync('${{github.workspace}}/' + artifact.name + '.zip', Buffer.from(download.data));
+            });
+      - run: |
+          for archive in test\ report\ *.zip; do
+            name=$(basename "$archive" .zip)
+            mkdir "$name"
+            (cd "$name" && unzip ../"$archive")
+          done
+      - uses: scacap/action-surefire-report@v1
+        with:
+          fail_if_no_tests: false
+      - uses: starburstdata/action-testng-report@v1
+        with:
+          fail_if_empty: false
+          github_token: ${{ github.token }}
