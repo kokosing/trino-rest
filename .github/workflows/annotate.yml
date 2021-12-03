@@ -36,7 +36,10 @@ jobs:
               fs.writeFileSync('${{github.workspace}}/' + artifact.name + '.zip', Buffer.from(download.data));
             }
       - run: |
-          for archive in test\ report\ *.zip; do
+          set -x
+          pwd
+          ls
+          for archive in *.zip; do
             name=$(basename "$archive" .zip)
             mkdir "$name"
             (cd "$name" && unzip ../"$archive")
