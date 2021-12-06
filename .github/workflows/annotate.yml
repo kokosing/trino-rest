@@ -48,8 +48,3 @@ jobs:
         with:
           fail_if_no_tests: false
           commit: ${{github.event.workflow_run.head_sha}}
-      - uses: starburstdata/action-testng-report@v1.0.2
-        with:
-          fail_if_empty: false
-          commit: ${{github.event.workflow_run.head_sha}}
-          github_token: ${{ github.token }}
