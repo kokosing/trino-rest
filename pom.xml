@@ -57,8 +57,8 @@
         <air.check.fail-checkstyle>true</air.check.fail-checkstyle>
         <air.check.skip-checkstyle>false</air.check.skip-checkstyle>
 
-        <dep.trino.version>364</dep.trino.version>
-        <dep.airlift.version>210</dep.airlift.version>
+        <dep.trino.version>365</dep.trino.version>
+        <dep.airlift.version>211</dep.airlift.version>
         <dep.packaging.version>${dep.airlift.version}</dep.packaging.version>
         <dep.errorprone.version>2.10.0</dep.errorprone.version>
         <dep.jackson.version>2.13.0</dep.jackson.version>
@@ -190,13 +190,6 @@
             <groupId>org.assertj</groupId>
             <artifactId>assertj-core</artifactId>
             <version>3.21.0</version>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>net.java.dev.jna</groupId>
-            <artifactId>jna</artifactId>
-            <version>5.9.0</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
