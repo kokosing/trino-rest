@@ -57,6 +57,7 @@
         <air.check.fail-checkstyle>true</air.check.fail-checkstyle>
         <air.check.skip-checkstyle>false</air.check.skip-checkstyle>
 
+        <!-- must be in sync with Dockerfile -->
         <dep.trino.version>365</dep.trino.version>
         <dep.airlift.version>211</dep.airlift.version>
         <dep.packaging.version>${dep.airlift.version}</dep.packaging.version>
