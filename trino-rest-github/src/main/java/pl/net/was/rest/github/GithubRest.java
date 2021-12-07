@@ -147,6 +147,7 @@ public class GithubRest
     private static List<GithubTable> minSplitTables;
     private static String token;
     private static GithubService service;
+    private static long maxBinaryDownloadSizeBytes;
 
     public static final Map<GithubTable, List<ColumnMetadata>> columns = new ImmutableMap.Builder<GithubTable, List<ColumnMetadata>>()
             .put(GithubTable.ORGS, ImmutableList.of(
@@ -1084,6 +1085,7 @@ public class GithubRest
         requireNonNull(config, "config is null");
         GithubRest.token = config.getToken();
         GithubRest.service = RestModule.getService(GithubService.class, "https://api.github.com/", config.getClientBuilder());
+        GithubRest.maxBinaryDownloadSizeBytes = config.getClientMaxBinaryDownloadSizeBytes();
         GithubRest.minSplits = config.getMinSplits();
         GithubRest.minSplitTables = config.getMinSplitTables().stream()
                 .map(String::toUpperCase)
@@ -1115,6 +1117,11 @@ public class GithubRest
     public static GithubService getService()
     {
         return service;
+    }
+
+    public static long getMaxBinaryDownloadSizeBytes()
+    {
+        return maxBinaryDownloadSizeBytes;
     }
 
     @Override
@@ -1749,13 +1756,20 @@ public class GithubRest
                     if (runId != null) {
                         item.setRunId(runId);
                     }
-                    try {
-                        for (Artifact artifact : download(service, token, item)) {
-                            result.add(artifact.toRow());
-                        }
+                    if (item.getSizeInBytes() > getMaxBinaryDownloadSizeBytes()) {
+                        log.warning(format("Skipping downloading artifact %s because its size %d is greater than max of %d",
+                                item.getId(), item.getSizeInBytes(), getMaxBinaryDownloadSizeBytes()));
+                        result.add(item.toRow());
                     }
-                    catch (IOException e) {
-                        throw new RuntimeException(e);
+                    else {
+                        try {
+                            for (Artifact artifact : download(service, token, item)) {
+                                result.add(artifact.toRow());
+                            }
+                        }
+                        catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
                     }
                     return result.build();
                 },

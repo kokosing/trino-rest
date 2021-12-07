@@ -91,6 +91,11 @@ public class Artifact
         return id;
     }
 
+    public long getSizeInBytes()
+    {
+        return sizeInBytes;
+    }
+
     public void setOwner(String owner)
     {
         this.owner = owner;
@@ -151,9 +156,9 @@ public class Artifact
                 packTimestamp(createdAt),
                 packTimestamp(expiresAt),
                 packTimestamp(updatedAt),
-                filename,
-                path,
-                mimetype,
+                filename != null ? filename : "",
+                path != null ? path : "",
+                mimetype != null ? mimetype : "",
                 fileSizeInBytes,
                 partNumber,
                 Slices.wrappedBuffer(contents != null ? contents : new byte[0]));

@@ -38,14 +38,17 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 import static io.trino.spi.type.StandardTypes.BIGINT;
 import static io.trino.spi.type.StandardTypes.VARCHAR;
+import static java.lang.String.format;
 import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
 import static java.util.Objects.requireNonNull;
 import static pl.net.was.rest.github.GithubRest.ARTIFACTS_TABLE_TYPE;
+import static pl.net.was.rest.github.GithubRest.getMaxBinaryDownloadSizeBytes;
 import static pl.net.was.rest.github.GithubRest.getRowType;
 
 @ScalarFunction(value = "artifacts", deterministic = false)
@@ -99,7 +102,14 @@ public class Artifacts
                 artifact.setRepo(repo.toStringUtf8());
                 artifact.setRunId(runId);
 
-                result.addAll(download(service, token, artifact));
+                if (artifact.getSizeInBytes() > getMaxBinaryDownloadSizeBytes()) {
+                    Logger.getLogger(Artifacts.class.getName()).warning(format("Skipping downloading artifact %s because its size %d is greater than max of %d",
+                            artifact.getId(), artifact.getSizeInBytes(), getMaxBinaryDownloadSizeBytes()));
+                    result.add(artifact.clone());
+                }
+                else {
+                    result.addAll(download(service, token, artifact));
+                }
             }
             if (items.size() < PER_PAGE) {
                 break;
@@ -117,7 +127,7 @@ public class Artifacts
                 artifact.getRepo(),
                 artifact.getId()).execute();
         if (response.code() == HTTP_NOT_FOUND) {
-            return ImmutableList.of(artifact);
+            return ImmutableList.of(artifact.clone());
         }
         Rest.checkServiceResponse(response);
         ResponseBody body = requireNonNull(response.body(), "response body is null");

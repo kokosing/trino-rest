@@ -28,6 +28,7 @@ import java.io.File;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -43,6 +44,7 @@ public class RestConfig
     private DataSize clientCacheMaxSize = DataSize.of(10, DataSize.Unit.MEGABYTE);
     private Duration clientConnectTimeout = Duration.succinctDuration(10, TimeUnit.SECONDS);
     private Duration clientReadTimeout = Duration.succinctDuration(10, TimeUnit.SECONDS);
+    private DataSize clientMaxBinaryDownloadSize;
     private int minSplits = 1;
     private List<String> minSplitTables = List.of();
 
@@ -155,6 +157,28 @@ public class RestConfig
     public RestConfig setClientReadTimeout(Duration clientReadTimeout)
     {
         this.clientReadTimeout = clientReadTimeout;
+        return this;
+    }
+
+    @NotNull
+    public Optional<DataSize> getClientMaxBinaryDownloadSize()
+    {
+        return Optional.ofNullable(clientMaxBinaryDownloadSize);
+    }
+
+    @NotNull
+    public long getClientMaxBinaryDownloadSizeBytes()
+    {
+        if (clientMaxBinaryDownloadSize == null) {
+            return Long.MAX_VALUE;
+        }
+        return clientMaxBinaryDownloadSize.toBytes();
+    }
+
+    @Config("client-max-binary-download-size")
+    public RestConfig setClientMaxBinaryDownloadSize(DataSize clientMaxBinaryDownloadSize)
+    {
+        this.clientMaxBinaryDownloadSize = clientMaxBinaryDownloadSize;
         return this;
     }
 
