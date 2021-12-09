@@ -271,7 +271,7 @@ public class Sync
 
         int page = 1;
         while (true) {
-            log.info(format("Fetching page number %d", page));
+            log.info(format("Fetching %s page number %d", name, page));
             long startTime = System.currentTimeMillis();
             statement.setInt(3, page++);
             int rows = retryExecute(statement);
@@ -318,7 +318,7 @@ public class Sync
 
             int page = 1;
             while (true) {
-                log.info(format("Fetching page number %d", page));
+                log.info(format("Fetching pulls page number %d", page));
                 long startTime = System.currentTimeMillis();
                 statement.setInt(3, page++);
                 int rows = retryExecute(statement);
@@ -432,7 +432,7 @@ public class Sync
             int page = 1;
             int breaker = getEmptyLimit();
             while (true) {
-                log.info(format("Fetching page number %d", page));
+                log.info(format("Fetching runs page number %d", page));
                 long startTime = System.currentTimeMillis();
                 statement.setInt(3, page++);
                 int rows = retryExecute(statement);
@@ -466,7 +466,21 @@ public class Sync
             // CREATE INDEX ON jobs(owner, repo);
             // CREATE INDEX ON jobs(run_id);
             // CREATE INDEX ON jobs(node_id);
+        }
+        catch (Exception e) {
+            log.severe(e.getMessage());
+            e.printStackTrace();
+            return;
+        }
+        syncNewJobs(options);
+        syncRerunJobs(options);
+    }
 
+    private static void syncNewJobs(Options options)
+    {
+        Connection conn = options.conn;
+        String destSchema = options.destSchema;
+        try {
             // only fetch jobs for up to 20 completed runs not older than 2 months, without any jobs
             PreparedStatement statement = conn.prepareStatement(
                     "INSERT INTO " + destSchema + ".jobs " +
@@ -495,6 +509,74 @@ public class Sync
                 log.info(format("Inserted %d rows, took %s", rows, Duration.ofMillis(System.currentTimeMillis() - startTime)));
                 if (rows == 0) {
                     break;
+                }
+            }
+        }
+        catch (Exception e) {
+            log.severe(e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private static void syncRerunJobs(Options options)
+    {
+        Connection conn = options.conn;
+        String destSchema = options.destSchema;
+        String srcSchema = options.srcSchema;
+        int batchSize = 10;
+        try {
+            // first get updated runs where run_attempt is higher than it was
+            String runsQuery =
+                    "SELECT r.id " +
+                            "FROM unnest(runs(?, ?, ?, 'completed')) ru " +
+                            "JOIN " + destSchema + ".runs r ON (r.owner, r.repo, r.id) = (ru.owner, ru.repo, ru.id) " +
+                            "WHERE ru.updated_at > r.updated_at AND ru.run_attempt != r.run_attempt";
+            PreparedStatement idStatement = conn.prepareStatement(runsQuery);
+            idStatement.setString(1, options.owner);
+            idStatement.setString(2, options.repo);
+
+            String batchPlaceholders = "?" + ", ?".repeat(batchSize - 1);
+            PreparedStatement insertStatement = conn.prepareStatement(
+                    "INSERT INTO " + destSchema + ".jobs " +
+                            "SELECT src.* " +
+                            "FROM " + srcSchema + ".jobs src " +
+                            "LEFT JOIN " + destSchema + ".jobs dst ON (dst.run_id, dst.id) = (src.run_id, src.id) " +
+                            "WHERE src.owner = ? AND src.repo = ? AND src.run_id IN (" + batchPlaceholders + ") " +
+                            "AND (dst.id IS NULL OR dst.run_attempt IS DISTINCT FROM src.run_attempt)");
+            insertStatement.setString(1, options.owner);
+            insertStatement.setString(2, options.repo);
+
+            int page = 1;
+            int breaker = getEmptyLimit();
+            while (true) {
+                log.info(format("Fetching updated runs page number %d", page));
+                long startTime = System.currentTimeMillis();
+                idStatement.setInt(3, page++);
+                int rows = 0;
+                if (!idStatement.execute()) {
+                    log.info("No results!");
+                    return;
+                }
+                ResultSet resultSet = idStatement.getResultSet();
+                while (true) {
+                    List<Long> ids = getLongBatch(resultSet, batchSize);
+                    log.info(format("Fetching jobs for run ids: %s", ids));
+                    if (ids.isEmpty()) {
+                        break;
+                    }
+                    for (int i = 0; i < ids.size(); i++) {
+                        insertStatement.setLong(3 + i, ids.get(i));
+                    }
+                    rows += retryExecute(insertStatement);
+                }
+                log.info(format("Inserted %d rows, took %s", rows, Duration.ofMillis(System.currentTimeMillis() - startTime)));
+                if (rows == 0) {
+                    if (breaker-- == 0) {
+                        break;
+                    }
+                }
+                else {
+                    breaker = getEmptyLimit();
                 }
             }
         }
