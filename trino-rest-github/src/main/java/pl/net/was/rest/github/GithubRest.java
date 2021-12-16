@@ -2137,13 +2137,16 @@ public class GithubRest
                             rows.size());
                     rows = rows.subList(0, itemsToUse);
                 }
+                if (rows.size() == 0) {
+                    return false;
+                }
                 this.rows = rows.iterator();
                 resultSize += itemsToUse;
                 // check against total count to avoid making a request that would return a 404
                 if (itemsSeen >= envelope.getTotalCount()) {
                     resultSize = limit;
                 }
-                return true;
+                return this.rows.hasNext();
             }
 
             @Override
