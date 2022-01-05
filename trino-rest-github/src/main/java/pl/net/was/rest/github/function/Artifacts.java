@@ -15,6 +15,7 @@
 package pl.net.was.rest.github.function;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import io.airlift.slice.Slice;
@@ -189,15 +190,19 @@ public class Artifacts
         String message = "Unable to read: ";
         if (errorBody != null) {
             try {
+                String errorJson = errorBody.string();
                 try {
-                    ClientError error = new ObjectMapper().readerFor(ClientError.class).readValue(errorBody.string());
+                    ClientError error = new ObjectMapper()
+                            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+                            .readerFor(ClientError.class)
+                            .readValue(errorJson);
                     if (error.getMessage().equals(FAIL_ARTIFACT_URL)) {
                         return false;
                     }
-                    message += error.getMessage();
+                    message += errorJson;
                 }
                 catch (JsonProcessingException e) {
-                    message += errorBody.string();
+                    message += errorJson;
                 }
             }
             catch (IOException e) {

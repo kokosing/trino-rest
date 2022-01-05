@@ -57,7 +57,8 @@ public class GithubQueryRunner
                 ImmutableMap.of(
                         "token", token,
                         "client-cache-max-size", "100MB",
-                        "client-read-timeout", "2m"));
+                        "client-read-timeout", "2m",
+                        "client-max-binary-download-size", "100MB"));
 
         return queryRunner;
     }
