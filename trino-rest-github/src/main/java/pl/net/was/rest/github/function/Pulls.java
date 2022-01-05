@@ -61,7 +61,9 @@ public class Pulls
                 PER_PAGE,
                 (int) page,
                 "updated",
-                "asc",
+                // `desc` allows fetching latest PRs until updated_at on the current page is greater than some value
+                // other functions like issues() have a `since` argument so they use `asc`
+                "desc",
                 "all").execute();
         if (response.code() == HTTP_NOT_FOUND) {
             return null;
