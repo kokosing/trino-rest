@@ -14,9 +14,12 @@
 
 package pl.net.was.rest.github.function;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
 import io.airlift.slice.Slice;
 import io.trino.spi.PageBuilder;
+import io.trino.spi.TrinoException;
 import io.trino.spi.block.Block;
 import io.trino.spi.function.Description;
 import io.trino.spi.function.ScalarFunction;
@@ -29,6 +32,7 @@ import pl.net.was.rest.Rest;
 import pl.net.was.rest.github.GithubTable;
 import pl.net.was.rest.github.model.Artifact;
 import pl.net.was.rest.github.model.ArtifactsList;
+import pl.net.was.rest.github.model.ClientError;
 import pl.net.was.rest.github.service.ArtifactService;
 import retrofit2.Response;
 
@@ -42,6 +46,7 @@ import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
+import static io.trino.spi.StandardErrorCode.GENERIC_INTERNAL_ERROR;
 import static io.trino.spi.type.StandardTypes.BIGINT;
 import static io.trino.spi.type.StandardTypes.VARCHAR;
 import static java.lang.String.format;
@@ -60,6 +65,7 @@ public class Artifacts
     private static final int MAX_PAGE_SIZE_IN_BYTES = 4 * 1024 * 1024;
     private static final int MAX_ROW_SIZE_IN_BYTES = 100 * 1024;
     private static final Tika tika = new Tika();
+    private static final String FAIL_ARTIFACT_URL = "Failed to generate URL to download artifact";
 
     public Artifacts()
     {
@@ -129,7 +135,10 @@ public class Artifacts
         if (response.code() == HTTP_NOT_FOUND) {
             return ImmutableList.of(artifact.clone());
         }
-        Rest.checkServiceResponse(response);
+        if (!checkResponse(response)) {
+            // some artifacts might not be available anymore for download and nothing can be done about it
+            return ImmutableList.of(artifact.clone());
+        }
         ResponseBody body = requireNonNull(response.body(), "response body is null");
         InputStream zipContents = body.byteStream();
 
@@ -169,5 +178,32 @@ public class Artifacts
         body.close();
 
         return result.build();
+    }
+
+    private static boolean checkResponse(Response<ResponseBody> response)
+    {
+        if (response.isSuccessful()) {
+            return true;
+        }
+        ResponseBody errorBody = response.errorBody();
+        String message = "Unable to read: ";
+        if (errorBody != null) {
+            try {
+                try {
+                    ClientError error = new ObjectMapper().readerFor(ClientError.class).readValue(errorBody.string());
+                    if (error.getMessage().equals(FAIL_ARTIFACT_URL)) {
+                        return false;
+                    }
+                    message += error.getMessage();
+                }
+                catch (JsonProcessingException e) {
+                    message += errorBody.string();
+                }
+            }
+            catch (IOException e) {
+                message += e.getMessage();
+            }
+        }
+        throw new TrinoException(GENERIC_INTERNAL_ERROR, message);
     }
 }
