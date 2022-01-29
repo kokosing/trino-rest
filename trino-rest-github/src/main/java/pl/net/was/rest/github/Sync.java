@@ -613,7 +613,7 @@ public class Sync
                             "FROM " + destSchema + ".runs r " +
                             "JOIN " + destSchema + ".jobs j ON j.run_id = r.id " +
                             "LEFT JOIN " + destSchema + ".steps s ON s.job_id = j.id " +
-                            "WHERE r.owner = ? AND r.repo = ? AND r.status = 'completed' AND r.created_at > NOW() - INTERVAL '2' MONTH " +
+                            "WHERE r.owner = ? AND r.repo = ? AND r.status = 'completed' AND r.created_at > NOW() - INTERVAL '2' MONTH AND j.steps_count != 0 " +
                             "GROUP BY r.id " +
                             "HAVING COUNT(s.number) = 0 " +
                             "ORDER BY r.id DESC";

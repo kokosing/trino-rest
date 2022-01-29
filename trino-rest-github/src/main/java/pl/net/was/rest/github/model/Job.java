@@ -50,6 +50,7 @@ public class Job
     private final String runnerName;
     private final long runnerGroupId;
     private final String runnerGroupName;
+    private final int stepsCount;
 
     public Job(
             @JsonProperty("id") long id,
@@ -96,6 +97,7 @@ public class Job
         this.runnerName = runnerName;
         this.runnerGroupId = runnerGroupId;
         this.runnerGroupName = runnerGroupName;
+        this.stepsCount = steps.size();
     }
 
     public void setOwner(String owner)
@@ -124,7 +126,8 @@ public class Job
                 conclusion != null ? conclusion : "",
                 packTimestamp(startedAt),
                 packTimestamp(completedAt),
-                name);
+                name,
+                stepsCount);
     }
 
     @Override
@@ -142,6 +145,7 @@ public class Job
         writeTimestamp(rowBuilder, startedAt);
         writeTimestamp(rowBuilder, completedAt);
         writeString(rowBuilder, name);
+        INTEGER.writeLong(rowBuilder, stepsCount);
         // not writing steps
     }
 

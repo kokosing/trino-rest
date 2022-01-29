@@ -406,7 +406,8 @@ public class GithubRest
                     new ColumnMetadata("conclusion", VARCHAR),
                     new ColumnMetadata("started_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
                     new ColumnMetadata("completed_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
-                    new ColumnMetadata("name", VARCHAR)))
+                    new ColumnMetadata("name", VARCHAR),
+                    new ColumnMetadata("steps_count", INTEGER)))
             .put(GithubTable.JOB_LOGS, ImmutableList.of(
                     new ColumnMetadata("owner", VARCHAR),
                     new ColumnMetadata("repo", VARCHAR),
@@ -929,7 +930,8 @@ public class GithubRest
             "conclusion varchar, " +
             "created_at timestamp(3) with time zone, " +
             "updated_at timestamp(3) with time zone, " +
-            "name varchar" +
+            "name varchar, " +
+            "steps_count integer" +
             "))";
 
     public static final String JOB_LOGS_TABLE_TYPE = "array(row(" +
