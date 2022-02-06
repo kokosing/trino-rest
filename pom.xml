@@ -58,12 +58,12 @@
         <air.check.skip-checkstyle>false</air.check.skip-checkstyle>
 
         <!-- must be in sync with Dockerfile -->
-        <dep.trino.version>368</dep.trino.version>
-        <dep.airlift.version>213</dep.airlift.version>
+        <dep.trino.version>370</dep.trino.version>
+        <dep.airlift.version>214</dep.airlift.version>
         <dep.packaging.version>${dep.airlift.version}</dep.packaging.version>
-        <dep.errorprone.version>2.10.0</dep.errorprone.version>
+        <dep.errorprone.version>2.11.0</dep.errorprone.version>
         <dep.jackson.version>2.13.1</dep.jackson.version>
-        <dep.testng.version>6.10</dep.testng.version>
+        <dep.testng.version>7.5</dep.testng.version>
 
         <project.scm.id>github</project.scm.id>
     </properties>
@@ -81,7 +81,7 @@
             <dependency>
                 <groupId>org.checkerframework</groupId>
                 <artifactId>checker-qual</artifactId>
-                <version>3.21.0</version>
+                <version>3.21.1</version>
             </dependency>
             <dependency>
                 <groupId>org.osgi</groupId>
@@ -106,7 +106,7 @@
             <dependency>
                 <groupId>org.slf4j</groupId>
                 <artifactId>slf4j-api</artifactId>
-                <version>1.7.32</version>
+                <version>1.7.35</version>
             </dependency>
 
             <!-- remove after Trino updates to Airlift 209 -->
@@ -221,7 +221,7 @@
             </plugin>
             <plugin>
                 <artifactId>maven-release-plugin</artifactId>
-                <version>3.0.0-M4</version>
+                <version>3.0.0-M5</version>
                 <configuration>
                     <scmCommentPrefix>[ci skip]</scmCommentPrefix>
                     <tagNameFormat>v@{project.version}</tagNameFormat>

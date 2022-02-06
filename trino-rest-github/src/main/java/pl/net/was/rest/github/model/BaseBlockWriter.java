@@ -16,10 +16,13 @@ package pl.net.was.rest.github.model;
 
 import io.airlift.slice.Slices;
 import io.trino.spi.block.BlockBuilder;
+import io.trino.spi.type.ArrayType;
 import io.trino.spi.type.DateTimeEncoding;
+import io.trino.spi.type.Type;
 
 import java.time.ZonedDateTime;
 
+import static io.trino.spi.type.BigintType.BIGINT;
 import static io.trino.spi.type.TimestampWithTimeZoneType.TIMESTAMP_TZ_SECONDS;
 import static io.trino.spi.type.Timestamps.MILLISECONDS_PER_SECOND;
 import static io.trino.spi.type.Timestamps.NANOSECONDS_PER_MILLISECOND;
@@ -30,6 +33,9 @@ import static io.trino.spi.type.VarcharType.VARCHAR;
 abstract class BaseBlockWriter
         implements BlockWriter
 {
+    public static final Type ARRAY_VARCHAR = new ArrayType(VARCHAR);
+    public static final Type ARRAY_BIGINT = new ArrayType(BIGINT);
+
     @Override
     public abstract void writeTo(BlockBuilder rowBuilder);
 

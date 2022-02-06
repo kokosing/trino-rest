@@ -247,13 +247,13 @@ public class Pull
             for (Label label : labels) {
                 BIGINT.writeLong(labelIds, label.getId());
             }
-            rowBuilder.appendStructure(labelIds.build());
+            ARRAY_BIGINT.writeObject(rowBuilder, labelIds.build());
 
             BlockBuilder labelNames = VARCHAR.createBlockBuilder(null, labels.size());
             for (Label label : labels) {
                 writeString(labelNames, label.getName());
             }
-            rowBuilder.appendStructure(labelNames.build());
+            ARRAY_VARCHAR.writeObject(rowBuilder, labelNames.build());
         }
 
         if (milestone == null) {
@@ -288,13 +288,13 @@ public class Pull
             for (User reviewer : requestedReviewers) {
                 BIGINT.writeLong(reviewerIds, reviewer.getId());
             }
-            rowBuilder.appendStructure(reviewerIds.build());
+            ARRAY_BIGINT.writeObject(rowBuilder, reviewerIds.build());
 
             BlockBuilder reviewerLogins = VARCHAR.createBlockBuilder(null, requestedReviewers.size());
             for (User reviewer : requestedReviewers) {
                 writeString(reviewerLogins, reviewer.getLogin());
             }
-            rowBuilder.appendStructure(reviewerLogins.build());
+            ARRAY_VARCHAR.writeObject(rowBuilder, reviewerLogins.build());
         }
 
         writeString(rowBuilder, headRef);

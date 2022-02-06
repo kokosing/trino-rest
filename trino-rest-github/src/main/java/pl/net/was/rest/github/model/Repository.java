@@ -392,7 +392,8 @@ public class Repository
                 VARCHAR.writeString(topics, topic);
             }
         }
-        rowBuilder.appendStructure(topics.build());
+
+        ARRAY_VARCHAR.writeObject(rowBuilder, topics.build());
         BOOLEAN.writeBoolean(rowBuilder, hasIssues);
         BOOLEAN.writeBoolean(rowBuilder, hasProjects);
         BOOLEAN.writeBoolean(rowBuilder, hasWiki);
@@ -414,7 +415,7 @@ public class Repository
                 BOOLEAN.writeBoolean(builder, permission.getValue());
             }
             permissions.closeEntry();
-            rowBuilder.appendStructure(mapType.getObject(permissions, 0));
+            mapType.writeObject(rowBuilder, mapType.getObject(permissions, 0));
         }
         else {
             rowBuilder.appendNull();

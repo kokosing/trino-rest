@@ -197,13 +197,13 @@ public class Issue
             for (Label label : labels) {
                 BIGINT.writeLong(labelIds, label.getId());
             }
-            rowBuilder.appendStructure(labelIds.build());
+            ARRAY_BIGINT.writeObject(rowBuilder, labelIds.build());
 
             BlockBuilder labelNames = VARCHAR.createBlockBuilder(null, labels.size());
             for (Label label : labels) {
                 writeString(labelNames, label.getName());
             }
-            rowBuilder.appendStructure(labelNames.build());
+            ARRAY_VARCHAR.writeObject(rowBuilder, labelNames.build());
         }
 
         if (assignee == null) {

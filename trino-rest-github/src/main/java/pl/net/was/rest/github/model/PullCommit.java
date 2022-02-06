@@ -136,6 +136,6 @@ public class PullCommit
         for (Ref parent : parents) {
             writeString(parentShas, parent.getSha());
         }
-        rowBuilder.appendStructure(parentShas.build());
+        ARRAY_VARCHAR.writeObject(rowBuilder, parentShas.build());
     }
 }

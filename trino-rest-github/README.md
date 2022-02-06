@@ -41,17 +41,17 @@ An example command to run the Trino server with the git plugin and catalog enabl
 ```bash
 src=$(git rev-parse --show-toplevel)
 docker run \
-  -v $src/trino-rest-github/target/trino-rest-github-0.40-SNAPSHOT:/usr/lib/trino/plugin/github \
+  -v $src/trino-rest-github/target/trino-rest-github-0.53-SNAPSHOT:/usr/lib/trino/plugin/github \
   -v $src/catalog:/etc/trino/catalog \
   -p 8080:8080 \
   --name trino \
   -d \
-  trinodb/trino:365
+  trinodb/trino:370
 ```
 
 Connect to that server using:
 ```bash
-docker run -it --rm --link trino trinodb/trino:365 trino --server trino:8080 --catalog github --schema default
+docker run -it --rm --link trino trinodb/trino:370 trino --server trino:8080 --catalog github --schema default
 ```
 
 # Authentication and rate limits
@@ -84,7 +84,7 @@ that does this in an incremental fashion, that is it can be run in regular inter
 
 To run the `Sync` utility in `trino-rest-github`:
 ```bash
-java -cp "trino-rest-github/target/trino-rest-github-0.40-SNAPSHOT/*" pl.net.was.rest.github.Sync
+java -cp "trino-rest-github/target/trino-rest-github-0.53-SNAPSHOT/*" pl.net.was.rest.github.Sync
 ```
 
 Check how much data the `Sync` collected by running a query like:
@@ -96,7 +96,7 @@ SELECT COUNT(DISTINCT id), COUNT(*), MIN(created_at), MAX(created_at) FROM runs;
 
 To add a new table:
 
-1. Register one or more endpoints in [GithubService](src/main/java/pl/net/was/rest/github/GithubService.java).
+1. Register one or more endpoints in [GithubService](src/main/java/pl/net/was/rest/github/service/GithubService.java).
    This will be used to build HTTP requests sent to the API.
 1. Create a new model in the [model](src/main/java/pl/net/was/rest/github/model) directory.
    This class is the data model for the API response. Annotations in the constructor arguments map JSON fields into properties.

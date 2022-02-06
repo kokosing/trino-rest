@@ -163,7 +163,7 @@ public class CheckSuite
                 BIGINT.writeLong(pullRequests, pr.getNumber());
             }
         }
-        rowBuilder.appendStructure(pullRequests.build());
+        ARRAY_BIGINT.writeObject(rowBuilder, pullRequests.build());
         BIGINT.writeLong(rowBuilder, app.getId());
         VARCHAR.writeString(rowBuilder, app.getSlug());
         VARCHAR.writeString(rowBuilder, app.getName());
