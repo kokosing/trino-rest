@@ -24,13 +24,13 @@
 
     <scm>
         <developerConnection>scm:git:https://github.com/nineinchnick/trino-rest.git</developerConnection>
-      <tag>HEAD</tag>
-  </scm>
+        <tag>HEAD</tag>
+    </scm>
 
     <parent>
         <groupId>io.airlift</groupId>
         <artifactId>airbase</artifactId>
-        <version>120</version>
+        <version>121</version>
     </parent>
 
     <licenses>
@@ -58,7 +58,7 @@
         <air.check.skip-checkstyle>false</air.check.skip-checkstyle>
 
         <!-- must be in sync with Dockerfile -->
-        <dep.trino.version>371</dep.trino.version>
+        <dep.trino.version>372</dep.trino.version>
         <dep.airlift.version>214</dep.airlift.version>
         <dep.packaging.version>${dep.airlift.version}</dep.packaging.version>
         <dep.errorprone.version>2.11.0</dep.errorprone.version>
@@ -66,7 +66,6 @@
         <dep.testng.version>7.5</dep.testng.version>
 
         <project.scm.id>github</project.scm.id>
-        <argLine />
     </properties>
 
     <distributionManagement>

@@ -5,22 +5,28 @@ This is a [Trino](http://trino.io/) connector to access RESTful APIs. Please kee
 
 # Quick Start
 
-To run a Docker container with one of the connectors, set the `GITHUB_TOKEN` environmental variable, and run the following:
+To run a Docker container with one of the connectors, set the appropriate environmental variables, and run the following:
 ```bash
 docker run \
-  --tmpfs /etc/trino/catalog \
-  -v $(pwd)/catalog/github.properties:/etc/trino/catalog/github.properties \
-  -e GITHUB_TOKEN \
-  -p 8080:8080 \
+  -d \
   --name trino-rest-github \
-  nineinchnick/trino-rest:0.3
+  -e GITHUB_TOKEN \
+  -e SLACK_TOKEN \
+  -e TWITTER_TOKEN -e TWITTER_SECRET -e TWITTER_CUSTOMER_KEY -e TWITTER_CUSTOMER_SECRET \
+  -p 8080:8080 \
+  nineinchnick/trino-rest:0.56
 ```
+
+Supported connectors and their required environmental variables:
+* Github: `GITHUB_TOKEN`
+* Slack: `SLACK_TOKEN`
+* Twitter: `TWITTER_TOKEN`, `TWITTER_SECRET`, `TWITTER_CUSTOMER_KEY`, and `TWITTER_CUSTOMER_SECRET`
 
 Then use your favourite SQL client to connect to Trino running at http://localhost:8080
 
 # Usage
 
-Download one of the ZIP packages, unzip it and copy the `trino-rest-github-0.3` directory to the plugin directory on every node in your Trino cluster.
+Download one of the ZIP packages, unzip it and copy the `trino-rest-github-0.56` directory to the plugin directory on every node in your Trino cluster.
 Create a `github.properties` file in your Trino catalog directory and point to a remote repo.
 You can also use a path to a local repo if it's available on every worker node.
 

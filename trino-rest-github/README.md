@@ -41,17 +41,17 @@ An example command to run the Trino server with the git plugin and catalog enabl
 ```bash
 src=$(git rev-parse --show-toplevel)
 docker run \
-  -v $src/trino-rest-github/target/trino-rest-github-0.53-SNAPSHOT:/usr/lib/trino/plugin/github \
+  -v $src/trino-rest-github/target/trino-rest-github-0.57-SNAPSHOT:/usr/lib/trino/plugin/github \
   -v $src/catalog:/etc/trino/catalog \
   -p 8080:8080 \
   --name trino \
   -d \
-  trinodb/trino:371
+  trinodb/trino:372
 ```
 
 Connect to that server using:
 ```bash
-docker run -it --rm --link trino trinodb/trino:371 trino --server trino:8080 --catalog github --schema default
+docker run -it --rm --link trino trinodb/trino:372 trino --server trino:8080 --catalog github --schema default
 ```
 
 # Authentication and rate limits
