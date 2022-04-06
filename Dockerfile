@@ -1,5 +1,5 @@
 # Must be in sync with ${dep.trino.version} in pom.xml
-FROM trinodb/trino:374
+FROM trinodb/trino:375
 
 ARG VERSION
 

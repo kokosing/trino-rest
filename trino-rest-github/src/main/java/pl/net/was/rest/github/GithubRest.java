@@ -2410,11 +2410,6 @@ public class GithubRest
         TableStatistics.Builder builder = TableStatistics.builder();
 
         Function<RestTableHandle, Long> getter = rowCountGetters.get(tableName);
-        int multiplier = 1;
-        if (tableName == GithubTable.CHECK_RUN_ANNOTATIONS) {
-            getter = rowCountGetters.get(GithubTable.CHECK_RUNS);
-            multiplier = 4;
-        }
         if (getter != null) {
             // constraint needs to be pushed down into the table handle
             if (filter != null) {
@@ -2429,7 +2424,7 @@ public class GithubRest
             }
             long totalCount;
             try {
-                totalCount = multiplier * getter.apply(table);
+                totalCount = getter.apply(table);
             }
             catch (TrinoException e) {
                 if (!e.getErrorCode().equals(INVALID_ROW_FILTER.toErrorCode())) {
