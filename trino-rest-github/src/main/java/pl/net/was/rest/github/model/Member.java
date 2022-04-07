@@ -18,7 +18,6 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableList;
 import io.trino.spi.block.BlockBuilder;
 
-import java.time.ZonedDateTime;
 import java.util.List;
 
 import static io.trino.spi.type.BigintType.BIGINT;
