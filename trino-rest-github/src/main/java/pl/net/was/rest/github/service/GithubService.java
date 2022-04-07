@@ -14,6 +14,7 @@
 
 package pl.net.was.rest.github.service;
 
+import pl.net.was.rest.github.model.Member;
 import pl.net.was.rest.github.model.Organization;
 import pl.net.was.rest.github.model.Repository;
 import pl.net.was.rest.github.model.User;
@@ -64,6 +65,14 @@ public interface GithubService
             @Query("page") int page,
             @Query("sort") String sort,
             @Query("direction") String direction);
+
+    @Headers("accept: application/vnd.github.v3+json")
+    @GET("/orgs/{org}/members")
+    Call<List<Member>> listOrgMembers(
+            @Header("Authorization") String auth,
+            @Path("org") String org,
+            @Query("per_page") int perPage,
+            @Query("page") int page);
 
     @Headers("accept: application/vnd.github.v3+json")
     @GET("/users/{username}/repos")

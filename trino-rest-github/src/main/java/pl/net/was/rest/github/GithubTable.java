@@ -22,6 +22,7 @@ public enum GithubTable
     ORGS("orgs"),
     USERS("users"),
     REPOS("repos"),
+    MEMBERS("members"),
     PULLS("pulls"),
     PULL_COMMITS("pull_commits"),
     REVIEWS("reviews"),

@@ -35,7 +35,7 @@ public class TestGithubQueries
     public void showTables()
     {
         assertQuery("SHOW SCHEMAS FROM github", "VALUES 'default', 'information_schema'");
-        assertQuery("SHOW TABLES FROM github.default", "VALUES 'orgs', 'users', 'repos', 'issues', 'issue_comments', 'pulls', 'pull_commits', 'reviews', 'review_comments', 'workflows', 'runs', 'jobs', 'job_logs', 'steps', 'artifacts', 'runners', 'check_suites', 'check_runs', 'check_run_annotations'");
+        assertQuery("SHOW TABLES FROM github.default", "VALUES 'orgs', 'users', 'repos', 'members', 'issues', 'issue_comments', 'pulls', 'pull_commits', 'reviews', 'review_comments', 'workflows', 'runs', 'jobs', 'job_logs', 'steps', 'artifacts', 'runners', 'check_suites', 'check_runs', 'check_run_annotations'");
     }
 
     @Test
@@ -47,6 +47,8 @@ public class TestGithubQueries
                 "VALUES ('nineinchnick')");
         assertQuery("SELECT name FROM repos WHERE owner_login = 'nineinchnick' AND name = 'trino-rest'",
                 "VALUES ('trino-rest')");
+        assertQuery("SELECT login FROM members WHERE org = 'trinodb' AND login = 'martint'",
+                "VALUES ('martint')");
         assertQuery("SELECT title FROM issues WHERE owner = 'nineinchnick' AND repo = 'trino-rest' AND number = 40",
                 "VALUES ('Dynamic filtering')");
         assertQuery("SELECT user_login FROM issue_comments WHERE owner = 'nineinchnick' AND repo = 'trino-rest' AND id = 873167897",
@@ -124,6 +126,7 @@ public class TestGithubQueries
         assertQueryFails("SELECT * FROM orgs", "Missing required constraint for orgs.login");
         assertQueryFails("SELECT * FROM users", "Missing required constraint for users.login");
         assertQueryFails("SELECT * FROM repos", "Missing required constraint for repos.owner_login");
+        assertQueryFails("SELECT * FROM members", "Missing required constraint for members.org");
         assertQueryFails("SELECT * FROM issues", "Missing required constraint for issues.owner");
         assertQueryFails("SELECT * FROM issue_comments", "Missing required constraint for issue_comments.owner");
         assertQueryFails("SELECT * FROM pulls", "Missing required constraint for pulls.owner");
@@ -151,6 +154,7 @@ public class TestGithubQueries
         assertQuerySucceeds("SELECT * FROM unnest(users(1))");
         assertQuerySucceeds("SELECT * FROM unnest(user_repos('nineinchnick'))");
         assertQuerySucceeds("SELECT * FROM unnest(org_repos('trinodb'))");
+        assertQuerySucceeds("SELECT * FROM unnest(org_members('trinodb'))");
         assertQuerySucceeds("SELECT * FROM unnest(repos(1))");
         assertQuerySucceeds("SELECT * FROM unnest(issues('nineinchnick', 'trino-rest', 1, timestamp '1970-01-01 00:00:00'))");
         assertQuerySucceeds("SELECT * FROM unnest(issue_comments('nineinchnick', 'trino-rest', 1, timestamp '1970-01-01 00:00:00'))");

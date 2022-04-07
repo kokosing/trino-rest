@@ -70,6 +70,7 @@ import pl.net.was.rest.github.filter.IssueCommentFilter;
 import pl.net.was.rest.github.filter.IssueFilter;
 import pl.net.was.rest.github.filter.JobFilter;
 import pl.net.was.rest.github.filter.JobLogFilter;
+import pl.net.was.rest.github.filter.MemberFilter;
 import pl.net.was.rest.github.filter.OrgFilter;
 import pl.net.was.rest.github.filter.PullCommitFilter;
 import pl.net.was.rest.github.filter.PullFilter;
@@ -99,6 +100,7 @@ import retrofit2.Response;
 import javax.inject.Inject;
 
 import java.io.IOException;
+import java.lang.reflect.Member;
 import java.util.AbstractMap;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -238,6 +240,14 @@ public class GithubRest
                     new ColumnMetadata("created_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
                     new ColumnMetadata("updated_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
                     new ColumnMetadata("permissions", new MapType(VARCHAR, BOOLEAN, new TypeOperators()))))
+            .put(GithubTable.MEMBERS, ImmutableList.of(
+                    new ColumnMetadata("org", VARCHAR),
+                    new ColumnMetadata("login", VARCHAR),
+                    new ColumnMetadata("id", BIGINT),
+                    new ColumnMetadata("avatar_url", VARCHAR),
+                    new ColumnMetadata("gravatar_id", VARCHAR),
+                    new ColumnMetadata("type", VARCHAR),
+                    new ColumnMetadata("site_admin", BOOLEAN)))
             .put(GithubTable.PULLS, ImmutableList.of(
                     new ColumnMetadata("owner", VARCHAR),
                     new ColumnMetadata("repo", VARCHAR),
@@ -568,6 +578,7 @@ public class GithubRest
             .put(GithubTable.ORGS, this::getOrgs)
             .put(GithubTable.USERS, this::getUsers)
             .put(GithubTable.REPOS, this::getRepos)
+            .put(GithubTable.MEMBERS, this::getMembers)
             .put(GithubTable.PULLS, this::getPulls)
             .put(GithubTable.PULL_COMMITS, this::getPullCommits)
             .put(GithubTable.REVIEWS, this::getReviews)
@@ -747,6 +758,18 @@ public class GithubRest
             "updated_at timestamp(3) with time zone, " +
             "permissions map(varchar, boolean)" +
             "))";
+
+    public static final String MEMBER_ROW_TYPE = "row(" +
+            "org varchar, " +
+            "login varchar, " +
+            "id bigint, " +
+            "avatar_url varchar, " +
+            "gravatar_id varchar, " +
+            "type varchar, " +
+            "site_admin boolean" +
+            ")";
+
+    public static final String MEMBERS_TABLE_TYPE = "array(" + MEMBER_ROW_TYPE + ")";
 
     public static final String PULLS_TABLE_TYPE = "array(row(" +
             "owner varchar, " +
@@ -1075,6 +1098,7 @@ public class GithubRest
             .put(GithubTable.ORGS, new OrgFilter())
             .put(GithubTable.USERS, new UserFilter())
             .put(GithubTable.REPOS, new RepoFilter())
+            .put(GithubTable.MEMBERS, new MemberFilter())
             .put(GithubTable.CHECK_SUITES, new CheckSuiteFilter())
             .put(GithubTable.CHECK_RUNS, new CheckRunFilter())
             .put(GithubTable.CHECK_RUN_ANNOTATIONS, new CheckRunAnnotationFilter())
@@ -1241,6 +1265,29 @@ public class GithubRest
                 table.getLimit(),
                 table.getPageIncrement());
         return Iterables.concat(userRepos, orgRepos);
+    }
+
+    private Iterable<List<?>> getMembers(RestTableHandle table)
+    {
+        GithubTable tableName = GithubTable.valueOf(table);
+        Map<String, ColumnHandle> columns = columnHandles.get(tableName);
+        FilterApplier filter = filterAppliers.get(tableName);
+
+        String org = (String) filter.getFilter((RestColumnHandle) columns.get("org"), table.getConstraint());
+        requirePredicate(org, "members.org");
+        return getRowsFromPages(
+                page -> service.listOrgMembers(
+                        "Bearer " + token,
+                        org,
+                        PER_PAGE,
+                        page),
+                item -> {
+                    item.setOrg(org);
+                    return item.toRow();
+                },
+                table.getOffset(),
+                table.getLimit(),
+                table.getPageIncrement());
     }
 
     private Iterable<List<?>> getPulls(RestTableHandle table)

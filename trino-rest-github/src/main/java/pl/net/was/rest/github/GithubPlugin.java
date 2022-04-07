@@ -25,6 +25,7 @@ import pl.net.was.rest.github.function.Issues;
 import pl.net.was.rest.github.function.JobLogs;
 import pl.net.was.rest.github.function.Jobs;
 import pl.net.was.rest.github.function.Org;
+import pl.net.was.rest.github.function.OrgMembers;
 import pl.net.was.rest.github.function.OrgRepos;
 import pl.net.was.rest.github.function.OrgRunners;
 import pl.net.was.rest.github.function.Orgs;
@@ -61,6 +62,7 @@ public class GithubPlugin
                 .add(Org.class)
                 .add(Orgs.class)
                 .add(OrgRepos.class)
+                .add(OrgMembers.class)
                 .add(Users.class)
                 .add(UserGetter.class)
                 .add(UserRepos.class)
