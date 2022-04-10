@@ -76,7 +76,7 @@ public class Sync
                 "TRINO_USERNAME", username,
                 "TRINO_PASSWORD", password,
                 // notice that jog_logs and artifacts are not enabled by default
-                "SYNC_TABLES", "issues,issue_comments,pulls,reviews,review_comments,runs,jobs,steps,check_suites,check_runs,check_run_annotations",
+                "SYNC_TABLES", "commits,issues,issue_comments,pulls,reviews,review_comments,runs,jobs,steps,check_suites,check_runs,check_run_annotations",
                 "LOG_LEVEL", "INFO",
                 "EMPTY_INSERT_LIMIT", "1",
                 "CHECK_STEPS_DUPLICATES", "false",
@@ -128,6 +128,7 @@ public class Sync
         // TODO missing pull commits
         // Note that the order in which these functions are called is determined by enabledTables, not availableTables
         Map<String, Consumer<Options>> availableTables = new LinkedHashMap<>();
+        availableTables.put("commits", Sync::syncCommits);
         availableTables.put("issues", Sync::syncIssues);
         availableTables.put("issue_comments", Sync::syncIssueComments);
         availableTables.put("pulls", Sync::syncPulls);
@@ -176,6 +177,25 @@ public class Sync
             this.repo = repo;
             this.destSchema = destSchema;
             this.srcSchema = srcSchema;
+        }
+    }
+
+    private static void syncCommits(Options options)
+    {
+        Connection conn = options.conn;
+        String destSchema = options.destSchema;
+        String srcSchema = options.srcSchema;
+        try {
+            conn.createStatement().executeUpdate(
+                    "CREATE TABLE IF NOT EXISTS " + destSchema + ".commits AS SELECT * FROM " + srcSchema + ".commits WITH NO DATA");
+            // consider adding some indexes:
+            // ALTER TABLE runs ADD PRIMARY KEY (owner, repo, sha);
+
+            syncSince(options, "commits", "committer_date");
+        }
+        catch (Exception e) {
+            log.severe(e.getMessage());
+            e.printStackTrace();
         }
     }
 
@@ -253,10 +273,16 @@ public class Sync
     private static void syncSince(Options options, String name)
             throws SQLException
     {
+        syncSince(options, name, "updated_at");
+    }
+
+    private static void syncSince(Options options, String name, String columnName)
+            throws SQLException
+    {
         Connection conn = options.conn;
         String destSchema = options.destSchema;
         PreparedStatement lastUpdatedStatement = conn.prepareStatement(
-                "SELECT COALESCE(MAX(updated_at), TIMESTAMP '1970-01-01') AS latest FROM " + destSchema + "." + name + " WHERE owner = ? AND repo = ?");
+                "SELECT COALESCE(MAX(" + columnName + "), TIMESTAMP '1970-01-01') AS latest FROM " + destSchema + "." + name + " WHERE owner = ? AND repo = ?");
         lastUpdatedStatement.setString(1, options.owner);
         lastUpdatedStatement.setString(2, options.repo);
         ResultSet result = lastUpdatedStatement.executeQuery();
@@ -353,7 +379,9 @@ public class Sync
             // note that the first one is NOT a primary key, so updated records can be inserted and then removed as duplicates using:
             // DELETE FROM reviews a USING reviews b WHERE a.updated_at < b.updated_at AND a.id = b.id;
 
-            // only fetch reviews from jobs from up to 2 completed runs not older than 2 months, without any job reviews
+            // TODO would be better to just get new reviews but there's no endpoint to get them for the whole repo
+            // so fetch new review comments first and then fetch missing reviews
+            // only fetch reviews from up to 30 pulls without any reviews
             String runsQuery = format(
                     "SELECT p.number " +
                             "FROM " + destSchema + ".pulls p " +

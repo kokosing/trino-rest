@@ -16,6 +16,7 @@ package pl.net.was.rest.github.service;
 
 import pl.net.was.rest.github.model.Member;
 import pl.net.was.rest.github.model.Organization;
+import pl.net.was.rest.github.model.RepoCommit;
 import pl.net.was.rest.github.model.Repository;
 import pl.net.was.rest.github.model.User;
 import retrofit2.Call;
@@ -96,4 +97,25 @@ public interface GithubService
     Call<User> getUser(
             @Header("Authorization") String auth,
             @Path("username") String username);
+
+    @Headers("accept: application/vnd.github.v3+json")
+    @GET("/repos/{owner}/{repo}/commits")
+    Call<List<RepoCommit>> listShaCommits(
+            @Header("Authorization") String auth,
+            @Path("owner") String owner,
+            @Path("repo") String repo,
+            @Query("per_page") int perPage,
+            @Query("page") int page,
+            @Query("sha") String sha,
+            @Query("since") String since);
+
+    @Headers("accept: application/vnd.github.v3+json")
+    @GET("/repos/{owner}/{repo}/commits")
+    Call<List<RepoCommit>> listCommits(
+            @Header("Authorization") String auth,
+            @Path("owner") String owner,
+            @Path("repo") String repo,
+            @Query("per_page") int perPage,
+            @Query("page") int page,
+            @Query("since") String since);
 }

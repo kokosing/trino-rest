@@ -74,6 +74,7 @@ import pl.net.was.rest.github.filter.MemberFilter;
 import pl.net.was.rest.github.filter.OrgFilter;
 import pl.net.was.rest.github.filter.PullCommitFilter;
 import pl.net.was.rest.github.filter.PullFilter;
+import pl.net.was.rest.github.filter.RepoCommitFilter;
 import pl.net.was.rest.github.filter.RepoFilter;
 import pl.net.was.rest.github.filter.ReviewCommentFilter;
 import pl.net.was.rest.github.filter.ReviewFilter;
@@ -247,6 +248,26 @@ public class GithubRest
                     new ColumnMetadata("gravatar_id", VARCHAR),
                     new ColumnMetadata("type", VARCHAR),
                     new ColumnMetadata("site_admin", BOOLEAN)))
+            .put(GithubTable.COMMITS, ImmutableList.of(
+                    new ColumnMetadata("owner", VARCHAR),
+                    new ColumnMetadata("repo", VARCHAR),
+                    new ColumnMetadata("sha", VARCHAR),
+                    new ColumnMetadata("commit_message", VARCHAR),
+                    new ColumnMetadata("commit_tree_sha", VARCHAR),
+                    new ColumnMetadata("commit_comment_count", BIGINT),
+                    new ColumnMetadata("commit_verified", BOOLEAN),
+                    new ColumnMetadata("commit_verification_reason", VARCHAR),
+                    new ColumnMetadata("author_name", VARCHAR),
+                    new ColumnMetadata("author_email", VARCHAR),
+                    new ColumnMetadata("author_date", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
+                    new ColumnMetadata("author_id", BIGINT),
+                    new ColumnMetadata("author_login", VARCHAR),
+                    new ColumnMetadata("committer_name", VARCHAR),
+                    new ColumnMetadata("committer_email", VARCHAR),
+                    new ColumnMetadata("committer_date", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
+                    new ColumnMetadata("committer_id", BIGINT),
+                    new ColumnMetadata("committer_login", VARCHAR),
+                    new ColumnMetadata("parent_shas", new ArrayType(VARCHAR))))
             .put(GithubTable.PULLS, ImmutableList.of(
                     new ColumnMetadata("owner", VARCHAR),
                     new ColumnMetadata("repo", VARCHAR),
@@ -578,6 +599,7 @@ public class GithubRest
             .put(GithubTable.USERS, this::getUsers)
             .put(GithubTable.REPOS, this::getRepos)
             .put(GithubTable.MEMBERS, this::getMembers)
+            .put(GithubTable.COMMITS, this::getRepoCommits)
             .put(GithubTable.PULLS, this::getPulls)
             .put(GithubTable.PULL_COMMITS, this::getPullCommits)
             .put(GithubTable.REVIEWS, this::getReviews)
@@ -620,13 +642,15 @@ public class GithubRest
                     new SortItem("updated_at", SortOrder.ASC_NULLS_LAST),
                     new SortItem("pushed_at", SortOrder.ASC_NULLS_LAST),
                     new SortItem("pushed_at", SortOrder.DESC_NULLS_LAST)))
+            .put(GithubTable.COMMITS, ImmutableList.of(
+                    new SortItem("committer_date", SortOrder.DESC_NULLS_LAST)))
             .put(GithubTable.PULLS, ImmutableList.of(
                     new SortItem("created_at", SortOrder.DESC_NULLS_LAST),
                     new SortItem("created_at", SortOrder.ASC_NULLS_LAST),
                     new SortItem("updated_at", SortOrder.ASC_NULLS_LAST),
                     new SortItem("updated_at", SortOrder.DESC_NULLS_LAST)))
             .put(GithubTable.PULL_COMMITS, ImmutableList.of(
-                    new SortItem("created_at", SortOrder.ASC_NULLS_LAST)))
+                    new SortItem("committer_date", SortOrder.ASC_NULLS_LAST)))
             .put(GithubTable.REVIEWS, ImmutableList.of(
                     new SortItem("created_at", SortOrder.ASC_NULLS_LAST)))
             .put(GithubTable.REVIEW_COMMENTS, ImmutableList.of(
@@ -769,6 +793,28 @@ public class GithubRest
             ")";
 
     public static final String MEMBERS_TABLE_TYPE = "array(" + MEMBER_ROW_TYPE + ")";
+
+    public static final String COMMITS_TABLE_TYPE = "array(row(" +
+            "owner varchar, " +
+            "repo varchar, " +
+            "sha varchar, " +
+            "commit_message varchar, " +
+            "commit_tree_sha varchar, " +
+            "commit_comment_count bigint, " +
+            "commit_verified boolean, " +
+            "commit_verification_reason varchar, " +
+            "author_name varchar, " +
+            "author_email varchar, " +
+            "author_date timestamp(3) with time zone, " +
+            "author_id bigint, " +
+            "author_login varchar, " +
+            "committer_name varchar, " +
+            "committer_email varchar, " +
+            "committer_date timestamp(3) with time zone, " +
+            "committer_id bigint, " +
+            "committer_login varchar, " +
+            "parent_shas array(varchar)" +
+            "))";
 
     public static final String PULLS_TABLE_TYPE = "array(row(" +
             "owner varchar, " +
@@ -1081,6 +1127,7 @@ public class GithubRest
     private final Map<GithubTable, Map<String, ColumnHandle>> columnHandles;
 
     private final Map<GithubTable, ? extends FilterApplier> filterAppliers = new ImmutableMap.Builder<GithubTable, FilterApplier>()
+            .put(GithubTable.COMMITS, new RepoCommitFilter())
             .put(GithubTable.PULLS, new PullFilter())
             .put(GithubTable.PULL_COMMITS, new PullCommitFilter())
             .put(GithubTable.REVIEWS, new ReviewFilter())
@@ -1282,6 +1329,32 @@ public class GithubRest
                         page),
                 item -> {
                     item.setOrg(org);
+                    return item.toRow();
+                },
+                table.getOffset(),
+                table.getLimit(),
+                table.getPageIncrement());
+    }
+
+    private Iterable<List<?>> getRepoCommits(RestTableHandle table)
+    {
+        GithubTable tableName = GithubTable.valueOf(table);
+        TupleDomain<ColumnHandle> constraint = table.getConstraint();
+        Map<String, ColumnHandle> columns = columnHandles.get(tableName);
+        FilterApplier filter = filterAppliers.get(tableName);
+
+        String owner = (String) filter.getFilter((RestColumnHandle) columns.get("owner"), constraint);
+        String repo = (String) filter.getFilter((RestColumnHandle) columns.get("repo"), constraint);
+        requirePredicate(owner, "commits.owner");
+        requirePredicate(repo, "commits.repo");
+        String sha = (String) filter.getFilter((RestColumnHandle) columns.get("sha"), constraint, "master");
+        String since = (String) filter.getFilter((RestColumnHandle) columns.get("committer_date"), constraint, "1970-01-01T00:00:00Z");
+        // TODO allow filtering by state (many, comma separated, or all), requires https://github.com/nineinchnick/trino-rest/issues/30
+        return getRowsFromPages(
+                page -> service.listShaCommits("Bearer " + token, owner, repo, PER_PAGE, page, sha, since),
+                item -> {
+                    item.setOwner(owner);
+                    item.setRepo(repo);
                     return item.toRow();
                 },
                 table.getOffset(),
