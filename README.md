@@ -14,7 +14,7 @@ docker run \
   -e SLACK_TOKEN \
   -e TWITTER_TOKEN -e TWITTER_SECRET -e TWITTER_CUSTOMER_KEY -e TWITTER_CUSTOMER_SECRET \
   -p 8080:8080 \
-  nineinchnick/trino-rest:0.56
+  nineinchnick/trino-rest:0.62
 ```
 
 Supported connectors and their required environmental variables:
@@ -26,7 +26,7 @@ Then use your favourite SQL client to connect to Trino running at http://localho
 
 # Usage
 
-Download one of the ZIP packages, unzip it and copy the `trino-rest-github-0.56` directory to the plugin directory on every node in your Trino cluster.
+Download one of the ZIP packages, unzip it and copy the `trino-rest-github-0.62` directory to the plugin directory on every node in your Trino cluster.
 Create a `github.properties` file in your Trino catalog directory and point to a remote repo.
 You can also use a path to a local repo if it's available on every worker node.
 
