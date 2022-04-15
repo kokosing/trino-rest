@@ -74,6 +74,7 @@ public class Organization
     private final boolean membersCanCreatePages;
     private final boolean membersCanCreatePublicPages;
     private final boolean membersCanCreatePrivatePages;
+    private final boolean membersCanForkPrivateRepositories;
 
     public Organization(
             @JsonProperty("login") String login,
@@ -121,7 +122,8 @@ public class Organization
             @JsonProperty("members_can_create_internal_repositories") boolean membersCanCreateInternalRepositories,
             @JsonProperty("members_can_create_pages") boolean membersCanCreatePages,
             @JsonProperty("members_can_create_public_pages") boolean membersCanCreatePublicPages,
-            @JsonProperty("members_can_create_private_pages") boolean membersCanCreatePrivatePages)
+            @JsonProperty("members_can_create_private_pages") boolean membersCanCreatePrivatePages,
+            @JsonProperty("members_can_fork_private_repositories") boolean membersCanForkPrivateRepositories)
     {
         this.login = login;
         this.id = id;
@@ -169,6 +171,7 @@ public class Organization
         this.membersCanCreatePages = membersCanCreatePages;
         this.membersCanCreatePublicPages = membersCanCreatePublicPages;
         this.membersCanCreatePrivatePages = membersCanCreatePrivatePages;
+        this.membersCanForkPrivateRepositories = membersCanForkPrivateRepositories;
     }
 
     public List<?> toRow()
@@ -209,7 +212,8 @@ public class Organization
                 membersCanCreateInternalRepositories,
                 membersCanCreatePages,
                 membersCanCreatePublicPages,
-                membersCanCreatePrivatePages);
+                membersCanCreatePrivatePages,
+                membersCanForkPrivateRepositories);
     }
 
     @Override
@@ -251,5 +255,6 @@ public class Organization
         BOOLEAN.writeBoolean(rowBuilder, membersCanCreatePages);
         BOOLEAN.writeBoolean(rowBuilder, membersCanCreatePublicPages);
         BOOLEAN.writeBoolean(rowBuilder, membersCanCreatePrivatePages);
+        BOOLEAN.writeBoolean(rowBuilder, membersCanForkPrivateRepositories);
     }
 }

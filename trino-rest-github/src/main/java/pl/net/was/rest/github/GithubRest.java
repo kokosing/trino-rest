@@ -188,7 +188,8 @@ public class GithubRest
                     new ColumnMetadata("members_can_create_internal_repositories", BOOLEAN),
                     new ColumnMetadata("members_can_create_pages", BOOLEAN),
                     new ColumnMetadata("members_can_create_public_pages", BOOLEAN),
-                    new ColumnMetadata("members_can_create_private_pages", BOOLEAN)))
+                    new ColumnMetadata("members_can_create_private_pages", BOOLEAN),
+                    new ColumnMetadata("members_can_fork_private_repositories", BOOLEAN)))
             .put(GithubTable.USERS, ImmutableList.of(
                     new ColumnMetadata("login", VARCHAR),
                     new ColumnMetadata("id", BIGINT),
@@ -724,7 +725,8 @@ public class GithubRest
             "members_can_create_internal_repositories boolean, " +
             "members_can_create_pages boolean, " +
             "members_can_create_public_pages boolean, " +
-            "members_can_create_private_pages boolean" +
+            "members_can_create_private_pages boolean, " +
+            "members_can_fork_private_repositories boolean" +
             ")";
 
     public static final String ORGS_TABLE_TYPE = "array(" + ORG_ROW_TYPE + ")";

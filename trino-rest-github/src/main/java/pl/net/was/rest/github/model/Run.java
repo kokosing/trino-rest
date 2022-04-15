@@ -49,7 +49,9 @@ public class Run
     private final List<Pull> pullRequests;
     private final ZonedDateTime createdAt;
     private final ZonedDateTime updatedAt;
+    private final User actor;
     private final ZonedDateTime runStartedAt;
+    private final User triggeringActor;
     private final String jobsUrl;
     private final String logsUrl;
     private final String checkSuiteUrl;
@@ -81,7 +83,9 @@ public class Run
             @JsonProperty("pull_requests") List<Pull> pullRequests,
             @JsonProperty("created_at") ZonedDateTime createdAt,
             @JsonProperty("updated_at") ZonedDateTime updatedAt,
+            @JsonProperty("actor") User actor,
             @JsonProperty("run_started_at") ZonedDateTime runStartedAt,
+            @JsonProperty("triggering_actor") User triggeringActor,
             @JsonProperty("jobs_url") String jobsUrl,
             @JsonProperty("logs_url") String logsUrl,
             @JsonProperty("check_suite_url") String checkSuiteUrl,
@@ -112,7 +116,9 @@ public class Run
         this.pullRequests = pullRequests;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.actor = actor;
         this.runStartedAt = runStartedAt;
+        this.triggeringActor = triggeringActor;
         this.jobsUrl = jobsUrl;
         this.logsUrl = logsUrl;
         this.checkSuiteUrl = checkSuiteUrl;
