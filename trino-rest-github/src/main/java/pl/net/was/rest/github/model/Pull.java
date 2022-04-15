@@ -219,7 +219,8 @@ public class Pull
                 baseRef,
                 baseSha,
                 authorAssociation,
-                draft);
+                draft,
+                url);
     }
 
     @Override
@@ -303,5 +304,6 @@ public class Pull
         writeString(rowBuilder, baseSha);
         writeString(rowBuilder, authorAssociation);
         BOOLEAN.writeBoolean(rowBuilder, draft);
+        writeString(rowBuilder, url);
     }
 }

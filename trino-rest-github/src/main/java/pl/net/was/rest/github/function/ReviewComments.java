@@ -29,8 +29,10 @@ import pl.net.was.rest.github.model.ReviewComment;
 import retrofit2.Response;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
+import static io.trino.spi.type.StandardTypes.BIGINT;
 import static io.trino.spi.type.StandardTypes.INTEGER;
 import static io.trino.spi.type.StandardTypes.VARCHAR;
 import static java.net.HttpURLConnection.HTTP_NOT_FOUND;
@@ -39,8 +41,6 @@ import static java.util.Objects.requireNonNull;
 import static pl.net.was.rest.github.GithubRest.REVIEW_COMMENTS_TABLE_TYPE;
 import static pl.net.was.rest.github.GithubRest.getRowType;
 
-@ScalarFunction(value = "review_comments", deterministic = false)
-@Description("Get review comments")
 public class ReviewComments
         extends BaseFunction
 {
@@ -51,6 +51,8 @@ public class ReviewComments
         pageBuilder = new PageBuilder(ImmutableList.of(arrayType));
     }
 
+    @ScalarFunction(value = "review_comments", deterministic = false)
+    @Description("Get review comments")
     @SqlType(REVIEW_COMMENTS_TABLE_TYPE)
     public Block getPage(
             @SqlType(VARCHAR) Slice owner,
@@ -76,5 +78,44 @@ public class ReviewComments
         items.forEach(i -> i.setOwner(owner.toStringUtf8()));
         items.forEach(i -> i.setRepo(repo.toStringUtf8()));
         return buildBlock(items);
+    }
+
+    @ScalarFunction(value = "review_comments", deterministic = false)
+    @Description("Get review comments for a pull request")
+    @SqlType(REVIEW_COMMENTS_TABLE_TYPE)
+    public Block getPullComments(
+            @SqlType(VARCHAR) Slice owner,
+            @SqlType(VARCHAR) Slice repo,
+            @SqlType(BIGINT) long pullNumber)
+            throws IOException
+    {
+        // there should not be more than a few pages worth of comments, so try to get all of them
+        List<ReviewComment> comments = new ArrayList<>();
+        int page = 1;
+        while (true) {
+            Response<List<ReviewComment>> response = service.listPullComments(
+                    "Bearer " + token,
+                    owner.toStringUtf8(),
+                    repo.toStringUtf8(),
+                    pullNumber,
+                    PER_PAGE,
+                    page++).execute();
+            if (response.code() == HTTP_NOT_FOUND) {
+                break;
+            }
+            Rest.checkServiceResponse(response);
+            List<ReviewComment> items = requireNonNull(response.body(), "response body is null");
+            if (items.size() == 0) {
+                break;
+            }
+            items.forEach(i -> i.setOwner(owner.toStringUtf8()));
+            items.forEach(i -> i.setRepo(repo.toStringUtf8()));
+            items.forEach(i -> i.setPullNumber(pullNumber));
+            comments.addAll(items);
+            if (items.size() < PER_PAGE) {
+                break;
+            }
+        }
+        return buildBlock(comments);
     }
 }

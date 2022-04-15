@@ -91,20 +91,20 @@ public class PullCommit
                 sha,
                 pullNumber,
                 commit.getMessage(),
-                commit.getTree().getSha(),
+                commit.getTree() != null ? commit.getTree().getSha() : "",
                 commit.getCommentCount(),
-                commit.getVerification().getVerified(),
-                commit.getVerification().getReason(),
+                commit.getVerification() != null ? commit.getVerification().getVerified() : false,
+                commit.getVerification() != null ? commit.getVerification().getReason() : "",
                 commit.getAuthor().getName(),
                 commit.getAuthor().getEmail(),
                 packTimestamp(commit.getAuthor().getDate()),
-                author.getId(),
-                author.getLogin(),
+                author != null ? author.getId() : 0,
+                author != null ? author.getLogin() : "",
                 commit.getCommitter().getName(),
                 commit.getCommitter().getEmail(),
                 packTimestamp(commit.getCommitter().getDate()),
-                committer.getId(),
-                committer.getLogin(),
+                committer != null ? committer.getId() : 0,
+                committer != null ? committer.getLogin() : "",
                 parentShas.build());
     }
 
@@ -116,20 +116,20 @@ public class PullCommit
         writeString(rowBuilder, sha);
         BIGINT.writeLong(rowBuilder, pullNumber);
         writeString(rowBuilder, commit.getMessage());
-        writeString(rowBuilder, commit.getTree().getSha());
+        writeString(rowBuilder, commit.getTree() != null ? commit.getTree().getSha() : "");
         BIGINT.writeLong(rowBuilder, commit.getCommentCount());
-        BOOLEAN.writeBoolean(rowBuilder, commit.getVerification().getVerified());
-        writeString(rowBuilder, commit.getVerification().getReason());
+        BOOLEAN.writeBoolean(rowBuilder, commit.getVerification() != null ? commit.getVerification().getVerified() : false);
+        writeString(rowBuilder, commit.getVerification() != null ? commit.getVerification().getReason() : "");
         writeString(rowBuilder, commit.getAuthor().getName());
         writeString(rowBuilder, commit.getAuthor().getEmail());
         writeTimestamp(rowBuilder, commit.getAuthor().getDate());
-        BIGINT.writeLong(rowBuilder, author.getId());
-        writeString(rowBuilder, author.getLogin());
+        BIGINT.writeLong(rowBuilder, author != null ? author.getId() : 0);
+        writeString(rowBuilder, author != null ? author.getLogin() : "");
         writeString(rowBuilder, commit.getCommitter().getName());
         writeString(rowBuilder, commit.getCommitter().getEmail());
         writeTimestamp(rowBuilder, commit.getCommitter().getDate());
-        BIGINT.writeLong(rowBuilder, committer.getId());
-        writeString(rowBuilder, committer.getLogin());
+        BIGINT.writeLong(rowBuilder, committer != null ? committer.getId() : 0);
+        writeString(rowBuilder, committer != null ? committer.getLogin() : "");
 
         // parents array
         BlockBuilder parentShas = VARCHAR.createBlockBuilder(null, parents.size());

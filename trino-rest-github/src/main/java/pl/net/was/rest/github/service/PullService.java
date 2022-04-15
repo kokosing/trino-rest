@@ -72,4 +72,14 @@ public interface PullService
             @Query("sort") String sort,
             @Query("direction") String direction,
             @Query("since") String since);
+
+    @Headers("accept: application/vnd.github.v3+json")
+    @GET("/repos/{owner}/{repo}/pulls/{pull_number}/comments")
+    Call<List<ReviewComment>> listPullComments(
+            @Header("Authorization") String auth,
+            @Path("owner") String owner,
+            @Path("repo") String repo,
+            @Path("pull_number") long pullNumber,
+            @Query("per_page") int perPage,
+            @Query("page") int page);
 }

@@ -28,6 +28,7 @@ public class ReviewCommentFilter
     {
         return ImmutableMap.of(
                 "owner", FilterType.EQUAL,
-                "repo", FilterType.EQUAL);
+                "repo", FilterType.EQUAL,
+                "pull_number", FilterType.EQUAL);
     }
 }

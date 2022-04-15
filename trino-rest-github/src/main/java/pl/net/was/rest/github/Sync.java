@@ -76,7 +76,7 @@ public class Sync
                 "TRINO_USERNAME", username,
                 "TRINO_PASSWORD", password,
                 // notice that jog_logs and artifacts are not enabled by default
-                "SYNC_TABLES", "commits,issues,issue_comments,pulls,reviews,review_comments,runs,jobs,steps,check_suites,check_runs,check_run_annotations",
+                "SYNC_TABLES", "commits,issues,issue_comments,pulls,pull_commits,review_comments,reviews,runs,jobs,steps,check_suites,check_runs,check_run_annotations",
                 "LOG_LEVEL", "INFO",
                 "EMPTY_INSERT_LIMIT", "1",
                 "CHECK_STEPS_DUPLICATES", "false",
@@ -125,13 +125,13 @@ public class Sync
 
         Options options = new Options(null, owner, repo, destSchema, srcSchema);
 
-        // TODO missing pull commits
         // Note that the order in which these functions are called is determined by enabledTables, not availableTables
         Map<String, Consumer<Options>> availableTables = new LinkedHashMap<>();
         availableTables.put("commits", Sync::syncCommits);
         availableTables.put("issues", Sync::syncIssues);
         availableTables.put("issue_comments", Sync::syncIssueComments);
         availableTables.put("pulls", Sync::syncPulls);
+        availableTables.put("pull_commits", Sync::syncPullCommits);
         availableTables.put("reviews", Sync::syncReviews);
         availableTables.put("review_comments", Sync::syncReviewComments);
         availableTables.put("runs", Sync::syncRuns);
@@ -254,15 +254,95 @@ public class Sync
             conn.createStatement().executeUpdate(
                     "CREATE TABLE IF NOT EXISTS " + destSchema + ".review_comments AS SELECT * FROM " + srcSchema + ".review_comments WITH NO DATA");
             // consider adding some indexes:
-            // CREATE INDEX ON review_comments(owner, repo);
             // CREATE INDEX ON review_comments(id);
+            // CREATE INDEX ON review_comments(owner, repo);
             // CREATE INDEX ON review_comments(user_id);
             // CREATE INDEX ON review_comments(pull_request_review_id);
             // CREATE INDEX ON review_comments(in_reply_to_id);
             // note that the first one is NOT a primary key, so updated records can be inserted and then removed as duplicates using a procedure
             // DELETE FROM review_comments a USING review_comments b WHERE a.updated_at < b.updated_at AND a.id = b.id;
 
-            syncSince(options, "review_comments");
+            try {
+                syncSince(options, "review_comments");
+            }
+            catch (Exception e) {
+                // fetching comments since the epoch can fail with a Server Error, so fall back to fetching them for every review
+                // TODO how to distinguish rate limit errors?
+                log.severe("Failed to get latest updated review comments, falling back to checking every review: " + e.getMessage());
+
+                syncAllReviewComments(options);
+            }
+        }
+        catch (Exception e) {
+            log.severe(e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private static void syncAllReviewComments(Options options)
+    {
+        Connection conn = options.conn;
+        String destSchema = options.destSchema;
+        String srcSchema = options.srcSchema;
+        try {
+            conn.createStatement().executeUpdate(
+                    "CREATE TABLE IF NOT EXISTS " + destSchema + ".review_comments AS SELECT * FROM " + srcSchema + ".review_comments WITH NO DATA");
+            // consider adding some indexes:
+            // CREATE INDEX ON review_comments(id);
+            // CREATE INDEX ON review_comments(owner, repo);
+            // CREATE INDEX ON review_comments(user_id);
+            // CREATE INDEX ON review_comments(pull_request_review_id);
+            // CREATE INDEX ON review_comments(in_reply_to_id);
+            // note that the first one is NOT a primary key, so updated records can be inserted and then removed as duplicates using a procedure
+            // DELETE FROM review_comments a USING review_comments b WHERE a.updated_at < b.updated_at AND a.id = b.id;
+
+            // only fetch review comments from up to 30 reviews without any comments
+            String runsQuery = format(
+                    "SELECT r.id, r.pull_number " +
+                            "FROM " + destSchema + ".reviews r " +
+                            "LEFT JOIN " + destSchema + ".review_comments c ON c.pull_request_review_id = r.id " +
+                            "WHERE r.owner = ? AND r.repo = ? AND r.id > ? " +
+                            "GROUP BY r.id, r.pull_number " +
+                            "HAVING COUNT(c.id) = 0 " +
+                            "ORDER BY r.id ASC LIMIT %d", 30);
+            // since there's no difference between reviews without comments and those we have not checked or yet,
+            // we need to know the last checked review id and add a condition to fetch lesser numbers
+            PreparedStatement idStatement = conn.prepareStatement("SELECT max(r.id) FROM (" + runsQuery + ") r");
+            idStatement.setString(1, options.owner);
+            idStatement.setString(2, options.repo);
+
+            PreparedStatement insertStatement = conn.prepareStatement(
+                    "INSERT INTO " + destSchema + ".review_comments " +
+                            "SELECT src.* " +
+                            "FROM (" + runsQuery + ") r " +
+                            "CROSS JOIN unnest(review_comments(?, ?, r.pull_number)) src " +
+                            "LEFT JOIN " + destSchema + ".review_comments dst ON dst.id = src.id " +
+                            "WHERE dst.id IS NULL");
+            insertStatement.setString(1, options.owner);
+            insertStatement.setString(2, options.repo);
+            insertStatement.setString(4, options.owner);
+            insertStatement.setString(5, options.repo);
+
+            long previousId = 0;
+            while (true) {
+                idStatement.setLong(3, previousId);
+                insertStatement.setLong(3, previousId);
+
+                log.info("Checking for next reviews without comments");
+                ResultSet resultSet = idStatement.executeQuery();
+                if (!resultSet.next()) {
+                    break;
+                }
+                previousId = resultSet.getLong(1);
+                if (resultSet.wasNull()) {
+                    break;
+                }
+
+                log.info(format("Fetching comments for reviews with id greater than %d", previousId));
+                long startTime = System.currentTimeMillis();
+                int rows = retryExecute(insertStatement);
+                log.info(format("Inserted %d rows, took %s", rows, Duration.ofMillis(System.currentTimeMillis() - startTime)));
+            }
         }
         catch (Exception e) {
             log.severe(e.getMessage());
@@ -362,6 +442,71 @@ public class Sync
         }
     }
 
+    private static void syncPullCommits(Options options)
+    {
+        Connection conn = options.conn;
+        String destSchema = options.destSchema;
+        String srcSchema = options.srcSchema;
+        try {
+            conn.createStatement().executeUpdate(
+                    "CREATE TABLE IF NOT EXISTS " + destSchema + ".pull_commits AS SELECT * FROM " + srcSchema + ".pull_commits WITH NO DATA");
+            // consider adding some indexes:
+            // ALTER TABLE pull_commits ADD PRIMARY KEY (owner, repo, pull_number, sha);
+
+            // only fetch pull commits from up to 30 merged pulls without any commits
+            String runsQuery = format(
+                    "SELECT p.number " +
+                            "FROM " + destSchema + ".unique_pulls p " +
+                            "LEFT JOIN " + destSchema + ".pull_commits c ON c.pull_number = p.number " +
+                            "WHERE p.owner = ? AND p.repo = ? AND p.state = 'closed' AND p.number > ? " +
+                            "GROUP BY p.number " +
+                            "HAVING COUNT(c.sha) = 0 " +
+                            "ORDER BY p.number ASC LIMIT %d", 30);
+            // since there's no difference between pulls without commits and those we have not checked or yet,
+            // we need to know the last checked pull number and add a condition to fetch lesser numbers
+            PreparedStatement idStatement = conn.prepareStatement("SELECT max(p.number) FROM (" + runsQuery + ") p");
+            idStatement.setString(1, options.owner);
+            idStatement.setString(2, options.repo);
+
+            PreparedStatement insertStatement = conn.prepareStatement(
+                    "INSERT INTO " + destSchema + ".pull_commits " +
+                            "SELECT src.* " +
+                            "FROM (" + runsQuery + ") p " +
+                            "CROSS JOIN unnest(pull_commits(?, ?, p.number)) src " +
+                            "LEFT JOIN " + destSchema + ".pull_commits dst ON dst.sha = src.sha " +
+                            "WHERE dst.sha IS NULL");
+            insertStatement.setString(1, options.owner);
+            insertStatement.setString(2, options.repo);
+            insertStatement.setString(4, options.owner);
+            insertStatement.setString(5, options.repo);
+
+            long previousId = 0;
+            while (true) {
+                idStatement.setLong(3, previousId);
+                insertStatement.setLong(3, previousId);
+
+                log.info("Checking for next closed pulls without commits");
+                ResultSet resultSet = idStatement.executeQuery();
+                if (!resultSet.next()) {
+                    break;
+                }
+                previousId = resultSet.getLong(1);
+                if (resultSet.wasNull()) {
+                    break;
+                }
+
+                log.info(format("Fetching commits for pulls with number greater than %d", previousId));
+                long startTime = System.currentTimeMillis();
+                int rows = retryExecute(insertStatement);
+                log.info(format("Inserted %d rows, took %s", rows, Duration.ofMillis(System.currentTimeMillis() - startTime)));
+            }
+        }
+        catch (Exception e) {
+            log.severe(e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
     private static void syncReviews(Options options)
     {
         Connection conn = options.conn;
@@ -379,12 +524,78 @@ public class Sync
             // note that the first one is NOT a primary key, so updated records can be inserted and then removed as duplicates using:
             // DELETE FROM reviews a USING reviews b WHERE a.updated_at < b.updated_at AND a.id = b.id;
 
-            // TODO would be better to just get new reviews but there's no endpoint to get them for the whole repo
-            // so fetch new review comments first and then fetch missing reviews
+            // would be better to just get new reviews but there's no endpoint to get them for the whole repo
+            // so assuming that review comments might have been fetched first, fetch missing reviews
+
+            // check if there are any review comments at all, and if not, call instead syncAllReviews()
+            ResultSet comments = conn.prepareStatement("SELECT * FROM " + destSchema + ".review_comments LIMIT 1")
+                    .executeQuery();
+            if (!comments.next()) {
+                syncAllReviews(options);
+                return;
+            }
+
+            // only fetch up to 10 pulls for comments without reviews
+            String prQuery = format(
+                    "SELECT p.number " +
+                            "FROM " + destSchema + ".unique_review_comments c " +
+                            "LEFT JOIN " + destSchema + ".reviews r ON r.id = c.pull_request_review_id " +
+                            "JOIN " + destSchema + ".unique_pulls p ON p.url = c.pull_request_url " +
+                            "WHERE c.owner = ? AND c.repo = ? AND r.id IS NULL " +
+                            "GROUP BY p.number " +
+                            "ORDER BY p.number ASC LIMIT %d", 10);
+
+            PreparedStatement insertStatement = conn.prepareStatement(
+                    "INSERT INTO " + destSchema + ".reviews " +
+                            "SELECT src.* " +
+                            "FROM (" + prQuery + ") p " +
+                            "CROSS JOIN unnest(reviews(?, ?, p.number)) src " +
+                            "LEFT JOIN " + destSchema + ".reviews dst ON dst.id = src.id " +
+                            "WHERE dst.id IS NULL");
+            insertStatement.setString(1, options.owner);
+            insertStatement.setString(2, options.repo);
+            insertStatement.setString(3, options.owner);
+            insertStatement.setString(4, options.repo);
+
+            while (true) {
+                log.info("Checking for next review comments without reviews");
+
+                long startTime = System.currentTimeMillis();
+                int rows = retryExecute(insertStatement);
+                log.info(format("Inserted %d rows, took %s", rows, Duration.ofMillis(System.currentTimeMillis() - startTime)));
+                if (rows == 0) {
+                    break;
+                }
+            }
+        }
+        catch (Exception e) {
+            log.severe(e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private static void syncAllReviews(Options options)
+    {
+        Connection conn = options.conn;
+        String destSchema = options.destSchema;
+        String srcSchema = options.srcSchema;
+        try {
+            conn.createStatement().executeUpdate(
+                    "CREATE TABLE IF NOT EXISTS " + destSchema + ".reviews AS SELECT * FROM " + srcSchema + ".reviews WITH NO DATA");
+            // consider adding some indexes:
+            // CREATE INDEX ON reviews(owner, repo);
+            // CREATE INDEX ON reviews(id);
+            // CREATE INDEX ON reviews(user_id);
+            // CREATE INDEX ON reviews(pull_number);
+            // CREATE INDEX ON reviews(state);
+            // note that the first one is NOT a primary key, so updated records can be inserted and then removed as duplicates using:
+            // DELETE FROM reviews a USING reviews b WHERE a.updated_at < b.updated_at AND a.id = b.id;
+
+            // TODO only fall back to this if there are no reviews at all
             // only fetch reviews from up to 30 pulls without any reviews
             String runsQuery = format(
                     "SELECT p.number " +
-                            "FROM " + destSchema + ".pulls p " +
+                            "FROM " + destSchema + ".unique_pulls p " +
                             "LEFT JOIN " + destSchema + ".reviews r ON r.pull_number = p.number " +
                             "WHERE p.owner = ? AND p.repo = ? AND p.number < ? " +
                             "GROUP BY p.number " +

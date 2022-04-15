@@ -91,6 +91,7 @@ import pl.net.was.rest.github.model.Job;
 import pl.net.was.rest.github.model.JobsList;
 import pl.net.was.rest.github.model.Organization;
 import pl.net.was.rest.github.model.Repository;
+import pl.net.was.rest.github.model.ReviewComment;
 import pl.net.was.rest.github.model.RunnersList;
 import pl.net.was.rest.github.model.Step;
 import pl.net.was.rest.github.model.User;
@@ -298,7 +299,8 @@ public class GithubRest
                     new ColumnMetadata("base_ref", VARCHAR),
                     new ColumnMetadata("base_sha", VARCHAR),
                     new ColumnMetadata("author_association", VARCHAR),
-                    new ColumnMetadata("draft", BOOLEAN)))
+                    new ColumnMetadata("draft", BOOLEAN),
+                    new ColumnMetadata("url", VARCHAR)))
             .put(GithubTable.PULL_COMMITS, ImmutableList.of(
                     new ColumnMetadata("owner", VARCHAR),
                     new ColumnMetadata("repo", VARCHAR),
@@ -337,6 +339,9 @@ public class GithubRest
             .put(GithubTable.REVIEW_COMMENTS, ImmutableList.of(
                     new ColumnMetadata("owner", VARCHAR),
                     new ColumnMetadata("repo", VARCHAR),
+                    // this column is filled in from request params, it is not returned by the api
+                    new ColumnMetadata("pull_number", BIGINT),
+                    new ColumnMetadata("pull_request_url", VARCHAR),
                     new ColumnMetadata("pull_request_review_id", BIGINT),
                     new ColumnMetadata("id", BIGINT),
                     new ColumnMetadata("diff_hunk", VARCHAR),
@@ -846,7 +851,8 @@ public class GithubRest
             "base_ref varchar, " +
             "base_sha varchar, " +
             "author_association varchar, " +
-            "draft boolean" +
+            "draft boolean, " +
+            "url varchar" +
             "))";
 
     public static final String PULL_COMMITS_TABLE_TYPE = "array(row(" +
@@ -889,6 +895,8 @@ public class GithubRest
     public static final String REVIEW_COMMENTS_TABLE_TYPE = "array(row(" +
             "owner varchar, " +
             "repo varchar, " +
+            "pull_number bigint, " +
+            "pull_request_url varchar, " +
             "pull_request_review_id bigint, " +
             "id bigint, " +
             "diff_hunk varchar, " +
@@ -1482,22 +1490,24 @@ public class GithubRest
         String repo = (String) filter.getFilter((RestColumnHandle) columns.get("repo"), constraint);
         requirePredicate(owner, "review_comments.owner");
         requirePredicate(repo, "review_comments.repo");
-        String since = (String) filter.getFilter((RestColumnHandle) columns.get("updated_at"), constraint, "1970-01-01T00:00:00Z");
-        // TODO allow filtering by pull number, this would require using a different endpoint
-        SortItem sortOrder = getSortItem(table);
+        Long pullNumber = (Long) filter.getFilter((RestColumnHandle) columns.get("pull_number"), constraint);
+        IntFunction<Call<List<ReviewComment>>> fetcher;
+        if (pullNumber != null) {
+            fetcher = page -> service.listPullComments("Bearer " + token, owner, repo, pullNumber, PER_PAGE, page);
+        }
+        else {
+            String since = (String) filter.getFilter((RestColumnHandle) columns.get("updated_at"), constraint, "1970-01-01T00:00:00Z");
+            SortItem sortOrder = getSortItem(table);
+            fetcher = page -> service.listReviewComments("Bearer " + token, owner, repo, PER_PAGE, page, sortOrder.getName(), sortOrder.getSortOrder().isAscending() ? "asc" : "desc", since);
+        }
         return getRowsFromPages(
-                page -> service.listReviewComments(
-                        "Bearer " + token,
-                        owner,
-                        repo,
-                        PER_PAGE,
-                        page,
-                        sortOrder.getName(),
-                        sortOrder.getSortOrder().isAscending() ? "asc" : "desc",
-                        since),
+                fetcher,
                 item -> {
                     item.setOwner(owner);
                     item.setRepo(repo);
+                    if (pullNumber != null) {
+                        item.setPullNumber(pullNumber);
+                    }
                     return item.toRow();
                 },
                 table.getOffset(),
@@ -1954,6 +1964,7 @@ public class GithubRest
         Optional<String> owner = filters.get("owner");
         Optional<String> repo = filters.get("repo");
         Supplier<Call<RunnersList>> fetcher;
+        //noinspection OptionalIsPresent
         if (org.isPresent()) {
             fetcher = () -> service.listOrgRunners("Bearer " + token, org.get(), 0, 1);
         }

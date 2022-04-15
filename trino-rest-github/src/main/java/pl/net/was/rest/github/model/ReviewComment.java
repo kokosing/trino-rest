@@ -29,6 +29,8 @@ public class ReviewComment
 {
     private String owner;
     private String repo;
+    // this is only set when fetching comments for a specific PR
+    private long pullNumber;
     private final String url;
     private final long pullRequestReviewId;
     private final long id;
@@ -120,11 +122,18 @@ public class ReviewComment
         this.repo = repo;
     }
 
+    public void setPullNumber(long pullNumber)
+    {
+        this.pullNumber = pullNumber;
+    }
+
     public List<?> toRow()
     {
         return ImmutableList.of(
                 owner,
                 repo,
+                pullNumber,
+                pullRequestUrl,
                 pullRequestReviewId,
                 id,
                 diffHunk,
@@ -153,6 +162,8 @@ public class ReviewComment
     {
         writeString(rowBuilder, owner);
         writeString(rowBuilder, repo);
+        BIGINT.writeLong(rowBuilder, pullNumber);
+        writeString(rowBuilder, pullRequestUrl);
         BIGINT.writeLong(rowBuilder, pullRequestReviewId);
         BIGINT.writeLong(rowBuilder, id);
         writeString(rowBuilder, diffHunk);
