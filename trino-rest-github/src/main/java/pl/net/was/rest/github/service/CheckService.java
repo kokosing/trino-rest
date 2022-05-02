@@ -39,7 +39,7 @@ public interface CheckService
             @Query("page") int page);
 
     @Headers("accept: application/vnd.github.v3+json")
-    @GET("/repos/{owner}/{repo}/commits/{ref}/check-runs")
+    @GET("/repos/{owner}/{repo}/commits/{ref}/check-runs?filter=all")
     Call<CheckRunsList> listCheckRuns(
             @Header("Authorization") String auth,
             @Path("owner") String owner,
