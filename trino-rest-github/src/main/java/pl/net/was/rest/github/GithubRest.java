@@ -81,6 +81,7 @@ import pl.net.was.rest.github.filter.ReviewFilter;
 import pl.net.was.rest.github.filter.RunFilter;
 import pl.net.was.rest.github.filter.RunnerFilter;
 import pl.net.was.rest.github.filter.StepFilter;
+import pl.net.was.rest.github.filter.TeamFilter;
 import pl.net.was.rest.github.filter.UserFilter;
 import pl.net.was.rest.github.filter.WorkflowFilter;
 import pl.net.was.rest.github.function.JobLogs;
@@ -89,6 +90,7 @@ import pl.net.was.rest.github.model.ArtifactsList;
 import pl.net.was.rest.github.model.Envelope;
 import pl.net.was.rest.github.model.Job;
 import pl.net.was.rest.github.model.JobsList;
+import pl.net.was.rest.github.model.Member;
 import pl.net.was.rest.github.model.Organization;
 import pl.net.was.rest.github.model.Repository;
 import pl.net.was.rest.github.model.ReviewComment;
@@ -244,12 +246,28 @@ public class GithubRest
                     new ColumnMetadata("permissions", new MapType(VARCHAR, BOOLEAN, new TypeOperators()))))
             .put(GithubTable.MEMBERS, ImmutableList.of(
                     new ColumnMetadata("org", VARCHAR),
+                    new ColumnMetadata("team_slug", VARCHAR),
                     new ColumnMetadata("login", VARCHAR),
                     new ColumnMetadata("id", BIGINT),
                     new ColumnMetadata("avatar_url", VARCHAR),
                     new ColumnMetadata("gravatar_id", VARCHAR),
                     new ColumnMetadata("type", VARCHAR),
                     new ColumnMetadata("site_admin", BOOLEAN)))
+            .put(GithubTable.TEAMS, ImmutableList.of(
+                    new ColumnMetadata("org", VARCHAR),
+                    new ColumnMetadata("id", BIGINT),
+                    new ColumnMetadata("node_id", VARCHAR),
+                    new ColumnMetadata("url", VARCHAR),
+                    new ColumnMetadata("html_url", VARCHAR),
+                    new ColumnMetadata("name", VARCHAR),
+                    new ColumnMetadata("slug", VARCHAR),
+                    new ColumnMetadata("description", VARCHAR),
+                    new ColumnMetadata("privacy", VARCHAR),
+                    new ColumnMetadata("permission", VARCHAR),
+                    new ColumnMetadata("members_url", VARCHAR),
+                    new ColumnMetadata("repositories_url", VARCHAR),
+                    new ColumnMetadata("parent_id", BIGINT),
+                    new ColumnMetadata("parent_slug", VARCHAR)))
             .put(GithubTable.COMMITS, ImmutableList.of(
                     new ColumnMetadata("owner", VARCHAR),
                     new ColumnMetadata("repo", VARCHAR),
@@ -605,6 +623,7 @@ public class GithubRest
             .put(GithubTable.USERS, this::getUsers)
             .put(GithubTable.REPOS, this::getRepos)
             .put(GithubTable.MEMBERS, this::getMembers)
+            .put(GithubTable.TEAMS, this::getTeams)
             .put(GithubTable.COMMITS, this::getRepoCommits)
             .put(GithubTable.PULLS, this::getPulls)
             .put(GithubTable.PULL_COMMITS, this::getPullCommits)
@@ -791,6 +810,7 @@ public class GithubRest
 
     public static final String MEMBER_ROW_TYPE = "row(" +
             "org varchar, " +
+            "team_slug varchar, " +
             "login varchar, " +
             "id bigint, " +
             "avatar_url varchar, " +
@@ -800,6 +820,25 @@ public class GithubRest
             ")";
 
     public static final String MEMBERS_TABLE_TYPE = "array(" + MEMBER_ROW_TYPE + ")";
+
+    public static final String TEAM_ROW_TYPE = "row(" +
+            "org varchar, " +
+            "id bigint, " +
+            "node_id varchar, " +
+            "url varchar, " +
+            "html_url varchar, " +
+            "name varchar, " +
+            "slug varchar, " +
+            "description varchar, " +
+            "privacy varchar, " +
+            "permission varchar, " +
+            "members_url varchar, " +
+            "repositories_url varchar, " +
+            "parent_id bigint, " +
+            "parent_slug boolean" +
+            ")";
+
+    public static final String TEAMS_TABLE_TYPE = "array(" + TEAM_ROW_TYPE + ")";
 
     public static final String COMMITS_TABLE_TYPE = "array(row(" +
             "owner varchar, " +
@@ -1155,6 +1194,7 @@ public class GithubRest
             .put(GithubTable.USERS, new UserFilter())
             .put(GithubTable.REPOS, new RepoFilter())
             .put(GithubTable.MEMBERS, new MemberFilter())
+            .put(GithubTable.TEAMS, new TeamFilter())
             .put(GithubTable.CHECK_SUITES, new CheckSuiteFilter())
             .put(GithubTable.CHECK_RUNS, new CheckRunFilter())
             .put(GithubTable.CHECK_RUN_ANNOTATIONS, new CheckRunAnnotationFilter())
@@ -1331,12 +1371,45 @@ public class GithubRest
 
         String org = (String) filter.getFilter((RestColumnHandle) columns.get("org"), table.getConstraint());
         requirePredicate(org, "members.org");
+        String teamSlug = (String) filter.getFilter((RestColumnHandle) columns.get("team_slug"), table.getConstraint());
+        IntFunction<Call<List<Member>>> fetcher;
+        if (teamSlug != null) {
+            fetcher = page -> service.listOrgTeamMembers(
+                    "Bearer " + token,
+                    org,
+                    teamSlug,
+                    PER_PAGE,
+                    page);
+        }
+        else {
+            fetcher = page -> service.listOrgMembers(
+                    "Bearer " + token,
+                    org,
+                    PER_PAGE,
+                    page);
+        }
         return getRowsFromPages(
-                page -> service.listOrgMembers(
-                        "Bearer " + token,
-                        org,
-                        PER_PAGE,
-                        page),
+                fetcher,
+                item -> {
+                    item.setOrg(org);
+                    item.setTeamSlug(teamSlug);
+                    return item.toRow();
+                },
+                table.getOffset(),
+                table.getLimit(),
+                table.getPageIncrement());
+    }
+
+    private Iterable<List<?>> getTeams(RestTableHandle table)
+    {
+        GithubTable tableName = GithubTable.valueOf(table);
+        Map<String, ColumnHandle> columns = columnHandles.get(tableName);
+        FilterApplier filter = filterAppliers.get(tableName);
+
+        String org = (String) filter.getFilter((RestColumnHandle) columns.get("org"), table.getConstraint());
+        requirePredicate(org, "teams.org");
+        return getRowsFromPages(
+                page -> service.listOrgTeams("Bearer " + token, org, PER_PAGE, page),
                 item -> {
                     item.setOrg(org);
                     return item.toRow();

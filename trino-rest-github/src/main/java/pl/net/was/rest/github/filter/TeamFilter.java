@@ -20,14 +20,13 @@ import pl.net.was.rest.filter.FilterType;
 
 import java.util.Map;
 
-public class MemberFilter
+public class TeamFilter
         implements FilterApplier
 {
     @Override
     public Map<String, FilterType> getSupportedFilters()
     {
         return ImmutableMap.of(
-                "org", FilterType.EQUAL,
-                "team_slug", FilterType.EQUAL);
+                "org", FilterType.EQUAL);
     }
 }

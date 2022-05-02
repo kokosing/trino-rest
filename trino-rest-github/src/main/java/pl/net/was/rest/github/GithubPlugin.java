@@ -38,6 +38,8 @@ import pl.net.was.rest.github.function.Reviews;
 import pl.net.was.rest.github.function.Runners;
 import pl.net.was.rest.github.function.Runs;
 import pl.net.was.rest.github.function.Steps;
+import pl.net.was.rest.github.function.TeamMembers;
+import pl.net.was.rest.github.function.Teams;
 import pl.net.was.rest.github.function.UserGetter;
 import pl.net.was.rest.github.function.UserRepos;
 import pl.net.was.rest.github.function.Users;
@@ -64,6 +66,8 @@ public class GithubPlugin
                 .add(Orgs.class)
                 .add(OrgRepos.class)
                 .add(OrgMembers.class)
+                .add(TeamMembers.class)
+                .add(Teams.class)
                 .add(Users.class)
                 .add(UserGetter.class)
                 .add(UserRepos.class)

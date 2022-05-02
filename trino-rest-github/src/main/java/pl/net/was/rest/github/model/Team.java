@@ -15,10 +15,18 @@
 package pl.net.was.rest.github.model;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.google.common.collect.ImmutableList;
+import io.trino.spi.block.BlockBuilder;
+
+import java.util.List;
+
+import static io.trino.spi.type.BigintType.BIGINT;
 
 @SuppressWarnings("unused")
 public class Team
+        extends BaseBlockWriter
 {
+    private String org;
     private final long id;
     private final String nodeId;
     private final String url;
@@ -60,63 +68,52 @@ public class Team
         this.parent = parent;
     }
 
-    public long getId()
+    public void setOrg(String value)
     {
-        return id;
+        this.org = value;
     }
 
-    public String getNodeId()
+    public List<?> toRow()
     {
-        return nodeId;
+        return ImmutableList.of(
+                org,
+                id,
+                nodeId,
+                url,
+                htmlUrl,
+                name,
+                slug,
+                description != null ? description : "",
+                privacy != null ? privacy : "",
+                permission != null ? permission : "",
+                membersUrl,
+                repositoriesUrl,
+                parent != null ? parent.id : "",
+                parent != null ? parent.slug : "");
     }
 
-    public String getUrl()
+    @Override
+    public void writeTo(BlockBuilder rowBuilder)
     {
-        return url;
-    }
-
-    public String getHtmlUrl()
-    {
-        return htmlUrl;
-    }
-
-    public String getName()
-    {
-        return name;
-    }
-
-    public String getSlug()
-    {
-        return slug;
-    }
-
-    public String getDescription()
-    {
-        return description;
-    }
-
-    public String getPrivacy()
-    {
-        return privacy;
-    }
-
-    public String getPermission()
-    {
-        return permission;
-    }
-
-    public String getMembersUrl()
-    {
-        return membersUrl;
-    }
-
-    public String getRepositoriesUrl()
-    {
-        return repositoriesUrl;
-    }
-
-    public Team getParent()
-    {
-        return parent;
+        writeString(rowBuilder, org);
+        BIGINT.writeLong(rowBuilder, id);
+        writeString(rowBuilder, nodeId);
+        writeString(rowBuilder, url);
+        writeString(rowBuilder, htmlUrl);
+        writeString(rowBuilder, name);
+        writeString(rowBuilder, slug);
+        writeString(rowBuilder, description);
+        writeString(rowBuilder, privacy);
+        writeString(rowBuilder, permission);
+        writeString(rowBuilder, membersUrl);
+        writeString(rowBuilder, repositoriesUrl);
+        if (parent == null) {
+            rowBuilder.appendNull();
+            rowBuilder.appendNull();
+        }
+        else {
+            BIGINT.writeLong(rowBuilder, parent.id);
+            writeString(rowBuilder, parent.slug);
+        }
     }
 }

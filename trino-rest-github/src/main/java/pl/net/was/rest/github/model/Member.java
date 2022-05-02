@@ -28,6 +28,7 @@ public class Member
         extends BaseBlockWriter
 {
     private String org;
+    private String teamSlug;
     private final String login;
     private final long id;
     private final String nodeId;
@@ -102,10 +103,16 @@ public class Member
         this.org = value;
     }
 
+    public void setTeamSlug(String value)
+    {
+        this.teamSlug = value;
+    }
+
     public List<?> toRow()
     {
         return ImmutableList.of(
                 org,
+                teamSlug != null ? teamSlug : "",
                 login,
                 id,
                 avatarUrl != null ? avatarUrl : "",
@@ -118,6 +125,7 @@ public class Member
     public void writeTo(BlockBuilder rowBuilder)
     {
         writeString(rowBuilder, org);
+        writeString(rowBuilder, teamSlug);
         writeString(rowBuilder, login);
         BIGINT.writeLong(rowBuilder, id);
         writeString(rowBuilder, avatarUrl);

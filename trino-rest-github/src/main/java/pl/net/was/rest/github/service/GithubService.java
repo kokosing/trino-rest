@@ -18,6 +18,7 @@ import pl.net.was.rest.github.model.Member;
 import pl.net.was.rest.github.model.Organization;
 import pl.net.was.rest.github.model.RepoCommit;
 import pl.net.was.rest.github.model.Repository;
+import pl.net.was.rest.github.model.Team;
 import pl.net.was.rest.github.model.User;
 import retrofit2.Call;
 import retrofit2.http.GET;
@@ -72,6 +73,23 @@ public interface GithubService
     Call<List<Member>> listOrgMembers(
             @Header("Authorization") String auth,
             @Path("org") String org,
+            @Query("per_page") int perPage,
+            @Query("page") int page);
+
+    @Headers("accept: application/vnd.github.v3+json")
+    @GET("/orgs/{org}/teams")
+    Call<List<Team>> listOrgTeams(
+            @Header("Authorization") String auth,
+            @Path("org") String org,
+            @Query("per_page") int perPage,
+            @Query("page") int page);
+
+    @Headers("accept: application/vnd.github.v3+json")
+    @GET("/orgs/{org}/teams/{team_slug}/members")
+    Call<List<Member>> listOrgTeamMembers(
+            @Header("Authorization") String auth,
+            @Path("org") String org,
+            @Path("team_slug") String teamSlug,
             @Query("per_page") int perPage,
             @Query("page") int page);
 
