@@ -88,7 +88,7 @@ public class Team
                 permission != null ? permission : "",
                 membersUrl,
                 repositoriesUrl,
-                parent != null ? parent.id : "",
+                parent != null ? parent.id : 0,
                 parent != null ? parent.slug : "");
     }
 
