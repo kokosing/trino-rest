@@ -30,7 +30,7 @@
     <parent>
         <groupId>io.airlift</groupId>
         <artifactId>airbase</artifactId>
-        <version>123</version>
+        <version>124</version>
     </parent>
 
     <licenses>
@@ -58,10 +58,10 @@
         <air.check.skip-checkstyle>false</air.check.skip-checkstyle>
 
         <!-- must be in sync with Dockerfile -->
-        <dep.trino.version>376</dep.trino.version>
+        <dep.trino.version>378</dep.trino.version>
         <dep.airlift.version>214</dep.airlift.version>
         <dep.packaging.version>${dep.airlift.version}</dep.packaging.version>
-        <dep.errorprone.version>2.11.0</dep.errorprone.version>
+        <dep.errorprone.version>2.13.1</dep.errorprone.version>
         <dep.jackson.version>2.13.2</dep.jackson.version>
         <dep.testng.version>7.5</dep.testng.version>
 
@@ -81,7 +81,7 @@
             <dependency>
                 <groupId>org.checkerframework</groupId>
                 <artifactId>checker-qual</artifactId>
-                <version>3.21.3</version>
+                <version>3.21.4</version>
             </dependency>
             <dependency>
                 <groupId>org.osgi</groupId>
