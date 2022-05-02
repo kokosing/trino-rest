@@ -733,7 +733,7 @@ public class Sync
                             "WHERE r.owner = ? AND r.repo = ? AND r.status = 'completed' AND r.created_at > NOW() - INTERVAL '2' MONTH " +
                             "GROUP BY r.id " +
                             "HAVING COUNT(j.id) = 0 " +
-                            "ORDER BY r.id DESC LIMIT 20" +
+                            "ORDER BY r.id DESC LIMIT 60" +
                             ") r " +
                             "CROSS JOIN unnest(jobs(?, ?, r.id)) src " +
                             "LEFT JOIN " + destSchema + ".jobs dst ON (dst.run_id, dst.id) = (src.run_id, src.id) " +
