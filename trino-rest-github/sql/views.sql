@@ -8,6 +8,16 @@ SELECT p.*
 FROM pulls p
 JOIN latest ON (latest.id, latest.updated_at) = (p.id, p.updated_at);
 
+CREATE OR REPLACE VIEW unique_pull_commits SECURITY INVOKER AS
+WITH latest AS (
+  SELECT pull_number, parent_shas, max(committer_date) AS committer_date
+  FROM pull_commits
+  GROUP BY pull_number, parent_shas
+)
+SELECT p.*
+FROM pull_commits c
+JOIN latest ON (latest.pull_number, latest.parent_shas, latest.committer_date) = (c.pull_number, c.parent_shas, c.committer_date);
+
 CREATE OR REPLACE VIEW unique_review_comments SECURITY INVOKER AS
 WITH latest AS (
   SELECT id, max(updated_at) AS updated_at

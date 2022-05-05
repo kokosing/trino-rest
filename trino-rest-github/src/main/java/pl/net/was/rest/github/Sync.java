@@ -453,14 +453,23 @@ public class Sync
             // consider adding some indexes:
             // ALTER TABLE pull_commits ADD PRIMARY KEY (owner, repo, pull_number, sha);
 
-            // only fetch pull commits from up to 30 merged pulls without any commits
+            // only fetch pull commits from up to 30 new or updated commits without any in the last update period, if it was updated less than 3 days ago
             String runsQuery = format(
-                    "SELECT p.number " +
-                            "FROM " + destSchema + ".unique_pulls p " +
+                    "WITH pulls AS (" +
+                            "  SELECT number, lag(updated_at, 1, timestamp '1970-01-01 00:00:00') over (partition by number order by updated_at) AS prev_updated_at, updated_at" +
+                            "  FROM " + destSchema + ".pulls" +
+                            "  WHERE owner = ? AND repo = ? AND number > ?" +
+                            "), " +
+                            "latest AS (" +
+                            "  SELECT number, max_by(prev_updated_at, updated_at) AS prev_updated_at, max(updated_at) AS updated_at " +
+                            "  FROM pulls" +
+                            "  GROUP BY number" +
+                            ") " +
+                            "SELECT p.number " +
+                            "FROM latest p " +
                             "LEFT JOIN " + destSchema + ".pull_commits c ON c.pull_number = p.number " +
-                            "WHERE p.owner = ? AND p.repo = ? AND p.state = 'closed' AND p.number > ? " +
-                            "GROUP BY p.number " +
-                            "HAVING COUNT(c.sha) = 0 " +
+                            "GROUP BY p.number, p.prev_updated_at, p.updated_at " +
+                            "HAVING COUNT(c.sha) = 0 OR (MAX(c.committer_date) < p.prev_updated_at AND p.updated_at > CURRENT_DATE - INTERVAL '3' DAY) " +
                             "ORDER BY p.number ASC LIMIT %d", 30);
             // since there's no difference between pulls without commits and those we have not checked or yet,
             // we need to know the last checked pull number and add a condition to fetch lesser numbers
@@ -473,7 +482,7 @@ public class Sync
                             "SELECT src.* " +
                             "FROM (" + runsQuery + ") p " +
                             "CROSS JOIN unnest(pull_commits(?, ?, p.number)) src " +
-                            "LEFT JOIN " + destSchema + ".pull_commits dst ON dst.sha = src.sha " +
+                            "LEFT JOIN " + destSchema + ".pull_commits dst ON (dst.pull_number, dst.sha) = (src.pull_number, src.sha) " +
                             "WHERE dst.sha IS NULL");
             insertStatement.setString(1, options.owner);
             insertStatement.setString(2, options.repo);
@@ -482,10 +491,15 @@ public class Sync
 
             long previousId = 0;
             while (true) {
-                idStatement.setLong(3, previousId);
                 insertStatement.setLong(3, previousId);
 
-                log.info("Checking for next closed pulls without commits");
+                log.info(format("Fetching commits for pulls with number greater than %d", previousId));
+                long startTime = System.currentTimeMillis();
+                int rows = retryExecute(insertStatement);
+                log.info(format("Inserted %d rows, took %s", rows, Duration.ofMillis(System.currentTimeMillis() - startTime)));
+
+                idStatement.setLong(3, previousId);
+                log.info("Checking for next pulls without commits");
                 ResultSet resultSet = idStatement.executeQuery();
                 if (!resultSet.next()) {
                     break;
@@ -494,11 +508,6 @@ public class Sync
                 if (resultSet.wasNull()) {
                     break;
                 }
-
-                log.info(format("Fetching commits for pulls with number greater than %d", previousId));
-                long startTime = System.currentTimeMillis();
-                int rows = retryExecute(insertStatement);
-                log.info(format("Inserted %d rows, took %s", rows, Duration.ofMillis(System.currentTimeMillis() - startTime)));
             }
         }
         catch (Exception e) {
