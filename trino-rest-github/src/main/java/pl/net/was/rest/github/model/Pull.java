@@ -192,7 +192,18 @@ public class Pull
         return ImmutableList.of(
                 owner,
                 repo,
+                url,
                 id,
+                nodeId,
+                htmlUrl,
+                diffUrl,
+                patchUrl,
+                issueUrl,
+                commitsUrl,
+                reviewCommentsUrl,
+                reviewCommentUrl,
+                commentsUrl,
+                statusesUrl,
                 number,
                 state,
                 locked,
@@ -220,7 +231,7 @@ public class Pull
                 baseSha,
                 authorAssociation,
                 draft,
-                url);
+                autoMerge);
     }
 
     @Override
@@ -229,7 +240,18 @@ public class Pull
         // TODO this should be a map of column names to value getters and types should be fetched from GithubRest.columns
         writeString(rowBuilder, owner);
         writeString(rowBuilder, repo);
+        writeString(rowBuilder, url);
         BIGINT.writeLong(rowBuilder, id);
+        writeString(rowBuilder, nodeId);
+        writeString(rowBuilder, htmlUrl);
+        writeString(rowBuilder, diffUrl);
+        writeString(rowBuilder, patchUrl);
+        writeString(rowBuilder, issueUrl);
+        writeString(rowBuilder, commitsUrl);
+        writeString(rowBuilder, reviewCommentsUrl);
+        writeString(rowBuilder, reviewCommentUrl);
+        writeString(rowBuilder, commentsUrl);
+        writeString(rowBuilder, statusesUrl);
         BIGINT.writeLong(rowBuilder, number);
         writeString(rowBuilder, state);
         BOOLEAN.writeBoolean(rowBuilder, locked);
@@ -304,6 +326,6 @@ public class Pull
         writeString(rowBuilder, baseSha);
         writeString(rowBuilder, authorAssociation);
         BOOLEAN.writeBoolean(rowBuilder, draft);
-        writeString(rowBuilder, url);
+        BOOLEAN.writeBoolean(rowBuilder, autoMerge);
     }
 }

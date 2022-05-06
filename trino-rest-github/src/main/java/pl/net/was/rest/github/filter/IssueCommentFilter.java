@@ -29,6 +29,7 @@ public class IssueCommentFilter
         return ImmutableMap.of(
                 "owner", FilterType.EQUAL,
                 "repo", FilterType.EQUAL,
+                "issue_number", FilterType.EQUAL,
                 "updated_at", FilterType.GREATER_THAN_EQUAL);
     }
 }

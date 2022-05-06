@@ -88,6 +88,7 @@ import pl.net.was.rest.github.function.JobLogs;
 import pl.net.was.rest.github.model.Artifact;
 import pl.net.was.rest.github.model.ArtifactsList;
 import pl.net.was.rest.github.model.Envelope;
+import pl.net.was.rest.github.model.IssueComment;
 import pl.net.was.rest.github.model.Job;
 import pl.net.was.rest.github.model.JobsList;
 import pl.net.was.rest.github.model.Member;
@@ -291,7 +292,18 @@ public class GithubRest
             .put(GithubTable.PULLS, ImmutableList.of(
                     new ColumnMetadata("owner", VARCHAR),
                     new ColumnMetadata("repo", VARCHAR),
+                    new ColumnMetadata("url", VARCHAR),
                     new ColumnMetadata("id", BIGINT),
+                    new ColumnMetadata("node_id", VARCHAR),
+                    new ColumnMetadata("html_url", VARCHAR),
+                    new ColumnMetadata("diff_url", VARCHAR),
+                    new ColumnMetadata("patch_url", VARCHAR),
+                    new ColumnMetadata("issue_url", VARCHAR),
+                    new ColumnMetadata("commits_url", VARCHAR),
+                    new ColumnMetadata("review_comments_url", VARCHAR),
+                    new ColumnMetadata("review_comment_url", VARCHAR),
+                    new ColumnMetadata("comments_url", VARCHAR),
+                    new ColumnMetadata("statuses_url", VARCHAR),
                     new ColumnMetadata("number", BIGINT),
                     new ColumnMetadata("state", VARCHAR),
                     new ColumnMetadata("locked", BOOLEAN),
@@ -319,7 +331,7 @@ public class GithubRest
                     new ColumnMetadata("base_sha", VARCHAR),
                     new ColumnMetadata("author_association", VARCHAR),
                     new ColumnMetadata("draft", BOOLEAN),
-                    new ColumnMetadata("url", VARCHAR)))
+                    new ColumnMetadata("auto_merge", BOOLEAN)))
             .put(GithubTable.PULL_COMMITS, ImmutableList.of(
                     new ColumnMetadata("owner", VARCHAR),
                     new ColumnMetadata("repo", VARCHAR),
@@ -386,6 +398,14 @@ public class GithubRest
                     new ColumnMetadata("owner", VARCHAR),
                     new ColumnMetadata("repo", VARCHAR),
                     new ColumnMetadata("id", BIGINT),
+                    new ColumnMetadata("node_id", VARCHAR),
+                    new ColumnMetadata("url", VARCHAR),
+                    new ColumnMetadata("repository_url", VARCHAR),
+                    new ColumnMetadata("labels_url", VARCHAR),
+                    new ColumnMetadata("comments_url", VARCHAR),
+                    new ColumnMetadata("events_url", VARCHAR),
+                    new ColumnMetadata("html_url", VARCHAR),
+                    new ColumnMetadata("timeline_url", VARCHAR),
                     new ColumnMetadata("number", BIGINT),
                     new ColumnMetadata("state", VARCHAR),
                     new ColumnMetadata("title", VARCHAR),
@@ -404,18 +424,35 @@ public class GithubRest
                     new ColumnMetadata("closed_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
                     new ColumnMetadata("created_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
                     new ColumnMetadata("updated_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
+                    new ColumnMetadata("closed_by_id", BIGINT),
+                    new ColumnMetadata("closed_by_login", VARCHAR),
                     new ColumnMetadata("author_association", VARCHAR),
-                    new ColumnMetadata("draft", BOOLEAN)))
+                    new ColumnMetadata("draft", BOOLEAN),
+                    new ColumnMetadata("reactions_url", VARCHAR),
+                    new ColumnMetadata("reactions_total_count", INTEGER),
+                    new ColumnMetadata("app_id", BIGINT),
+                    new ColumnMetadata("app_slug", VARCHAR),
+                    new ColumnMetadata("app_name", VARCHAR)))
             .put(GithubTable.ISSUE_COMMENTS, ImmutableList.of(
                     new ColumnMetadata("owner", VARCHAR),
                     new ColumnMetadata("repo", VARCHAR),
+                    new ColumnMetadata("issue_number", BIGINT),
                     new ColumnMetadata("id", BIGINT),
+                    new ColumnMetadata("node_id", VARCHAR),
+                    new ColumnMetadata("url", VARCHAR),
+                    new ColumnMetadata("html_url", VARCHAR),
                     new ColumnMetadata("body", VARCHAR),
                     new ColumnMetadata("user_id", BIGINT),
                     new ColumnMetadata("user_login", VARCHAR),
                     new ColumnMetadata("created_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
                     new ColumnMetadata("updated_at", TimestampWithTimeZoneType.createTimestampWithTimeZoneType(3)),
-                    new ColumnMetadata("author_association", VARCHAR)))
+                    new ColumnMetadata("issue_url", VARCHAR),
+                    new ColumnMetadata("author_association", VARCHAR),
+                    new ColumnMetadata("reactions_url", VARCHAR),
+                    new ColumnMetadata("reactions_total_count", INTEGER),
+                    new ColumnMetadata("app_id", BIGINT),
+                    new ColumnMetadata("app_slug", VARCHAR),
+                    new ColumnMetadata("app_name", VARCHAR)))
             .put(GithubTable.WORKFLOWS, ImmutableList.of(
                     new ColumnMetadata("owner", VARCHAR),
                     new ColumnMetadata("repo", VARCHAR),
@@ -579,6 +616,7 @@ public class GithubRest
                     "user_id", KeyType.FOREIGN_KEY))
             .put(GithubTable.ISSUE_COMMENTS, ImmutableMap.of(
                     "id", KeyType.PRIMARY_KEY,
+                    "issue_number", KeyType.FOREIGN_KEY,
                     "issue_url", KeyType.FOREIGN_KEY,
                     "user_id", KeyType.FOREIGN_KEY))
             .put(GithubTable.WORKFLOWS, ImmutableMap.of(
@@ -865,7 +903,18 @@ public class GithubRest
     public static final String PULLS_TABLE_TYPE = "array(row(" +
             "owner varchar, " +
             "repo varchar, " +
+            "url varchar, " +
             "id bigint, " +
+            "node_id varchar, " +
+            "html_url varchar, " +
+            "diff_url varchar, " +
+            "patch_url varchar, " +
+            "issue_url varchar, " +
+            "commits_url varchar, " +
+            "review_comments_url varchar, " +
+            "review_comment_url varchar, " +
+            "comments_url varchar, " +
+            "statuses_url varchar, " +
             "number bigint, " +
             "state varchar, " +
             "locked boolean, " +
@@ -893,7 +942,7 @@ public class GithubRest
             "base_sha varchar, " +
             "author_association varchar, " +
             "draft boolean, " +
-            "url varchar" +
+            "auto_merge boolean" +
             "))";
 
     public static final String PULL_COMMITS_TABLE_TYPE = "array(row(" +
@@ -965,6 +1014,14 @@ public class GithubRest
             "owner varchar, " +
             "repo varchar, " +
             "id bigint, " +
+            "node_id varchar, " +
+            "url varchar, " +
+            "repository_url varchar, " +
+            "labels_url varchar, " +
+            "comments_url varchar, " +
+            "events_url varchar, " +
+            "html_url varchar, " +
+            "timeline_url varchar, " +
             "number bigint, " +
             "state varchar, " +
             "title varchar, " +
@@ -983,20 +1040,37 @@ public class GithubRest
             "closed_at timestamp(3) with time zone, " +
             "created_at timestamp(3) with time zone, " +
             "updated_at timestamp(3) with time zone, " +
+            "closed_by_id bigint, " +
+            "closed_by_login varchar, " +
             "author_association varchar, " +
-            "draft boolean" +
+            "draft boolean, " +
+            "reactions_url varchar, " +
+            "reactions_total_count integer, " +
+            "app_id bigint, " +
+            "app_slug varchar, " +
+            "app_name varchar" +
             "))";
 
     public static final String ISSUE_COMMENTS_TABLE_TYPE = "array(row(" +
             "owner varchar, " +
             "repo varchar, " +
+            "issue_number bigint, " +
             "id bigint, " +
+            "node_id varchar, " +
+            "url varchar, " +
+            "html_url varchar, " +
             "body varchar, " +
             "user_id bigint, " +
             "user_login varchar, " +
             "created_at timestamp(3) with time zone, " +
             "updated_at timestamp(3) with time zone, " +
-            "author_association varchar" +
+            "issue_url varchar, " +
+            "author_association varchar, " +
+            "reactions_url varchar, " +
+            "reactions_total_count integer, " +
+            "app_id bigint, " +
+            "app_slug varchar, " +
+            "app_name varchar" +
             "))";
 
     public static final String WORKFLOWS_TABLE_TYPE = "array(row(" +
@@ -1568,7 +1642,7 @@ public class GithubRest
         Long pullNumber = (Long) filter.getFilter((RestColumnHandle) columns.get("pull_number"), constraint);
         IntFunction<Call<List<ReviewComment>>> fetcher;
         if (pullNumber != null) {
-            fetcher = page -> service.listPullComments("Bearer " + token, owner, repo, pullNumber, PER_PAGE, page);
+            fetcher = page -> service.listSingleReviewComments("Bearer " + token, owner, repo, pullNumber, PER_PAGE, page);
         }
         else {
             String since = (String) filter.getFilter((RestColumnHandle) columns.get("updated_at"), constraint, "1970-01-01T00:00:00Z");
@@ -1636,21 +1710,24 @@ public class GithubRest
         String repo = (String) filter.getFilter((RestColumnHandle) columns.get("repo"), constraint);
         requirePredicate(owner, "issue_comments.owner");
         requirePredicate(repo, "issue_comments.repo");
-        String since = (String) filter.getFilter((RestColumnHandle) columns.get("updated_at"), constraint, "1970-01-01T00:00:00Z");
-        SortItem sortOrder = getSortItem(table);
+        Long issueNumber = (Long) filter.getFilter((RestColumnHandle) columns.get("issue_number"), constraint);
+        IntFunction<Call<List<IssueComment>>> fetcher;
+        if (issueNumber != null) {
+            fetcher = page -> service.listSingleIssueComments("Bearer " + token, owner, repo, issueNumber, PER_PAGE, page);
+        }
+        else {
+            String since = (String) filter.getFilter((RestColumnHandle) columns.get("updated_at"), constraint, "1970-01-01T00:00:00Z");
+            SortItem sortOrder = getSortItem(table);
+            fetcher = page -> service.listIssueComments("Bearer " + token, owner, repo, PER_PAGE, page, sortOrder.getName(), sortOrder.getSortOrder().isAscending() ? "asc" : "desc", since);
+        }
         return getRowsFromPages(
-                page -> service.listIssueComments(
-                        "Bearer " + token,
-                        owner,
-                        repo,
-                        PER_PAGE,
-                        page,
-                        sortOrder.getName(),
-                        sortOrder.getSortOrder().isAscending() ? "asc" : "desc",
-                        since),
+                fetcher,
                 item -> {
                     item.setOwner(owner);
                     item.setRepo(repo);
+                    if (issueNumber != null) {
+                        item.setIssueNumber(issueNumber);
+                    }
                     return item.toRow();
                 },
                 table.getOffset(),

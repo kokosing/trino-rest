@@ -51,4 +51,14 @@ public interface IssueService
             @Query("sort") String sort,
             @Query("direction") String direction,
             @Query("since") String since);
+
+    @Headers("accept: application/vnd.github.v3+json")
+    @GET("/repos/{owner}/{repo}/issues/{number}/comments")
+    Call<List<IssueComment>> listSingleIssueComments(
+            @Header("Authorization") String auth,
+            @Path("owner") String owner,
+            @Path("repo") String repo,
+            @Path("number") long number,
+            @Query("per_page") int perPage,
+            @Query("page") int page);
 }

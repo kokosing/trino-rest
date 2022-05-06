@@ -93,7 +93,7 @@ public class ReviewComments
         List<ReviewComment> comments = new ArrayList<>();
         int page = 1;
         while (true) {
-            Response<List<ReviewComment>> response = service.listPullComments(
+            Response<List<ReviewComment>> response = service.listSingleReviewComments(
                     "Bearer " + token,
                     owner.toStringUtf8(),
                     repo.toStringUtf8(),

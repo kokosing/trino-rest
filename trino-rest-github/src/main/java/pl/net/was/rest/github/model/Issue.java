@@ -23,6 +23,7 @@ import java.util.List;
 
 import static io.trino.spi.type.BigintType.BIGINT;
 import static io.trino.spi.type.BooleanType.BOOLEAN;
+import static io.trino.spi.type.IntegerType.INTEGER;
 import static io.trino.spi.type.VarcharType.VARCHAR;
 
 @SuppressWarnings("unused")
@@ -151,6 +152,14 @@ public class Issue
                 owner,
                 repo,
                 id,
+                nodeId,
+                url,
+                repositoryUrl,
+                labelsUrl,
+                commentsUrl,
+                eventsUrl,
+                htmlUrl,
+                timelineUrl,
                 number,
                 state,
                 title != null ? title : "",
@@ -169,8 +178,15 @@ public class Issue
                 packTimestamp(closedAt),
                 packTimestamp(createdAt),
                 packTimestamp(updatedAt),
+                closedBy != null ? closedBy.getId() : 0,
+                closedBy != null ? closedBy.getLogin() : "",
                 authorAssociation,
-                draft);
+                draft,
+                reactions != null ? reactions.getUrl() : "",
+                reactions != null ? reactions.getTotalCount() : 0,
+                performedViaGithubApp != null ? performedViaGithubApp.getId() : 0,
+                performedViaGithubApp != null ? performedViaGithubApp.getSlug() : "",
+                performedViaGithubApp != null ? performedViaGithubApp.getName() : "");
     }
 
     @Override
@@ -180,6 +196,14 @@ public class Issue
         writeString(rowBuilder, owner);
         writeString(rowBuilder, repo);
         BIGINT.writeLong(rowBuilder, id);
+        writeString(rowBuilder, nodeId);
+        writeString(rowBuilder, url);
+        writeString(rowBuilder, repositoryUrl);
+        writeString(rowBuilder, labelsUrl);
+        writeString(rowBuilder, commentsUrl);
+        writeString(rowBuilder, eventsUrl);
+        writeString(rowBuilder, htmlUrl);
+        writeString(rowBuilder, timelineUrl);
         BIGINT.writeLong(rowBuilder, number);
         writeString(rowBuilder, state);
         writeString(rowBuilder, title);
@@ -228,7 +252,33 @@ public class Issue
         writeTimestamp(rowBuilder, closedAt);
         writeTimestamp(rowBuilder, createdAt);
         writeTimestamp(rowBuilder, updatedAt);
+        if (closedBy == null) {
+            rowBuilder.appendNull();
+            rowBuilder.appendNull();
+        }
+        else {
+            BIGINT.writeLong(rowBuilder, closedBy.getId());
+            writeString(rowBuilder, closedBy.getLogin());
+        }
         writeString(rowBuilder, authorAssociation);
         BOOLEAN.writeBoolean(rowBuilder, draft);
+        if (reactions == null) {
+            rowBuilder.appendNull();
+            rowBuilder.appendNull();
+        }
+        else {
+            writeString(rowBuilder, reactions.getUrl());
+            INTEGER.writeLong(rowBuilder, reactions.getTotalCount());
+        }
+        if (performedViaGithubApp == null) {
+            rowBuilder.appendNull();
+            rowBuilder.appendNull();
+            rowBuilder.appendNull();
+        }
+        else {
+            BIGINT.writeLong(rowBuilder, performedViaGithubApp.getId());
+            writeString(rowBuilder, performedViaGithubApp.getSlug());
+            writeString(rowBuilder, performedViaGithubApp.getName());
+        }
     }
 }

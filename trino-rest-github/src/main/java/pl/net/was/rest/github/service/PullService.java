@@ -75,7 +75,7 @@ public interface PullService
 
     @Headers("accept: application/vnd.github.v3+json")
     @GET("/repos/{owner}/{repo}/pulls/{pull_number}/comments")
-    Call<List<ReviewComment>> listPullComments(
+    Call<List<ReviewComment>> listSingleReviewComments(
             @Header("Authorization") String auth,
             @Path("owner") String owner,
             @Path("repo") String repo,

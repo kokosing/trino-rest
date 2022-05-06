@@ -22,6 +22,7 @@ import java.time.ZonedDateTime;
 import java.util.List;
 
 import static io.trino.spi.type.BigintType.BIGINT;
+import static io.trino.spi.type.IntegerType.INTEGER;
 
 @SuppressWarnings("unused")
 public class IssueComment
@@ -29,6 +30,8 @@ public class IssueComment
 {
     private String owner;
     private String repo;
+    // this is only set when fetching comments for a specific issue or pull request
+    private long number;
     private final long id;
     private final String nodeId;
     private final String url;
@@ -80,18 +83,33 @@ public class IssueComment
         this.repo = repo;
     }
 
+    public void setIssueNumber(long number)
+    {
+        this.number = number;
+    }
+
     public List<?> toRow()
     {
         return ImmutableList.of(
                 owner,
                 repo,
+                number,
                 id,
+                nodeId,
+                url,
+                htmlUrl,
                 body,
                 user.getId(),
                 user.getLogin(),
                 packTimestamp(createdAt),
                 packTimestamp(updatedAt),
-                authorAssociation);
+                issueUrl,
+                authorAssociation,
+                reactions != null ? reactions.getUrl() : "",
+                reactions != null ? reactions.getTotalCount() : 0,
+                performedViaGithubApp != null ? performedViaGithubApp.getId() : 0,
+                performedViaGithubApp != null ? performedViaGithubApp.getSlug() : "",
+                performedViaGithubApp != null ? performedViaGithubApp.getName() : "");
     }
 
     @Override
@@ -100,12 +118,35 @@ public class IssueComment
         // TODO this should be a map of column names to value getters and types should be fetched from GithubRest.columns
         writeString(rowBuilder, owner);
         writeString(rowBuilder, repo);
+        BIGINT.writeLong(rowBuilder, number);
         BIGINT.writeLong(rowBuilder, id);
+        writeString(rowBuilder, nodeId);
+        writeString(rowBuilder, url);
+        writeString(rowBuilder, htmlUrl);
         writeString(rowBuilder, body);
         BIGINT.writeLong(rowBuilder, user.getId());
         writeString(rowBuilder, user.getLogin());
         writeTimestamp(rowBuilder, createdAt);
         writeTimestamp(rowBuilder, updatedAt);
+        writeString(rowBuilder, issueUrl);
         writeString(rowBuilder, authorAssociation);
+        if (reactions == null) {
+            rowBuilder.appendNull();
+            rowBuilder.appendNull();
+        }
+        else {
+            writeString(rowBuilder, reactions.getUrl());
+            INTEGER.writeLong(rowBuilder, reactions.getTotalCount());
+        }
+        if (performedViaGithubApp == null) {
+            rowBuilder.appendNull();
+            rowBuilder.appendNull();
+            rowBuilder.appendNull();
+        }
+        else {
+            BIGINT.writeLong(rowBuilder, performedViaGithubApp.getId());
+            writeString(rowBuilder, performedViaGithubApp.getSlug());
+            writeString(rowBuilder, performedViaGithubApp.getName());
+        }
     }
 }

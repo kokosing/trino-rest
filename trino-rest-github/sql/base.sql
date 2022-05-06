@@ -103,13 +103,23 @@ WITH (
 CREATE TABLE issue_comments (
    owner varchar,
    repo varchar,
+   issue_number bigint,
    id bigint,
+   node_id varchar,
+   url varchar,
+   html_url varchar,
    body varchar,
    user_id bigint,
    user_login varchar,
    created_at timestamp(3),
    updated_at timestamp(3),
-   author_association varchar
+   issue_url varchar,
+   author_association varchar,
+   reactions_url varchar,
+   reactions_total_count integer,
+   app_id bigint,
+   app_slug varchar,
+   app_name varchar
 )
 WITH (
    format = 'ORC'
@@ -118,6 +128,14 @@ CREATE TABLE issues (
    owner varchar,
    repo varchar,
    id bigint,
+   node_id varchar,
+   url varchar,
+   repository_url varchar,
+   labels_url varchar,
+   comments_url varchar,
+   events_url varchar,
+   html_url varchar,
+   timeline_url varchar,
    number bigint,
    state varchar,
    title varchar,
@@ -136,8 +154,15 @@ CREATE TABLE issues (
    closed_at timestamp(3),
    created_at timestamp(3),
    updated_at timestamp(3),
+   closed_by_id bigint,
+   closed_by_login varchar,
    author_association varchar,
-   draft boolean
+   draft boolean,
+   reactions_url varchar,
+   reactions_total_count integer,
+   app_id bigint,
+   app_slug varchar,
+   app_name varchar
 )
 WITH (
    format = 'ORC'
@@ -227,7 +252,18 @@ WITH (
 CREATE TABLE pulls (
    owner varchar,
    repo varchar,
+   url varchar,
    id bigint,
+   node_id varchar,
+   html_url varchar,
+   diff_url varchar,
+   patch_url varchar,
+   issue_url varchar,
+   commits_url varchar,
+   review_comments_url varchar,
+   review_comment_url varchar,
+   comments_url varchar,
+   statuses_url varchar,
    number bigint,
    state varchar,
    locked boolean,
@@ -254,7 +290,8 @@ CREATE TABLE pulls (
    base_ref varchar,
    base_sha varchar,
    author_association varchar,
-   draft boolean
+   draft boolean,
+   auto_merge boolean
 )
 WITH (
    format = 'ORC'

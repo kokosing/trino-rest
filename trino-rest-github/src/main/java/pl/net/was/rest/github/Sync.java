@@ -237,7 +237,153 @@ public class Sync
             // note that the first one is NOT a primary key, so updated records can be inserted and then removed as duplicates using a procedure
             // DELETE FROM issue_comments a USING issue_comments b WHERE a.updated_at < b.updated_at AND a.id = b.id;
 
-            syncSince(options, "issue_comments");
+            try {
+                syncSince(options, "issue_comments");
+            }
+            catch (Exception e) {
+                // fetching comments since the epoch can fail with a Server Error, so fall back to fetching them for every issue and pull request
+                // TODO how to distinguish rate limit errors?
+                log.severe("Failed to get latest updated issue comments, falling back to checking every issue and pull request: " + e.getMessage());
+
+                syncAllIssueComments(options);
+                syncAllPullComments(options);
+            }
+        }
+        catch (Exception e) {
+            log.severe(e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private static void syncAllIssueComments(Options options)
+    {
+        Connection conn = options.conn;
+        String destSchema = options.destSchema;
+        String srcSchema = options.srcSchema;
+        try {
+            conn.createStatement().executeUpdate(
+                    "CREATE TABLE IF NOT EXISTS " + destSchema + ".issue_comments AS SELECT * FROM " + srcSchema + ".issue_comments WITH NO DATA");
+            // consider adding some indexes:
+            // CREATE INDEX ON issue_comments(owner, repo);
+            // CREATE INDEX ON issue_comments(id);
+            // CREATE INDEX ON issue_comments(user_id);
+            // note that the first one is NOT a primary key, so updated records can be inserted and then removed as duplicates using a procedure
+            // DELETE FROM issue_comments a USING issue_comments b WHERE a.updated_at < b.updated_at AND a.id = b.id;
+
+            // only fetch issue comments from up to 30 issues without any comments
+            String runsQuery = format(
+                    "SELECT r.id, r.number " +
+                            "FROM " + destSchema + ".issues r " +
+                            "LEFT JOIN " + destSchema + ".issue_comments c ON c.issue_url = r.url " +
+                            "WHERE r.owner = ? AND r.repo = ? AND r.id > ? " +
+                            "GROUP BY r.id, r.number " +
+                            "HAVING COUNT(c.id) = 0 " +
+                            "ORDER BY r.id ASC LIMIT %d", 30);
+            // since there's no difference between issues without comments and those we have not checked or yet,
+            // we need to know the last checked issue id and add a condition to fetch lesser numbers
+            PreparedStatement idStatement = conn.prepareStatement("SELECT max(r.id) FROM (" + runsQuery + ") r");
+            idStatement.setString(1, options.owner);
+            idStatement.setString(2, options.repo);
+
+            PreparedStatement insertStatement = conn.prepareStatement(
+                    "INSERT INTO " + destSchema + ".issue_comments " +
+                            "SELECT src.* " +
+                            "FROM (" + runsQuery + ") r " +
+                            "CROSS JOIN unnest(issue_comments(?, ?, r.number)) src " +
+                            "LEFT JOIN " + destSchema + ".issue_comments dst ON dst.id = src.id " +
+                            "WHERE dst.id IS NULL");
+            insertStatement.setString(1, options.owner);
+            insertStatement.setString(2, options.repo);
+            insertStatement.setString(4, options.owner);
+            insertStatement.setString(5, options.repo);
+
+            long previousId = 0;
+            while (true) {
+                insertStatement.setLong(3, previousId);
+                log.info(format("Fetching comments for issues with id greater than %d", previousId));
+                long startTime = System.currentTimeMillis();
+                int rows = retryExecute(insertStatement);
+                log.info(format("Inserted %d rows, took %s", rows, Duration.ofMillis(System.currentTimeMillis() - startTime)));
+
+                idStatement.setLong(3, previousId);
+                log.info("Checking for next issues without comments");
+                ResultSet resultSet = idStatement.executeQuery();
+                if (!resultSet.next()) {
+                    break;
+                }
+                previousId = resultSet.getLong(1);
+                if (resultSet.wasNull()) {
+                    break;
+                }
+            }
+        }
+        catch (Exception e) {
+            log.severe(e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private static void syncAllPullComments(Options options)
+    {
+        Connection conn = options.conn;
+        String destSchema = options.destSchema;
+        String srcSchema = options.srcSchema;
+        try {
+            conn.createStatement().executeUpdate(
+                    "CREATE TABLE IF NOT EXISTS " + destSchema + ".issue_comments AS SELECT * FROM " + srcSchema + ".issue_comments WITH NO DATA");
+            // consider adding some indexes:
+            // CREATE INDEX ON issue_comments(owner, repo);
+            // CREATE INDEX ON issue_comments(id);
+            // CREATE INDEX ON issue_comments(user_id);
+            // note that the first one is NOT a primary key, so updated records can be inserted and then removed as duplicates using a procedure
+            // DELETE FROM issue_comments a USING issue_comments b WHERE a.updated_at < b.updated_at AND a.id = b.id;
+
+            // only fetch pull comments from up to 30 pulls without any comments
+            String runsQuery = format(
+                    "SELECT r.id, r.number " +
+                            "FROM " + destSchema + ".pulls r " +
+                            "LEFT JOIN " + destSchema + ".issue_comments c ON c.issue_url = r.url " +
+                            "WHERE r.owner = ? AND r.repo = ? AND r.id > ? " +
+                            "GROUP BY r.id, r.number " +
+                            "HAVING COUNT(c.id) = 0 " +
+                            "ORDER BY r.id ASC LIMIT %d", 30);
+            // since there's no difference between pulls without comments and those we have not checked or yet,
+            // we need to know the last checked pull id and add a condition to fetch lesser numbers
+            PreparedStatement idStatement = conn.prepareStatement("SELECT max(r.id) FROM (" + runsQuery + ") r");
+            idStatement.setString(1, options.owner);
+            idStatement.setString(2, options.repo);
+
+            PreparedStatement insertStatement = conn.prepareStatement(
+                    "INSERT INTO " + destSchema + ".issue_comments " +
+                            "SELECT src.* " +
+                            "FROM (" + runsQuery + ") r " +
+                            "CROSS JOIN unnest(issue_comments(?, ?, r.number)) src " +
+                            "LEFT JOIN " + destSchema + ".issue_comments dst ON dst.id = src.id " +
+                            "WHERE dst.id IS NULL");
+            insertStatement.setString(1, options.owner);
+            insertStatement.setString(2, options.repo);
+            insertStatement.setString(4, options.owner);
+            insertStatement.setString(5, options.repo);
+
+            long previousId = 0;
+            while (true) {
+                insertStatement.setLong(3, previousId);
+                log.info(format("Fetching comments for pulls with id greater than %d", previousId));
+                long startTime = System.currentTimeMillis();
+                int rows = retryExecute(insertStatement);
+                log.info(format("Inserted %d rows, took %s", rows, Duration.ofMillis(System.currentTimeMillis() - startTime)));
+
+                idStatement.setLong(3, previousId);
+                log.info("Checking for next pulls without comments");
+                ResultSet resultSet = idStatement.executeQuery();
+                if (!resultSet.next()) {
+                    break;
+                }
+                previousId = resultSet.getLong(1);
+                if (resultSet.wasNull()) {
+                    break;
+                }
+            }
         }
         catch (Exception e) {
             log.severe(e.getMessage());
@@ -325,9 +471,13 @@ public class Sync
 
             long previousId = 0;
             while (true) {
-                idStatement.setLong(3, previousId);
                 insertStatement.setLong(3, previousId);
+                log.info(format("Fetching comments for reviews with id greater than %d", previousId));
+                long startTime = System.currentTimeMillis();
+                int rows = retryExecute(insertStatement);
+                log.info(format("Inserted %d rows, took %s", rows, Duration.ofMillis(System.currentTimeMillis() - startTime)));
 
+                idStatement.setLong(3, previousId);
                 log.info("Checking for next reviews without comments");
                 ResultSet resultSet = idStatement.executeQuery();
                 if (!resultSet.next()) {
@@ -337,11 +487,6 @@ public class Sync
                 if (resultSet.wasNull()) {
                     break;
                 }
-
-                log.info(format("Fetching comments for reviews with id greater than %d", previousId));
-                long startTime = System.currentTimeMillis();
-                int rows = retryExecute(insertStatement);
-                log.info(format("Inserted %d rows, took %s", rows, Duration.ofMillis(System.currentTimeMillis() - startTime)));
             }
         }
         catch (Exception e) {
@@ -492,7 +637,6 @@ public class Sync
             long previousId = 0;
             while (true) {
                 insertStatement.setLong(3, previousId);
-
                 log.info(format("Fetching commits for pulls with number greater than %d", previousId));
                 long startTime = System.currentTimeMillis();
                 int rows = retryExecute(insertStatement);
@@ -961,7 +1105,6 @@ public class Sync
                 if (resultSet.wasNull()) {
                     break;
                 }
-
                 log.info(format("Fetching steps for jobs of runs with id less than %d", previousId));
                 long startTime = System.currentTimeMillis();
                 int rows = retryExecute(insertStatement);
@@ -1259,7 +1402,7 @@ public class Sync
             PreparedStatement idStatement = conn.prepareStatement("SELECT c.id " +
                     "FROM " + destSchema + ".check_runs c " +
                     "LEFT JOIN " + destSchema + ".check_run_annotations a ON a.check_run_id = c.id " +
-                    "WHERE c.owner = ? AND c.repo = ? AND c.status = 'completed' AND c.annotations_count != 0 AND c.started_at > NOW() - INTERVAL '2' MONTH " +
+                    "WHERE c.owner = ? AND c.repo = ? AND c.annotations_count != 0 AND c.started_at > NOW() - INTERVAL '2' MONTH " +
                     "GROUP BY c.id " +
                     "HAVING COUNT(a.check_run_id) = 0 " +
                     "ORDER BY c.id ASC");
