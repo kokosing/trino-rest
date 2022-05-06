@@ -47,3 +47,15 @@ WITH latest AS (
 SELECT i.*
 FROM issue_comments i
 JOIN latest ON (latest.id, latest.updated_at) = (i.id, i.updated_at);
+
+CREATE OR REPLACE VIEW latest_teams SECURITY INVOKER AS
+SELECT org, id, node_id, url, html_url, name, slug, description, privacy, permission, members_url, repositories_url, parent_id, parent_slug
+FROM timestamped_teams
+GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14
+HAVING max(removed_at) IS NULL OR max(removed_at) < max(created_at);
+
+CREATE OR REPLACE VIEW latest_members SECURITY INVOKER AS
+SELECT org, team_slug, login, id, avatar_url, gravatar_id, type, site_admin
+FROM timestamped_members
+GROUP BY 1, 2, 3, 4, 5, 6, 7, 8
+HAVING max(removed_at) IS NULL OR max(removed_at) < max(joined_at);
