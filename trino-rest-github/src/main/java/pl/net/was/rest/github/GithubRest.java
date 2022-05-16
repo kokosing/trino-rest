@@ -66,6 +66,7 @@ import pl.net.was.rest.github.filter.ArtifactFilter;
 import pl.net.was.rest.github.filter.CheckRunAnnotationFilter;
 import pl.net.was.rest.github.filter.CheckRunFilter;
 import pl.net.was.rest.github.filter.CheckSuiteFilter;
+import pl.net.was.rest.github.filter.CollaboratorFilter;
 import pl.net.was.rest.github.filter.IssueCommentFilter;
 import pl.net.was.rest.github.filter.IssueFilter;
 import pl.net.was.rest.github.filter.JobFilter;
@@ -270,6 +271,21 @@ public class GithubRest
                     new ColumnMetadata("repositories_url", VARCHAR),
                     new ColumnMetadata("parent_id", BIGINT),
                     new ColumnMetadata("parent_slug", VARCHAR)))
+            .put(GithubTable.COLLABORATORS, ImmutableList.of(
+                    new ColumnMetadata("owner", VARCHAR),
+                    new ColumnMetadata("repo", VARCHAR),
+                    new ColumnMetadata("login", VARCHAR),
+                    new ColumnMetadata("id", BIGINT),
+                    new ColumnMetadata("avatar_url", VARCHAR),
+                    new ColumnMetadata("gravatar_id", VARCHAR),
+                    new ColumnMetadata("type", VARCHAR),
+                    new ColumnMetadata("site_admin", BOOLEAN),
+                    new ColumnMetadata("permission_pull", BOOLEAN),
+                    new ColumnMetadata("permission_triage", BOOLEAN),
+                    new ColumnMetadata("permission_push", BOOLEAN),
+                    new ColumnMetadata("permission_maintain", BOOLEAN),
+                    new ColumnMetadata("permission_admin", BOOLEAN),
+                    new ColumnMetadata("role_name", VARCHAR)))
             .put(GithubTable.COMMITS, ImmutableList.of(
                     new ColumnMetadata("owner", VARCHAR),
                     new ColumnMetadata("repo", VARCHAR),
@@ -677,6 +693,7 @@ public class GithubRest
             .put(GithubTable.REPOS, this::getRepos)
             .put(GithubTable.MEMBERS, this::getMembers)
             .put(GithubTable.TEAMS, this::getTeams)
+            .put(GithubTable.COLLABORATORS, this::getCollaborators)
             .put(GithubTable.COMMITS, this::getRepoCommits)
             .put(GithubTable.PULLS, this::getPulls)
             .put(GithubTable.PULL_COMMITS, this::getPullCommits)
@@ -893,6 +910,25 @@ public class GithubRest
             ")";
 
     public static final String TEAMS_TABLE_TYPE = "array(" + TEAM_ROW_TYPE + ")";
+
+    public static final String COLLABORATOR_ROW_TYPE = "row(" +
+            "owner varchar, " +
+            "repo varchar, " +
+            "login varchar, " +
+            "id bigint, " +
+            "avatar_url varchar, " +
+            "gravatar_id varchar, " +
+            "type varchar, " +
+            "site_admin boolean, " +
+            "permission_pull boolean, " +
+            "permission_triage boolean, " +
+            "permission_push boolean, " +
+            "permission_maintain boolean, " +
+            "permission_admin boolean, " +
+            "role_name varchar" +
+            ")";
+
+    public static final String COLLABORATOR_TABLE_TYPE = "array(" + COLLABORATOR_ROW_TYPE + ")";
 
     public static final String COMMITS_TABLE_TYPE = "array(row(" +
             "owner varchar, " +
@@ -1302,6 +1338,7 @@ public class GithubRest
             .put(GithubTable.REPOS, new RepoFilter())
             .put(GithubTable.MEMBERS, new MemberFilter())
             .put(GithubTable.TEAMS, new TeamFilter())
+            .put(GithubTable.COLLABORATORS, new CollaboratorFilter())
             .put(GithubTable.CHECK_SUITES, new CheckSuiteFilter())
             .put(GithubTable.CHECK_RUNS, new CheckRunFilter())
             .put(GithubTable.CHECK_RUN_ANNOTATIONS, new CheckRunAnnotationFilter())
@@ -1519,6 +1556,33 @@ public class GithubRest
                 page -> service.listOrgTeams("Bearer " + token, org, PER_PAGE, page),
                 item -> {
                     item.setOrg(org);
+                    return item.toRow();
+                },
+                table.getOffset(),
+                table.getLimit(),
+                table.getPageIncrement());
+    }
+
+    private Iterable<List<?>> getCollaborators(RestTableHandle table)
+    {
+        GithubTable tableName = GithubTable.valueOf(table);
+        Map<String, ColumnHandle> columns = columnHandles.get(tableName);
+        FilterApplier filter = filterAppliers.get(tableName);
+
+        String owner = (String) filter.getFilter((RestColumnHandle) columns.get("owner"), table.getConstraint());
+        String repo = (String) filter.getFilter((RestColumnHandle) columns.get("repo"), table.getConstraint());
+        requirePredicate(owner, "collaborators.owner");
+        requirePredicate(repo, "collaborators.repo");
+        return getRowsFromPages(
+                page -> service.listCollaborators(
+                        "Bearer " + token,
+                        owner,
+                        repo,
+                        PER_PAGE,
+                        page),
+                item -> {
+                    item.setOwner(owner);
+                    item.setRepo(repo);
                     return item.toRow();
                 },
                 table.getOffset(),

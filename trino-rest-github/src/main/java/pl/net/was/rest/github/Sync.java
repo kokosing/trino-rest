@@ -145,6 +145,7 @@ public class Sync
         availableTables.put("check_run_annotations", Sync::syncCheckRunAnnotations);
         availableTables.put("teams", Sync::syncTeams);
         availableTables.put("members", Sync::syncMembers);
+        availableTables.put("collaborators", Sync::syncCollaborators);
 
         try (Connection conn = DriverManager.getConnection(url, username, password)) {
             options.conn = conn;
@@ -1589,6 +1590,56 @@ public class Sync
             insertStatement.setString(2, options.owner);
             insertStatement.setString(3, options.owner);
             insertStatement.setString(4, options.owner);
+
+            long startTime = System.currentTimeMillis();
+            int rows = retryExecute(insertStatement);
+            log.info(format("Inserted %d rows, took %s", rows, Duration.ofMillis(System.currentTimeMillis() - startTime)));
+        }
+        catch (Exception e) {
+            log.severe(e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    private static void syncCollaborators(Options options)
+    {
+        Connection conn = options.conn;
+        String destSchema = options.destSchema;
+        String srcSchema = options.srcSchema;
+        try {
+            conn.createStatement().executeUpdate(
+                    "CREATE TABLE IF NOT EXISTS " + destSchema + ".timestamped_collaborators AS SELECT *, cast(current_timestamp as timestamp(3)) AS joined_at, cast(current_timestamp as timestamp(3)) AS removed_at FROM " + srcSchema + ".collaborators WITH NO DATA");
+            String query = "INSERT INTO " + destSchema + ".timestamped_collaborators" +
+                    " SELECT" +
+                    "  coalesce(src.owner, dst.owner)" +
+                    "  , coalesce(src.repo, dst.repo)" +
+                    "  , coalesce(src.login, dst.login)" +
+                    "  , coalesce(src.id, dst.id)" +
+                    "  , coalesce(src.avatar_url, dst.avatar_url)" +
+                    "  , coalesce(src.gravatar_id, dst.gravatar_id)" +
+                    "  , coalesce(src.type, dst.type)" +
+                    "  , coalesce(src.site_admin, dst.site_admin)" +
+                    "  , coalesce(src.permission_pull, dst.permission_pull)" +
+                    "  , coalesce(src.permission_triage, dst.permission_triage)" +
+                    "  , coalesce(src.permission_push, dst.permission_push)" +
+                    "  , coalesce(src.permission_maintain, dst.permission_maintain)" +
+                    "  , coalesce(src.permission_admin, dst.permission_admin)" +
+                    "  , coalesce(src.role_name, dst.role_name)" +
+                    "  , coalesce(dst.joined_at, cast(current_timestamp as timestamp(3))) AS joined_at" +
+                    "  , if(src.id IS NULL, cast(current_timestamp as timestamp(3))) AS removed_at" +
+                    " FROM (" +
+                    "  SELECT owner, repo, login, id, avatar_url, gravatar_id, type, site_admin, permission_pull, permission_triage, permission_push, permission_maintain, permission_admin, role_name, max(joined_at) AS joined_at, max(removed_at) AS removed_at " +
+                    "  FROM " + destSchema + ".timestamped_collaborators WHERE owner = ? AND repo = ? " +
+                    "  GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14 " +
+                    "  HAVING max(removed_at) IS NULL OR max(removed_at) < max(joined_at)" +
+                    ") dst" +
+                    " FULL OUTER JOIN (SELECT * FROM " + srcSchema + " .collaborators WHERE owner = ? AND repo = ?) src ON (dst.owner, dst.repo, dst.login) = (src.owner, src.repo, src.login)" +
+                    " WHERE dst.login IS NULL OR src.login IS NULL";
+            PreparedStatement insertStatement = conn.prepareStatement(query);
+            insertStatement.setString(1, options.owner);
+            insertStatement.setString(2, options.repo);
+            insertStatement.setString(3, options.owner);
+            insertStatement.setString(4, options.repo);
 
             long startTime = System.currentTimeMillis();
             int rows = retryExecute(insertStatement);

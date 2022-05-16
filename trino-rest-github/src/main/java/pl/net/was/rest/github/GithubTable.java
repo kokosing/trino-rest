@@ -24,6 +24,7 @@ public enum GithubTable
     REPOS("repos"),
     MEMBERS("members"),
     TEAMS("teams"),
+    COLLABORATORS("collaborators"),
     COMMITS("commits"),
     PULLS("pulls"),
     PULL_COMMITS("pull_commits"),

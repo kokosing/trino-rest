@@ -14,6 +14,7 @@
 
 package pl.net.was.rest.github.service;
 
+import pl.net.was.rest.github.model.Collaborator;
 import pl.net.was.rest.github.model.Member;
 import pl.net.was.rest.github.model.Organization;
 import pl.net.was.rest.github.model.RepoCommit;
@@ -115,6 +116,15 @@ public interface GithubService
     Call<User> getUser(
             @Header("Authorization") String auth,
             @Path("username") String username);
+
+    @Headers("accept: application/vnd.github.v3+json")
+    @GET("/repos/{owner}/{repo}/collaborators")
+    Call<List<Collaborator>> listCollaborators(
+            @Header("Authorization") String auth,
+            @Path("owner") String owner,
+            @Path("repo") String repo,
+            @Query("per_page") int perPage,
+            @Query("page") int page);
 
     @Headers("accept: application/vnd.github.v3+json")
     @GET("/repos/{owner}/{repo}/commits")

@@ -20,6 +20,7 @@ import io.trino.spi.Plugin;
 import io.trino.spi.connector.ConnectorFactory;
 import pl.net.was.rest.RestConnectorFactory;
 import pl.net.was.rest.github.function.Artifacts;
+import pl.net.was.rest.github.function.Collaborators;
 import pl.net.was.rest.github.function.IssueComments;
 import pl.net.was.rest.github.function.Issues;
 import pl.net.was.rest.github.function.JobLogs;
@@ -69,6 +70,7 @@ public class GithubPlugin
                 .add(OrgMembers.class)
                 .add(TeamMembers.class)
                 .add(Teams.class)
+                .add(Collaborators.class)
                 .add(Users.class)
                 .add(UserGetter.class)
                 .add(UserRepos.class)
