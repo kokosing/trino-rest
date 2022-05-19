@@ -15,6 +15,8 @@
 package pl.net.was.rest;
 
 import io.airlift.slice.Slice;
+import io.trino.spi.StandardErrorCode;
+import io.trino.spi.TrinoException;
 import io.trino.spi.connector.ColumnHandle;
 import io.trino.spi.connector.ColumnMetadata;
 import io.trino.spi.connector.ConnectorInsertTableHandle;
@@ -27,6 +29,7 @@ import io.trino.spi.connector.ConnectorTableProperties;
 import io.trino.spi.connector.Constraint;
 import io.trino.spi.connector.ConstraintApplicationResult;
 import io.trino.spi.connector.LimitApplicationResult;
+import io.trino.spi.connector.RetryMode;
 import io.trino.spi.connector.SchemaTableName;
 import io.trino.spi.connector.SchemaTablePrefix;
 import io.trino.spi.connector.SortItem;
@@ -125,8 +128,11 @@ public class RestMetadata
     }
 
     @Override
-    public ConnectorInsertTableHandle beginInsert(ConnectorSession session, ConnectorTableHandle connectorTableHandle)
+    public ConnectorInsertTableHandle beginInsert(ConnectorSession session, ConnectorTableHandle connectorTableHandle, List<ColumnHandle> columns, RetryMode retryMode)
     {
+        if (retryMode != RetryMode.NO_RETRIES) {
+            throw new TrinoException(StandardErrorCode.NOT_SUPPORTED, "This connector does not support query retries");
+        }
         RestTableHandle tableHandle = Types.checkType(connectorTableHandle, RestTableHandle.class, "tableHandle");
         return new RestInsertTableHandle(tableHandle);
     }
@@ -173,9 +179,8 @@ public class RestMetadata
     @Override
     public TableStatistics getTableStatistics(
             ConnectorSession session,
-            ConnectorTableHandle tableHandle,
-            Constraint constraint)
+            ConnectorTableHandle tableHandle)
     {
-        return rest.getTableStatistics(session, tableHandle, constraint);
+        return rest.getTableStatistics(session, tableHandle);
     }
 }

@@ -2804,8 +2804,7 @@ public class GithubRest
     @Override
     public TableStatistics getTableStatistics(
             ConnectorSession session,
-            ConnectorTableHandle handle,
-            Constraint constraint)
+            ConnectorTableHandle handle)
     {
         RestTableHandle table = (RestTableHandle) handle;
         GithubTable tableName = GithubTable.valueOf(table);
@@ -2815,17 +2814,6 @@ public class GithubRest
 
         Function<RestTableHandle, Long> getter = rowCountGetters.get(tableName);
         if (getter != null) {
-            // constraint needs to be pushed down into the table handle
-            if (filter != null) {
-                Optional<ConstraintApplicationResult<ConnectorTableHandle>> result = filter.applyFilter(
-                        table,
-                        columns,
-                        filter.getSupportedFilters(),
-                        constraint.getSummary());
-                if (result.isPresent()) {
-                    table = (RestTableHandle) result.get().getHandle();
-                }
-            }
             long totalCount;
             try {
                 totalCount = getter.apply(table);
@@ -2862,8 +2850,8 @@ public class GithubRest
             // assuming that some issues don't have any comments, so these numbers are close together
             case ISSUES:
             case ISSUE_COMMENTS:
-                String owner = (String) filter.getFilter((RestColumnHandle) columns.get("owner"), constraint.getSummary());
-                String repo = (String) filter.getFilter((RestColumnHandle) columns.get("repo"), constraint.getSummary());
+                String owner = (String) filter.getFilter((RestColumnHandle) columns.get("owner"), table.getConstraint());
+                String repo = (String) filter.getFilter((RestColumnHandle) columns.get("repo"), table.getConstraint());
                 if (owner == null || repo == null) {
                     return TableStatistics.empty();
                 }

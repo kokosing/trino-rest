@@ -123,8 +123,7 @@ public interface Rest
 
     default TableStatistics getTableStatistics(
             ConnectorSession session,
-            ConnectorTableHandle tableHandle,
-            Constraint constraint)
+            ConnectorTableHandle tableHandle)
     {
         return TableStatistics.empty();
     }
