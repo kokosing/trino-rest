@@ -58,14 +58,39 @@ FROM timestamped_teams
 GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14
 HAVING max(removed_at) IS NULL OR max(removed_at) < max(created_at);
 
+CREATE OR REPLACE VIEW all_teams SECURITY INVOKER AS
+SELECT
+  org, id, node_id, url, html_url, name, slug, description, privacy, permission, members_url, repositories_url, parent_id, parent_slug
+  -- created_at is an approximate, recorded when membership was checked; assume membership is as old as possible, so stretch it to the end of the previous row
+  , coalesce(lag(removed_at) OVER (PARTITION BY org, login, team_slug ORDER BY created_at) + interval '1' second, timestamp '0001-01-01') AS created_at
+  , coalesce(removed_at, timestamp '9999-12-31') AS removed_at
+FROM timestamped_teams;
+
 CREATE OR REPLACE VIEW latest_members SECURITY INVOKER AS
 SELECT org, team_slug, login, id, avatar_url, gravatar_id, type, site_admin
 FROM timestamped_members
 GROUP BY 1, 2, 3, 4, 5, 6, 7, 8
 HAVING max(removed_at) IS NULL OR max(removed_at) < max(joined_at);
 
+CREATE OR REPLACE VIEW all_members SECURITY INVOKER AS
+SELECT
+  org, team_slug, login, id, avatar_url, gravatar_id, type, site_admin
+  -- joined_at is an approximate, recorded when membership was checked; assume membership is as old as possible, so stretch it to the end of the previous row
+  , coalesce(lag(removed_at) OVER (PARTITION BY org, login, team_slug ORDER BY joined_at) + interval '1' second, timestamp '0001-01-01') AS joined_at
+  , coalesce(removed_at, timestamp '9999-12-31') AS removed_at
+FROM timestamped_members;
+
 CREATE OR REPLACE VIEW latest_collaborators SECURITY INVOKER AS
 SELECT owner, repo, login, id, avatar_url, gravatar_id, type, site_admin, permission_pull, permission_triage, permission_push, permission_maintain, permission_admin, role_name
 FROM timestamped_collaborators
 GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14
 HAVING max(removed_at) IS NULL OR max(removed_at) < max(joined_at);
+
+
+CREATE OR REPLACE VIEW all_collaborators SECURITY INVOKER AS
+SELECT
+  owner, repo, login, id, avatar_url, gravatar_id, type, site_admin, permission_pull, permission_triage, permission_push, permission_maintain, permission_admin, role_name
+  -- joined_at is an approximate, recorded when membership was checked; assume membership is as old as possible, so stretch it to the end of the previous row
+  , coalesce(lag(removed_at) OVER (PARTITION BY org, login, team_slug ORDER BY joined_at) + interval '1' second, timestamp '0001-01-01') AS joined_at
+  , coalesce(removed_at, timestamp '9999-12-31') AS removed_at
+FROM timestamped_collaborators;
