@@ -1212,7 +1212,7 @@ public class Sync
 
             String query = "INSERT INTO " + destSchema + ".artifacts " +
                     "SELECT src.* " +
-                    "FROM artifacts src " +
+                    "FROM " + srcSchema + ".artifacts src " +
                     "LEFT JOIN " + destSchema + ".artifacts dst ON dst.run_id = ? AND (dst.id, dst.path, dst.part_number) = (src.id, src.path, src.part_number) " +
                     "WHERE src.owner = ? AND src.repo = ? AND src.run_id = ? AND dst.id IS NULL";
             PreparedStatement insertStatement = conn.prepareStatement(query);
@@ -1273,7 +1273,7 @@ public class Sync
 
             String query = "INSERT INTO " + destSchema + ".job_logs " +
                     "SELECT src.* " +
-                    "FROM job_logs src " +
+                    "FROM " + srcSchema + ".job_logs src " +
                     "LEFT JOIN " + destSchema + ".job_logs dst ON dst.job_id = ? AND dst.part_number = src.part_number " +
                     "WHERE src.owner = ? AND src.repo = ? AND src.job_id = ? AND dst.job_id IS NULL";
             PreparedStatement insertStatement = conn.prepareStatement(query);
@@ -1339,9 +1339,9 @@ public class Sync
             String batchPlaceholders = "?" + ", ?".repeat(batchSize - 1);
             String query = "INSERT INTO " + destSchema + ".check_suites " +
                     "SELECT src.* " +
-                    "FROM check_suites src " +
+                    "FROM " + srcSchema + ".check_suites src " +
                     "LEFT JOIN " + destSchema + ".check_suites dst ON dst.ref = src.ref AND dst.id = src.id " +
-                    "WHERE src.owner = ? AND src.repo = ? AND src.ref IN (" + batchPlaceholders + ") AND dst.id IS NULL";
+                    "WHERE src.owner = ? AND src.repo = ? AND src.ref IN (" + batchPlaceholders + ") AND src.status = 'completed' AND dst.id IS NULL";
             PreparedStatement insertStatement = conn.prepareStatement(query);
             insertStatement.setString(1, options.owner);
             insertStatement.setString(2, options.repo);
@@ -1409,9 +1409,9 @@ public class Sync
             String batchPlaceholders = "?" + ", ?".repeat(batchSize - 1);
             String query = "INSERT INTO " + destSchema + ".check_runs " +
                     "SELECT src.* " +
-                    "FROM check_runs src " +
+                    "FROM " + srcSchema + ".check_runs src " +
                     "LEFT JOIN " + destSchema + ".check_runs dst ON dst.ref = src.ref AND dst.id = src.id " +
-                    "WHERE src.owner = ? AND src.repo = ? AND src.ref IN (" + batchPlaceholders + ") AND dst.id IS NULL";
+                    "WHERE src.owner = ? AND src.repo = ? AND src.ref IN (" + batchPlaceholders + ") AND src.status = 'completed' AND dst.id IS NULL";
             PreparedStatement insertStatement = conn.prepareStatement(query);
             insertStatement.setString(1, options.owner);
             insertStatement.setString(2, options.repo);
@@ -1472,7 +1472,7 @@ public class Sync
             String batchPlaceholders = "?" + ", ?".repeat(batchSize - 1);
             String query = "INSERT INTO " + destSchema + ".check_run_annotations " +
                     "SELECT owner, repo, check_run_id, path, start_line, end_line, start_column, end_column, annotation_level, title, replace(message, U&'\\0000', ' '), replace(raw_details, U&'\\0000', ' '), blob_href " +
-                    "FROM check_run_annotations src " +
+                    "FROM " + srcSchema + ".check_run_annotations src " +
                     "WHERE src.owner = ? AND src.repo = ? AND src.check_run_id IN (" + batchPlaceholders + ")";
             PreparedStatement insertStatement = conn.prepareStatement(query);
             insertStatement.setString(1, options.owner);
