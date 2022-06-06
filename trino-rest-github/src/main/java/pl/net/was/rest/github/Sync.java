@@ -1541,7 +1541,7 @@ public class Sync
         String srcSchema = options.srcSchema;
         try {
             conn.createStatement().executeUpdate(
-                    "CREATE TABLE IF NOT EXISTS " + destSchema + ".timestamped_members AS SELECT *, cast(current_timestamp as timestamp(3)) AS joined_at, cast(current_timestamp as timestamp(3)) AS removed_at FROM " + srcSchema + ".members WITH NO DATA");
+                    "CREATE TABLE IF NOT EXISTS " + destSchema + ".timestamped_members AS SELECT *, cast(current_timestamp as timestamp(3)) AS joined_at, cast(current_timestamp as timestamp(3)) AS removed_at, cast('' AS VARCHAR) AS source FROM " + srcSchema + ".members WITH NO DATA");
             String query = "INSERT INTO " + destSchema + ".timestamped_members" +
                     " SELECT" +
                     "  coalesce(src.org, dst.org)" +
@@ -1554,6 +1554,7 @@ public class Sync
                     "  , coalesce(src.site_admin, dst.site_admin)" +
                     "  , coalesce(dst.joined_at, cast(current_timestamp as timestamp(3))) AS joined_at" +
                     "  , if(src.id IS NULL, cast(current_timestamp as timestamp(3))) AS removed_at" +
+                    "  , 'sync' AS source" +
                     " FROM (" +
                     "  SELECT org, team_slug, login, id, avatar_url, gravatar_id, type, site_admin, max(joined_at) AS joined_at, max(coalesce(removed_at, timestamp '9999-12-31')) AS removed_at " +
                     "  FROM " + destSchema + ".timestamped_members WHERE org = ? " +
@@ -1589,7 +1590,7 @@ public class Sync
         String srcSchema = options.srcSchema;
         try {
             conn.createStatement().executeUpdate(
-                    "CREATE TABLE IF NOT EXISTS " + destSchema + ".timestamped_collaborators AS SELECT *, cast(current_timestamp as timestamp(3)) AS joined_at, cast(current_timestamp as timestamp(3)) AS removed_at FROM " + srcSchema + ".collaborators WITH NO DATA");
+                    "CREATE TABLE IF NOT EXISTS " + destSchema + ".timestamped_collaborators AS SELECT *, cast(current_timestamp as timestamp(3)) AS joined_at, cast(current_timestamp as timestamp(3)) AS removed_at, cast('' AS VARCHAR) AS source FROM " + srcSchema + ".collaborators WITH NO DATA");
             String query = "INSERT INTO " + destSchema + ".timestamped_collaborators" +
                     " SELECT" +
                     "  coalesce(src.owner, dst.owner)" +
@@ -1608,14 +1609,15 @@ public class Sync
                     "  , coalesce(src.role_name, dst.role_name)" +
                     "  , coalesce(dst.joined_at, cast(current_timestamp as timestamp(3))) AS joined_at" +
                     "  , if(src.id IS NULL, cast(current_timestamp as timestamp(3))) AS removed_at" +
+                    "  , 'sync' AS source" +
                     " FROM (" +
-                    "  SELECT owner, repo, login, id, avatar_url, gravatar_id, type, site_admin, permission_pull, permission_triage, permission_push, permission_maintain, permission_admin, role_name, max(joined_at) AS joined_at, max(removed_at) AS removed_at " +
+                    "  SELECT owner, repo, login, id, avatar_url, gravatar_id, type, site_admin, permission_pull, permission_triage, permission_push, permission_maintain, permission_admin, role_name, max(joined_at) AS joined_at, max(coalesce(removed_at, timestamp '9999-12-31')) AS removed_at " +
                     "  FROM " + destSchema + ".timestamped_collaborators WHERE owner = ? AND repo = ? " +
                     "  GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14 " +
-                    "  HAVING max(removed_at) IS NULL OR max(removed_at) < max(joined_at)" +
+                    "  HAVING max(coalesce(removed_at, timestamp '9999-12-31')) = timestamp '9999-12-31' OR max(coalesce(removed_at, timestamp '9999-12-31')) < max(joined_at)" +
                     ") dst" +
                     " FULL OUTER JOIN (SELECT * FROM " + srcSchema + " .collaborators WHERE owner = ? AND repo = ?) src ON (dst.owner, dst.repo, dst.login) = (src.owner, src.repo, src.login)" +
-                    " WHERE dst.login IS NULL OR src.login IS NULL";
+                    " WHERE dst.login IS NULL OR (src.login IS NULL AND dst.removed_at != timestamp '9999-12-31')";
             PreparedStatement insertStatement = conn.prepareStatement(query);
             insertStatement.setString(1, options.owner);
             insertStatement.setString(2, options.repo);
