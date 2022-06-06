@@ -62,7 +62,7 @@ CREATE OR REPLACE VIEW all_teams SECURITY INVOKER AS
 SELECT
   org, id, node_id, url, html_url, name, slug, description, privacy, permission, members_url, repositories_url, parent_id, parent_slug
   -- created_at is an approximate, recorded when membership was checked; assume membership is as old as possible, so stretch it to the end of the previous row
-  , coalesce(lag(removed_at) OVER (PARTITION BY org, login, team_slug ORDER BY created_at) + interval '1' second, timestamp '0001-01-01') AS created_at
+  , coalesce(lag(removed_at) OVER (PARTITION BY org, slug ORDER BY created_at) + interval '1' second, timestamp '0001-01-01') AS created_at
   , coalesce(removed_at, timestamp '9999-12-31') AS removed_at
 FROM timestamped_teams;
 
@@ -91,6 +91,6 @@ CREATE OR REPLACE VIEW all_collaborators SECURITY INVOKER AS
 SELECT
   owner, repo, login, id, avatar_url, gravatar_id, type, site_admin, permission_pull, permission_triage, permission_push, permission_maintain, permission_admin, role_name
   -- joined_at is an approximate, recorded when membership was checked; assume membership is as old as possible, so stretch it to the end of the previous row
-  , coalesce(lag(removed_at) OVER (PARTITION BY org, login, team_slug ORDER BY joined_at) + interval '1' second, timestamp '0001-01-01') AS joined_at
+  , coalesce(lag(removed_at) OVER (PARTITION BY owner, login ORDER BY joined_at) + interval '1' second, timestamp '0001-01-01') AS joined_at
   , coalesce(removed_at, timestamp '9999-12-31') AS removed_at
 FROM timestamped_collaborators;
