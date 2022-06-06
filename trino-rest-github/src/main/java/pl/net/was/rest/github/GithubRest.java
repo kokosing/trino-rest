@@ -348,7 +348,11 @@ public class GithubRest
                     new ColumnMetadata("base_sha", VARCHAR),
                     new ColumnMetadata("author_association", VARCHAR),
                     new ColumnMetadata("draft", BOOLEAN),
-                    new ColumnMetadata("auto_merge", BOOLEAN)))
+                    new ColumnMetadata("auto_merge_enabled_by_id", BIGINT),
+                    new ColumnMetadata("auto_merge_enabled_by_login", VARCHAR),
+                    new ColumnMetadata("auto_merge_method", VARCHAR),
+                    new ColumnMetadata("auto_merge_commit_title", VARCHAR),
+                    new ColumnMetadata("auto_merge_commit_message", VARCHAR)))
             .put(GithubTable.PULL_COMMITS, ImmutableList.of(
                     new ColumnMetadata("owner", VARCHAR),
                     new ColumnMetadata("repo", VARCHAR),
@@ -994,7 +998,11 @@ public class GithubRest
             "base_sha varchar, " +
             "author_association varchar, " +
             "draft boolean, " +
-            "auto_merge boolean" +
+            "auto_merge_enabled_by_id bigint, " +
+            "auto_merge_enabled_by_login varchar, " +
+            "auto_merge_method varchar, " +
+            "auto_merge_commit_title varchar, " +
+            "auto_merge_commit_message varchar" +
             "))";
 
     public static final String PULL_COMMITS_TABLE_TYPE = "array(row(" +

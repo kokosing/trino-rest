@@ -66,7 +66,7 @@ public class Pull
     private final String baseRef;
     private final String baseSha;
     private final String authorAssociation;
-    private final boolean autoMerge;
+    private final AutoMerge autoMerge;
     private final String activeLockReason;
 
     public Pull(
@@ -104,7 +104,7 @@ public class Pull
             @JsonProperty("base") Ref base,
             @JsonProperty("_links") Object unusedLinks,
             @JsonProperty("author_association") String authorAssociation,
-            @JsonProperty("auto_merge") boolean autoMerge,
+            @JsonProperty("auto_merge") AutoMerge autoMerge,
             @JsonProperty("active_lock_reason") String activeLockReason)
     {
         this.url = url;
@@ -231,7 +231,11 @@ public class Pull
                 baseSha,
                 authorAssociation,
                 draft,
-                autoMerge);
+                autoMerge != null ? autoMerge.getEnabledBy().getId() : 0,
+                autoMerge != null ? autoMerge.getEnabledBy().getLogin() : "",
+                autoMerge != null ? autoMerge.getMergeMethod() : "",
+                autoMerge != null ? autoMerge.getCommitTitle() : "",
+                autoMerge != null ? autoMerge.getCommitMessage() : "");
     }
 
     @Override
@@ -326,6 +330,19 @@ public class Pull
         writeString(rowBuilder, baseSha);
         writeString(rowBuilder, authorAssociation);
         BOOLEAN.writeBoolean(rowBuilder, draft);
-        BOOLEAN.writeBoolean(rowBuilder, autoMerge);
+        if (autoMerge != null) {
+            BIGINT.writeLong(rowBuilder, autoMerge.getEnabledBy().getId());
+            writeString(rowBuilder, autoMerge.getEnabledBy().getLogin());
+            writeString(rowBuilder, autoMerge.getMergeMethod());
+            writeString(rowBuilder, autoMerge.getCommitTitle());
+            writeString(rowBuilder, autoMerge.getCommitMessage());
+        }
+        else {
+            rowBuilder.appendNull();
+            rowBuilder.appendNull();
+            rowBuilder.appendNull();
+            rowBuilder.appendNull();
+            rowBuilder.appendNull();
+        }
     }
 }
