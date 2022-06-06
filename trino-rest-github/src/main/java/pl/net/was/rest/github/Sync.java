@@ -1555,17 +1555,17 @@ public class Sync
                     "  , coalesce(dst.joined_at, cast(current_timestamp as timestamp(3))) AS joined_at" +
                     "  , if(src.id IS NULL, cast(current_timestamp as timestamp(3))) AS removed_at" +
                     " FROM (" +
-                    "  SELECT org, team_slug, login, id, avatar_url, gravatar_id, type, site_admin, max(joined_at) AS joined_at, max(removed_at) AS removed_at " +
+                    "  SELECT org, team_slug, login, id, avatar_url, gravatar_id, type, site_admin, max(joined_at) AS joined_at, max(coalesce(removed_at, timestamp '9999-12-31')) AS removed_at " +
                     "  FROM " + destSchema + ".timestamped_members WHERE org = ? " +
                     "  GROUP BY 1, 2, 3, 4, 5, 6, 7, 8 " +
-                    "  HAVING max(removed_at) IS NULL OR max(removed_at) < max(joined_at)" +
+                    "  HAVING max(coalesce(removed_at, timestamp '9999-12-31')) = timestamp '9999-12-31' OR max(coalesce(removed_at, timestamp '9999-12-31')) < max(joined_at)" +
                     ") dst" +
                     " FULL OUTER JOIN (" +
                     "   SELECT * FROM " + srcSchema + " .members WHERE org = ?" +
                     "   UNION ALL " +
                     "   SELECT * FROM " + srcSchema + " .members WHERE org = ? AND team_slug IN (SELECT slug FROM " + srcSchema + ".teams WHERE org = ?)" +
                     ") src ON (dst.org, coalesce(dst.team_slug, ''), dst.id) = (src.org, coalesce(src.team_slug, ''), src.id)" +
-                    " WHERE dst.id IS NULL OR src.id IS NULL";
+                    " WHERE dst.id IS NULL OR (src.id IS NULL AND dst.removed_at != timestamp '9999-12-31')";
             PreparedStatement insertStatement = conn.prepareStatement(query);
             insertStatement.setString(1, options.owner);
             insertStatement.setString(2, options.owner);
