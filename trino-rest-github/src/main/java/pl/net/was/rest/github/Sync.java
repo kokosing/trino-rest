@@ -938,23 +938,30 @@ public class Sync
             // only fetch jobs for up to 20 completed runs not older than 2 months, without any jobs
             PreparedStatement statement = conn.prepareStatement(
                     "INSERT INTO " + destSchema + ".jobs " +
+                            "WITH jobs AS (" +
+                            "  SELECT id, run_id " +
+                            "  FROM " + destSchema + ".jobs " +
+                            "  WHERE owner = ? AND repo = ? " +
+                            ") " +
                             "SELECT src.* " +
                             "FROM (" +
                             "SELECT r.id " +
                             "FROM " + destSchema + ".runs r " +
-                            "LEFT JOIN " + destSchema + ".jobs j ON j.run_id = r.id " +
+                            "LEFT JOIN jobs j ON j.run_id = r.id " +
                             "WHERE r.owner = ? AND r.repo = ? AND r.status = 'completed' AND r.created_at > NOW() - INTERVAL '2' MONTH " +
                             "GROUP BY r.id " +
                             "HAVING COUNT(j.id) = 0 " +
                             "ORDER BY r.id DESC LIMIT 60" +
                             ") r " +
                             "CROSS JOIN unnest(jobs(?, ?, r.id)) src " +
-                            "LEFT JOIN " + destSchema + ".jobs dst ON (dst.run_id, dst.id) = (src.run_id, src.id) " +
+                            "LEFT JOIN jobs dst ON (dst.run_id, dst.id) = (src.run_id, src.id) " +
                             "WHERE dst.id IS NULL");
             statement.setString(1, options.owner);
             statement.setString(2, options.repo);
             statement.setString(3, options.owner);
             statement.setString(4, options.repo);
+            statement.setString(5, options.owner);
+            statement.setString(6, options.repo);
 
             while (true) {
                 log.info("Fetching jobs");
