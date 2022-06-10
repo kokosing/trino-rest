@@ -76,7 +76,7 @@ public class Sync
                 "TRINO_USERNAME", username,
                 "TRINO_PASSWORD", password,
                 // notice that jog_logs and artifacts are not enabled by default
-                "SYNC_TABLES", "commits,issues,issue_comments,pulls,pull_commits,review_comments,reviews,runs,jobs,steps,check_suites,check_runs,check_run_annotations",
+                "SYNC_TABLES", "repos,commits,issues,issue_comments,pulls,pull_commits,review_comments,reviews,workflows,runs,jobs,steps,check_suites,check_runs,check_run_annotations",
                 "LOG_LEVEL", "INFO",
                 "EMPTY_INSERT_LIMIT", "1",
                 "CHECK_STEPS_DUPLICATES", "false",
@@ -127,6 +127,7 @@ public class Sync
 
         // Note that the order in which these functions are called is determined by enabledTables, not availableTables
         Map<String, Consumer<Options>> availableTables = new LinkedHashMap<>();
+        availableTables.put("repos", Sync::syncRepos);
         availableTables.put("commits", Sync::syncCommits);
         availableTables.put("issues", Sync::syncIssues);
         availableTables.put("issue_comments", Sync::syncIssueComments);
@@ -135,6 +136,7 @@ public class Sync
         availableTables.put("pull_stats", Sync::syncPullStats);
         availableTables.put("reviews", Sync::syncReviews);
         availableTables.put("review_comments", Sync::syncReviewComments);
+        availableTables.put("workflows", Sync::syncWorkflows);
         availableTables.put("runs", Sync::syncRuns);
         availableTables.put("jobs", Sync::syncJobs);
         availableTables.put("job_logs", Sync::syncJobLogs);
@@ -181,6 +183,57 @@ public class Sync
             this.repo = repo;
             this.destSchema = destSchema;
             this.srcSchema = srcSchema;
+        }
+    }
+
+    private static void syncRepos(Options options)
+    {
+        Connection conn = options.conn;
+        String destSchema = options.destSchema;
+        String srcSchema = options.srcSchema;
+        try {
+            // sync all columns except permissions because not all connectors support maps and permissions only apply to currently used token anyway
+            conn.createStatement().executeUpdate(
+                    "CREATE TABLE IF NOT EXISTS " + destSchema + ".repos AS SELECT " +
+                            "id, name, full_name, owner_id, owner_login, private, description, fork, homepage, url, forks_count, stargazers_count, watchers_count, size, default_branch, open_issues_count, " +
+                            "is_template, topics, has_issues, has_projects, has_wiki, has_pages, has_downloads, archived, disabled, visibility, pushed_at, created_at, updated_at " +
+                            "FROM " + srcSchema + ".repos WITH NO DATA");
+            // consider adding some indexes:
+            // CREATE INDEX ON repos(id);
+            // CREATE INDEX ON repos(name);
+            // CREATE INDEX ON repos(full_name);
+            // CREATE INDEX ON repos(owner_id);
+            // CREATE INDEX ON repos(owner_login);
+            // note that the first one is NOT a primary key, so updated records can be inserted
+            // and then removed as duplicates by running this in the target database (not supported in Trino):
+            // DELETE FROM repos a USING repos b WHERE a.updated_at < b.updated_at AND a.id = b.id;
+            // or use the unique_repos view (from `trino-rest-github/sql/views.sql`) that ignores duplicates
+
+            // there's no "since" filter, but we can sort by updated_at, so keep inserting records where this is greater than max
+            PreparedStatement lastUpdatedStatement = conn.prepareStatement(
+                    "SELECT COALESCE(MAX(updated_at), TIMESTAMP '0000-01-01') AS latest FROM " + destSchema + ".repos WHERE owner_login = ?");
+            lastUpdatedStatement.setString(1, options.owner);
+            ResultSet result = lastUpdatedStatement.executeQuery();
+            result.next();
+            String lastUpdated = result.getString(1);
+
+            PreparedStatement statement = conn.prepareStatement(
+                    "INSERT INTO " + destSchema + ".repos " +
+                            "SELECT " +
+                            "id, name, full_name, owner_id, owner_login, private, description, fork, homepage, url, forks_count, stargazers_count, watchers_count, size, default_branch, open_issues_count, " +
+                            "is_template, topics, has_issues, has_projects, has_wiki, has_pages, has_downloads, archived, disabled, visibility, pushed_at, created_at, updated_at " +
+                            "FROM repos WHERE owner_login = ? AND updated_at > CAST(? AS TIMESTAMP)");
+            statement.setString(1, options.owner);
+            statement.setString(2, lastUpdated);
+
+            log.info("Fetching repos");
+            long startTime = System.currentTimeMillis();
+            int rows = retryExecute(statement);
+            log.info(format("Inserted %d rows, took %s", rows, Duration.ofMillis(System.currentTimeMillis() - startTime)));
+        }
+        catch (Exception e) {
+            log.severe(e.getMessage());
+            e.printStackTrace();
         }
     }
 
@@ -860,6 +913,49 @@ public class Sync
         }
     }
 
+    private static void syncWorkflows(Options options)
+    {
+        Connection conn = options.conn;
+        String destSchema = options.destSchema;
+        String srcSchema = options.srcSchema;
+        try {
+            conn.createStatement().executeUpdate(
+                    "CREATE TABLE IF NOT EXISTS " + destSchema + ".workflows AS SELECT * FROM " + srcSchema + ".workflows WITH NO DATA");
+            // consider adding some indexes:
+            // CREATE INDEX ON workflows(owner, repo);
+            // CREATE INDEX ON workflows(id);
+            // note that the first one is NOT a primary key, so updated records can be inserted
+            // and then removed as duplicates by running this in the target database (not supported in Trino):
+            // DELETE FROM workflows a USING workflows b WHERE a.updated_at < b.updated_at AND a.id = b.id;
+            // or use the unique_workflows view (from `trino-rest-github/sql/views.sql`) that ignores duplicates
+
+            // there's no "since" filter, but we can sort by updated_at, so keep inserting records where this is greater than max
+            PreparedStatement lastUpdatedStatement = conn.prepareStatement(
+                    "SELECT COALESCE(MAX(updated_at), TIMESTAMP '0000-01-01') AS latest FROM " + destSchema + ".workflows WHERE owner = ? AND repo = ?");
+            lastUpdatedStatement.setString(1, options.owner);
+            lastUpdatedStatement.setString(2, options.repo);
+            ResultSet result = lastUpdatedStatement.executeQuery();
+            result.next();
+            String lastUpdated = result.getString(1);
+
+            PreparedStatement statement = conn.prepareStatement(
+                    "INSERT INTO " + destSchema + ".workflows " +
+                            "SELECT * FROM workflows WHERE owner = ? AND repo = ? AND updated_at > CAST(? AS TIMESTAMP)");
+            statement.setString(1, options.owner);
+            statement.setString(2, options.repo);
+            statement.setString(3, lastUpdated);
+
+            log.info("Fetching workflows");
+            long startTime = System.currentTimeMillis();
+            int rows = retryExecute(statement);
+            log.info(format("Inserted %d rows, took %s", rows, Duration.ofMillis(System.currentTimeMillis() - startTime)));
+        }
+        catch (Exception e) {
+            log.severe(e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
     private static void syncRuns(Options options)
     {
         Connection conn = options.conn;
@@ -1383,6 +1479,7 @@ public class Sync
             // consider adding some indexes:
             // ALTER TABLE check_runs ADD PRIMARY KEY (id, ref);
             // CREATE INDEX ON check_runs(owner, repo);
+            // CREATE INDEX ON check_runs(check_suite_id);
 
             String runsQuery = "SELECT r.head_sha " +
                     "FROM " + destSchema + ".runs r " +
@@ -1500,33 +1597,33 @@ public class Sync
         String srcSchema = options.srcSchema;
         try {
             conn.createStatement().executeUpdate(
-                    "CREATE TABLE IF NOT EXISTS " + destSchema + ".timestamped_teams AS SELECT *, cast(current_timestamp as timestamp(3)) AS created_at, cast(current_timestamp as timestamp(3)) AS removed_at FROM " + srcSchema + ".teams WITH NO DATA");
-            String query = "INSERT INTO " + destSchema + ".timestamped_teams" +
-                    " SELECT" +
-                    "  coalesce(src.org, dst.org)" +
-                    "  , coalesce(src.id, dst.id)" +
-                    "  , coalesce(src.node_id, dst.node_id)" +
-                    "  , coalesce(src.url, dst.url)" +
-                    "  , coalesce(src.html_url, dst.html_url)" +
-                    "  , coalesce(src.name, dst.name)" +
-                    "  , coalesce(src.slug, dst.slug)" +
-                    "  , coalesce(src.description, dst.description)" +
-                    "  , coalesce(src.privacy, dst.privacy)" +
-                    "  , coalesce(src.permission, dst.permission)" +
-                    "  , coalesce(src.members_url, dst.members_url)" +
-                    "  , coalesce(src.repositories_url, dst.repositories_url)" +
-                    "  , coalesce(src.parent_id, dst.parent_id)" +
-                    "  , coalesce(src.parent_slug, dst.parent_slug)" +
-                    "  , coalesce(dst.created_at, cast(current_timestamp as timestamp(3))) AS created_at" +
-                    "  , if(src.id IS NULL, cast(current_timestamp as timestamp(3))) AS removed_at" +
-                    " FROM (" +
-                    "  SELECT org, id, node_id, url, html_url, name, slug, description, privacy, permission, members_url, repositories_url, parent_id, parent_slug, max(created_at) AS created_at, max(removed_at) AS removed_at " +
-                    "  FROM " + destSchema + ".timestamped_teams WHERE org = ? " +
-                    "  GROUP BY 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14 " +
-                    "  HAVING max(removed_at) IS NULL OR max(removed_at) < max(created_at)" +
-                    ") dst" +
-                    " FULL OUTER JOIN (SELECT * FROM " + srcSchema + " .teams WHERE org = ?) src ON (dst.org, dst.id) = (src.org, src.id)" +
-                    " WHERE dst.id IS NULL OR src.id IS NULL";
+                    "CREATE TABLE IF NOT EXISTS " + destSchema + ".timestamped_teams AS SELECT *, cast(now() as timestamp(3)) AS created_at, cast(now() as timestamp(3)) AS removed_at FROM " + srcSchema + ".teams WITH NO DATA");
+            String query = "INSERT INTO " + destSchema + ".timestamped_teams " +
+                    "WITH teams AS (" +
+                    "  SELECT *, row_number() OVER (PARTITION BY org, id ORDER BY created_at DESC, removed_at) AS rownum" +
+                    "  FROM " + destSchema + ".timestamped_teams" +
+                    "  WHERE org = ?" +
+                    "), dst AS (" +
+                    "  SELECT org, id, node_id, url, html_url, name, slug, description, privacy, permission, members_url, repositories_url, parent_id, parent_slug, created_at, coalesce(removed_at, now()) AS removed_at" +
+                    "  FROM teams" +
+                    "  WHERE rownum = 1" +
+                    "), src AS (" +
+                    "  SELECT * FROM " + srcSchema + " .teams" +
+                    "  WHERE org = ?" +
+                    ") " +
+                    "SELECT " +
+                    "  src.*," +
+                    "  cast(now() as timestamp(3)) AS created_at," +
+                    "  NULL AS removed_at " +
+                    "FROM src " +
+                    "LEFT JOIN dst ON (dst.org, dst.id) = (src.org, src.id) " +
+                    "WHERE dst.id IS NULL OR dst.removed_at != now() " +
+                    "UNION ALL " +
+                    "SELECT " +
+                    "  dst.* " +
+                    "FROM dst " +
+                    "LEFT JOIN src ON (src.org, src.id) = (dst.org, dst.id) " +
+                    "WHERE src.id IS NULL AND dst.removed_at = now()";
             PreparedStatement insertStatement = conn.prepareStatement(query);
             insertStatement.setString(1, options.owner);
             insertStatement.setString(2, options.owner);
@@ -1548,32 +1645,36 @@ public class Sync
         String srcSchema = options.srcSchema;
         try {
             conn.createStatement().executeUpdate(
-                    "CREATE TABLE IF NOT EXISTS " + destSchema + ".timestamped_members AS SELECT *, cast(current_timestamp as timestamp(3)) AS joined_at, cast(current_timestamp as timestamp(3)) AS removed_at, cast('' AS VARCHAR) AS source FROM " + srcSchema + ".members WITH NO DATA");
-            String query = "INSERT INTO " + destSchema + ".timestamped_members" +
-                    " SELECT" +
-                    "  coalesce(src.org, dst.org)" +
-                    "  , coalesce(src.team_slug, dst.team_slug)" +
-                    "  , coalesce(src.login, dst.login)" +
-                    "  , coalesce(src.id, dst.id)" +
-                    "  , coalesce(src.avatar_url, dst.avatar_url)" +
-                    "  , coalesce(src.gravatar_id, dst.gravatar_id)" +
-                    "  , coalesce(src.type, dst.type)" +
-                    "  , coalesce(src.site_admin, dst.site_admin)" +
-                    "  , coalesce(dst.joined_at, cast(current_timestamp as timestamp(3))) AS joined_at" +
-                    "  , if(src.id IS NULL, cast(current_timestamp as timestamp(3))) AS removed_at" +
-                    "  , 'sync' AS source" +
-                    " FROM (" +
-                    "  SELECT org, team_slug, login, id, avatar_url, gravatar_id, type, site_admin, max(joined_at) AS joined_at, max(coalesce(removed_at, timestamp '9999-12-31')) AS removed_at " +
-                    "  FROM " + destSchema + ".timestamped_members WHERE org = ? " +
-                    "  GROUP BY 1, 2, 3, 4, 5, 6, 7, 8 " +
-                    "  HAVING max(coalesce(removed_at, timestamp '9999-12-31')) = timestamp '9999-12-31' OR max(coalesce(removed_at, timestamp '9999-12-31')) < max(joined_at)" +
-                    ") dst" +
-                    " FULL OUTER JOIN (" +
+                    "CREATE TABLE IF NOT EXISTS " + destSchema + ".timestamped_members AS SELECT *, cast(now() as timestamp(3)) AS joined_at, cast(now() as timestamp(3)) AS removed_at, cast('' AS VARCHAR) AS source FROM " + srcSchema + ".members WITH NO DATA");
+            String query = "INSERT INTO " + destSchema + ".timestamped_members " +
+                    "WITH members AS (" +
+                    "  SELECT *, row_number() OVER (PARTITION BY org, team_slug, id ORDER BY joined_at DESC, removed_at) AS rownum" +
+                    "  FROM " + destSchema + ".timestamped_members" +
+                    "  WHERE org = ? " +
+                    "), dst AS (" +
+                    "  SELECT org, team_slug, login, id, avatar_url, gravatar_id, type, site_admin, joined_at, coalesce(removed_at, now()) AS removed_at" +
+                    "  FROM members" +
+                    "  WHERE rownum = 1" +
+                    "), src AS (" +
                     "   SELECT * FROM " + srcSchema + " .members WHERE org = ?" +
-                    "   UNION ALL " +
+                    "   UNION ALL" +
                     "   SELECT * FROM " + srcSchema + " .members WHERE org = ? AND team_slug IN (SELECT slug FROM " + srcSchema + ".teams WHERE org = ?)" +
-                    ") src ON (dst.org, coalesce(dst.team_slug, ''), dst.id) = (src.org, coalesce(src.team_slug, ''), src.id)" +
-                    " WHERE dst.id IS NULL OR (src.id IS NULL AND dst.removed_at != timestamp '9999-12-31')";
+                    ") " +
+                    "SELECT" +
+                    "  src.*," +
+                    "  cast(now() as timestamp(3)) AS created_at," +
+                    "  NULL AS removed_at," +
+                    "  'sync' AS source " +
+                    "FROM src " +
+                    "LEFT JOIN dst ON (dst.org, coalesce(dst.team_slug, ''), dst.id) = (src.org, coalesce(src.team_slug, ''), src.id) " +
+                    "WHERE dst.id IS NULL OR dst.removed_at != now() " +
+                    "UNION ALL " +
+                    "SELECT" +
+                    "  dst.*," +
+                    "  'sync' AS source " +
+                    "FROM dst " +
+                    "LEFT JOIN src ON (src.org, coalesce(src.team_slug, ''), src.id) = (dst.org, coalesce(dst.team_slug, ''), dst.id) " +
+                    "WHERE src.id IS NULL AND dst.removed_at = now()";
             PreparedStatement insertStatement = conn.prepareStatement(query);
             insertStatement.setString(1, options.owner);
             insertStatement.setString(2, options.owner);
