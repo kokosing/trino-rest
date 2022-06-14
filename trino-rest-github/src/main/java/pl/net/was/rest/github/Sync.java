@@ -940,7 +940,7 @@ public class Sync
 
             PreparedStatement statement = conn.prepareStatement(
                     "INSERT INTO " + destSchema + ".workflows " +
-                            "SELECT * FROM workflows WHERE owner = ? AND repo = ? AND updated_at > CAST(? AS TIMESTAMP)");
+                            "SELECT * FROM " + srcSchema + ".workflows WHERE owner = ? AND repo = ? AND updated_at > CAST(? AS TIMESTAMP)");
             statement.setString(1, options.owner);
             statement.setString(2, options.repo);
             statement.setString(3, lastUpdated);

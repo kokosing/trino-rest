@@ -30,7 +30,7 @@
     <parent>
         <groupId>io.airlift</groupId>
         <artifactId>airbase</artifactId>
-        <version>125</version>
+        <version>127</version>
     </parent>
 
     <licenses>
@@ -58,8 +58,8 @@
         <air.check.skip-checkstyle>false</air.check.skip-checkstyle>
 
         <!-- must be in sync with Dockerfile -->
-        <dep.trino.version>384</dep.trino.version>
-        <dep.airlift.version>215</dep.airlift.version>
+        <dep.trino.version>385</dep.trino.version>
+        <dep.airlift.version>217</dep.airlift.version>
         <dep.packaging.version>${dep.airlift.version}</dep.packaging.version>
         <dep.errorprone.version>2.14.0</dep.errorprone.version>
         <dep.jackson.version>2.13.3</dep.jackson.version>
@@ -79,14 +79,29 @@
     <dependencyManagement>
         <dependencies>
             <dependency>
-                <groupId>org.checkerframework</groupId>
-                <artifactId>checker-qual</artifactId>
-                <version>3.22.0</version>
+                <groupId>net.bytebuddy</groupId>
+                <artifactId>byte-buddy</artifactId>
+                <version>1.12.10</version>
+            </dependency>
+            <dependency>
+                <groupId>io.airlift</groupId>
+                <artifactId>json</artifactId>
+                <version>217</version>
             </dependency>
             <dependency>
                 <groupId>org.osgi</groupId>
                 <artifactId>org.osgi.core</artifactId>
                 <version>6.0.0</version>
+            </dependency>
+            <dependency>
+                <groupId>net.java.dev.jna</groupId>
+                <artifactId>jna</artifactId>
+                <version>5.11.0</version>
+            </dependency>
+            <dependency>
+                <groupId>net.java.dev.jna</groupId>
+                <artifactId>jna-platform</artifactId>
+                <version>5.11.0</version>
             </dependency>
             <dependency>
                 <groupId>com.github.spotbugs</groupId>
@@ -101,7 +116,7 @@
             <dependency>
                 <groupId>org.glassfish.jaxb</groupId>
                 <artifactId>jaxb-runtime</artifactId>
-                <version>3.0.2</version>
+                <version>4.0.0</version>
             </dependency>
             <dependency>
                 <groupId>org.slf4j</groupId>
