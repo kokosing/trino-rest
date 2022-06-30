@@ -21,7 +21,6 @@ import io.trino.spi.TrinoException;
 import io.trino.spi.connector.ColumnHandle;
 import io.trino.spi.connector.ColumnMetadata;
 import io.trino.spi.connector.ConnectorSession;
-import io.trino.spi.connector.ConnectorSplitManager;
 import io.trino.spi.connector.ConnectorSplitSource;
 import io.trino.spi.connector.ConnectorTableHandle;
 import io.trino.spi.connector.ConnectorTableMetadata;
@@ -131,13 +130,8 @@ public interface Rest
     default ConnectorSplitSource getSplitSource(
             NodeManager nodeManager,
             ConnectorTableHandle table,
-            ConnectorSplitManager.SplitSchedulingStrategy splitSchedulingStrategy,
             DynamicFilter dynamicFilter)
     {
-        if (splitSchedulingStrategy != ConnectorSplitManager.SplitSchedulingStrategy.UNGROUPED_SCHEDULING) {
-            throw new IllegalArgumentException("Unknown splitSchedulingStrategy: " + splitSchedulingStrategy);
-        }
-
         RestTableHandle handle = (RestTableHandle) table;
 
         List<HostAddress> addresses = nodeManager.getRequiredWorkerNodes().stream()

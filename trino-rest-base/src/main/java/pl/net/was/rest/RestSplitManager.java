@@ -15,7 +15,6 @@
 package pl.net.was.rest;
 
 import io.trino.spi.NodeManager;
-import io.trino.spi.connector.ConnectorPartitionHandle;
 import io.trino.spi.connector.ConnectorSession;
 import io.trino.spi.connector.ConnectorSplitManager;
 import io.trino.spi.connector.ConnectorSplitSource;
@@ -51,18 +50,17 @@ public class RestSplitManager
             ConnectorTransactionHandle transaction,
             ConnectorSession session,
             ConnectorTableHandle table,
-            SplitSchedulingStrategy splitSchedulingStrategy,
             DynamicFilter dynamicFilter,
             Constraint constraint)
     {
         long timeoutMillis = 20000;
         if (!dynamicFilter.isAwaitable()) {
-            return rest.getSplitSource(nodeManager, table, splitSchedulingStrategy, dynamicFilter);
+            return rest.getSplitSource(nodeManager, table, dynamicFilter);
         }
         CompletableFuture<?> dynamicFilterFuture = whenCompleted(dynamicFilter)
                 .completeOnTimeout(null, timeoutMillis, MILLISECONDS);
         CompletableFuture<ConnectorSplitSource> splitSourceFuture = dynamicFilterFuture.thenApply(
-                ignored -> rest.getSplitSource(nodeManager, table, splitSchedulingStrategy, dynamicFilter));
+                ignored -> rest.getSplitSource(nodeManager, table, dynamicFilter));
         return new RestDynamicFilteringSplitSource(dynamicFilterFuture, splitSourceFuture);
     }
 
@@ -89,9 +87,9 @@ public class RestSplitManager
         }
 
         @Override
-        public CompletableFuture<ConnectorSplitBatch> getNextBatch(ConnectorPartitionHandle partitionHandle, int maxSize)
+        public CompletableFuture<ConnectorSplitBatch> getNextBatch(int maxSize)
         {
-            return splitSourceFuture.thenCompose(splitSource -> splitSource.getNextBatch(partitionHandle, maxSize));
+            return splitSourceFuture.thenCompose(splitSource -> splitSource.getNextBatch(maxSize));
         }
 
         @Override
