@@ -82,7 +82,7 @@ public class TestGithubQueries
                 "VALUES ('Release with Maven')");
 
         QueryRunner runner = getQueryRunner();
-        long runId = (long) runner.execute("SELECT id FROM runs WHERE owner = 'nineinchnick' AND repo = 'trino-rest' AND name = 'Release with Maven' LIMIT 1").getOnlyValue();
+        long runId = (long) runner.execute("SELECT id FROM runs WHERE owner = 'nineinchnick' AND repo = 'trino-rest' AND name = 'Release with Maven' ORDER BY created_at DESC LIMIT 1").getOnlyValue();
         assertThat(runId).isGreaterThan(0);
         long jobId = (long) runner.execute(format("SELECT id FROM jobs WHERE owner = 'nineinchnick' AND repo = 'trino-rest' AND run_id = %d LIMIT 1", runId)).getOnlyValue();
         assertThat(jobId).isGreaterThan(0);
