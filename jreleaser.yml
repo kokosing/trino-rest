@@ -1,0 +1,21 @@
+project:
+  name: trino-rest
+  description: This is a Trino connector to access RESTful APIs
+  license: Apache-2
+  java:
+    groupId: pl.net.was
+    version: 11
+  authors:
+    - Jan Waś
+  extraProperties:
+    inceptionYear: 2021
+
+files:
+  artifacts:
+    - path: {{projectName}}-github/target/{{projectName}}-github-{{projectVersion}}.zip
+    - path: {{projectName}}-slack/target/{{projectName}}-slack-{{projectVersion}}.zip
+    - path: {{projectName}}-twitter/target/{{projectName}}-twitter-{{projectVersion}}.zip
+
+release:
+  github:
+    owner: nineinchnick
