@@ -12,9 +12,9 @@ project:
 
 files:
   artifacts:
-    - path: {{projectName}}-github/target/{{projectName}}-github-{{projectVersion}}.zip
-    - path: {{projectName}}-slack/target/{{projectName}}-slack-{{projectVersion}}.zip
-    - path: {{projectName}}-twitter/target/{{projectName}}-twitter-{{projectVersion}}.zip
+    - path: "{{projectName}}-github/target/{{projectName}}-github-{{projectVersion}}.zip"
+    - path: "{{projectName}}-slack/target/{{projectName}}-slack-{{projectVersion}}.zip"
+    - path: "{{projectName}}-twitter/target/{{projectName}}-twitter-{{projectVersion}}.zip"
 
 release:
   github:
