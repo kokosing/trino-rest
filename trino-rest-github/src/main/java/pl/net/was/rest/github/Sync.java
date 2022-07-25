@@ -1421,7 +1421,7 @@ public class Sync
 
             String runsQuery = "SELECT r.head_sha " +
                     "FROM " + destSchema + ".runs r " +
-                    "LEFT JOIN " + destSchema + ".check_suites c ON c.ref = r.head_sha " +
+                    "LEFT JOIN " + destSchema + ".check_suites c ON c.id = r.check_suite_id " +
                     "WHERE r.owner = ? AND r.repo = ? AND r.status = 'completed' AND r.created_at > NOW() - INTERVAL '2' MONTH AND r.created_at < NOW() - INTERVAL '2' HOUR " +
                     "GROUP BY r.id, r.head_sha " +
                     "HAVING COUNT(c.id) = 0 " +
@@ -1483,7 +1483,7 @@ public class Sync
 
             String runsQuery = "SELECT r.head_sha " +
                     "FROM " + destSchema + ".runs r " +
-                    "LEFT JOIN " + destSchema + ".check_runs c ON c.ref = r.head_sha " +
+                    "LEFT JOIN " + destSchema + ".check_runs c ON c.check_suite_id = r.check_suite_id " +
                     "WHERE r.owner = ? AND r.repo = ? AND r.status = 'completed' AND r.created_at > NOW() - INTERVAL '2' MONTH AND r.created_at < NOW() - INTERVAL '2' HOUR " +
                     "GROUP BY r.id, r.head_sha " +
                     "HAVING COUNT(c.id) = 0 " +
