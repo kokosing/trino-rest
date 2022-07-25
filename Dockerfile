@@ -3,9 +3,9 @@ FROM trinodb/trino:$TRINO_VERSION
 
 USER root
 RUN set -xeu && \
-    yum -y -q install jq && \
-    yum -q clean all && \
-    rm -rf /var/cache/yum
+    apt-get update && \
+    apt-get install --yes jq && \
+    rm -rf /var/lib/apt/lists/*
 USER trino:trino
 
 ARG VERSION
