@@ -63,8 +63,8 @@ SELECT *
    AND j.owner = 'nineinchnick' AND j.repo = 'trino-rest'
 ```
 
-Note that such query would perform :
-* one HTTP request to count all runs, 
+Note that such query would perform:
+* one HTTP request to count all runs,
 * one HTTP request to get the runs
 * one HTTP request **for each run** to get its jobs
 
