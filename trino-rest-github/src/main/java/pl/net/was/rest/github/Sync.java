@@ -1423,7 +1423,7 @@ public class Sync
                     "FROM " + destSchema + ".runs r " +
                     "LEFT JOIN " + destSchema + ".check_suites c ON c.id = r.check_suite_id " +
                     "WHERE r.owner = ? AND r.repo = ? AND r.status = 'completed' AND r.created_at > NOW() - INTERVAL '2' MONTH AND r.created_at < NOW() - INTERVAL '2' HOUR " +
-                    "AND c.id IS NUL " +
+                    "AND c.id IS NULL " +
                     "ORDER BY r.id ASC";
             PreparedStatement idStatement = conn.prepareStatement(runsQuery);
             idStatement.setString(1, options.owner);
