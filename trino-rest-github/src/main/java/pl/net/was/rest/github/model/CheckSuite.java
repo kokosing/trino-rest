@@ -124,7 +124,7 @@ public class CheckSuite
         return ImmutableList.of(
                 owner,
                 repo,
-                ref,
+                ref != null ? ref : "",
                 id,
                 headBranch != null ? headBranch : "",
                 headSha != null ? headSha : "",

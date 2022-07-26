@@ -16,6 +16,7 @@ package pl.net.was.rest.github.service;
 
 import pl.net.was.rest.github.model.CheckRunAnnotation;
 import pl.net.was.rest.github.model.CheckRunsList;
+import pl.net.was.rest.github.model.CheckSuite;
 import pl.net.was.rest.github.model.CheckSuitesList;
 import retrofit2.Call;
 import retrofit2.http.GET;
@@ -39,12 +40,30 @@ public interface CheckService
             @Query("page") int page);
 
     @Headers("accept: application/vnd.github.v3+json")
+    @GET("/repos/{owner}/{repo}/check-suites/{check_suite_id}")
+    Call<CheckSuite> getCheckSuite(
+            @Header("Authorization") String auth,
+            @Path("owner") String owner,
+            @Path("repo") String repo,
+            @Path("check_suite_id") long checkSuiteId);
+
+    @Headers("accept: application/vnd.github.v3+json")
     @GET("/repos/{owner}/{repo}/commits/{ref}/check-runs?filter=all")
     Call<CheckRunsList> listCheckRuns(
             @Header("Authorization") String auth,
             @Path("owner") String owner,
             @Path("repo") String repo,
             @Path("ref") String ref,
+            @Query("per_page") int perPage,
+            @Query("page") int page);
+
+    @Headers("accept: application/vnd.github.v3+json")
+    @GET("/repos/{owner}/{repo}/check-suites/{check_suite_id}/check-runs?filter=all")
+    Call<CheckRunsList> listCheckRunsForSuite(
+            @Header("Authorization") String auth,
+            @Path("owner") String owner,
+            @Path("repo") String repo,
+            @Path("check_suite_id") long checkSuiteId,
             @Query("per_page") int perPage,
             @Query("page") int page);
 

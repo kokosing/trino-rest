@@ -88,6 +88,7 @@ import pl.net.was.rest.github.filter.WorkflowFilter;
 import pl.net.was.rest.github.function.JobLogs;
 import pl.net.was.rest.github.model.Artifact;
 import pl.net.was.rest.github.model.ArtifactsList;
+import pl.net.was.rest.github.model.CheckSuite;
 import pl.net.was.rest.github.model.Envelope;
 import pl.net.was.rest.github.model.IssueComment;
 import pl.net.was.rest.github.model.Job;
@@ -2281,17 +2282,22 @@ public class GithubRest
 
     private Iterable<List<?>> getCheckSuites(RestTableHandle table)
     {
-        Map<String, String> filters = getCheckSuitesFilters(table);
-        String owner = filters.get("owner");
-        String repo = filters.get("repo");
-        String ref = filters.get("ref");
+        Map<String, ?> filters = getCheckSuitesFilters(table);
+        String owner = (String) filters.get("owner");
+        String repo = (String) filters.get("repo");
+        Optional<String> ref = (Optional<String>) filters.get("ref");
+        Optional<Long> id = (Optional<Long>) filters.get("id");
+
+        if (id.isPresent()) {
+            return getRow(() -> service.getCheckSuite("Bearer " + token, owner, repo, id.get()), CheckSuite::toRow);
+        }
 
         return getRowsFromPagesEnvelope(
-                page -> service.listCheckSuites("Bearer " + token, owner, repo, ref, PER_PAGE, page),
+                page -> service.listCheckSuites("Bearer " + token, owner, repo, ref.orElse(""), PER_PAGE, page),
                 item -> {
                     item.setOwner(owner);
                     item.setRepo(repo);
-                    item.setRef(ref);
+                    item.setRef(ref.orElse(""));
                     return Stream.of(item.toRow());
                 },
                 table.getOffset(),
@@ -2301,15 +2307,19 @@ public class GithubRest
 
     private long getCheckSuitesCount(RestTableHandle table)
     {
-        Map<String, String> filters = getCheckSuitesFilters(table);
-        String owner = filters.get("owner");
-        String repo = filters.get("repo");
-        String ref = filters.get("ref");
+        Map<String, ?> filters = getCheckSuitesFilters(table);
+        String owner = (String) filters.get("owner");
+        String repo = (String) filters.get("repo");
+        Optional<String> ref = (Optional<String>) filters.get("ref");
+        Optional<Long> id = (Optional<Long>) filters.get("id");
+        if (id.isPresent()) {
+            return 1;
+        }
         return getTotalCountFromPagesEnvelope(
-                () -> service.listCheckSuites("Bearer " + token, owner, repo, ref, 0, 1));
+                () -> service.listCheckSuites("Bearer " + token, owner, repo, ref.orElse(""), 0, 1));
     }
 
-    private Map<String, String> getCheckSuitesFilters(RestTableHandle table)
+    private Map<String, ?> getCheckSuitesFilters(RestTableHandle table)
     {
         GithubTable tableName = GithubTable.valueOf(table);
         TupleDomain<ColumnHandle> constraint = table.getConstraint();
@@ -2319,29 +2329,50 @@ public class GithubRest
         String owner = (String) filter.getFilter((RestColumnHandle) columns.get("owner"), constraint);
         String repo = (String) filter.getFilter((RestColumnHandle) columns.get("repo"), constraint);
         String ref = (String) filter.getFilter((RestColumnHandle) columns.get("ref"), constraint);
+        Long id = (Long) filter.getFilter((RestColumnHandle) columns.get("id"), constraint);
         requirePredicate(owner, "check_suites.owner");
         requirePredicate(repo, "check_suites.repo");
-        requirePredicate(ref, "check_suites.ref");
+        if (id == null) {
+            requirePredicate(ref, "check_suites.ref");
+        }
+        else {
+            requirePredicate(id, "check_suites.id");
+        }
 
         return ImmutableMap.of(
                 "owner", owner,
                 "repo", repo,
-                "ref", ref);
+                "ref", Optional.ofNullable(ref),
+                "id", Optional.ofNullable(id));
     }
 
     private Iterable<List<?>> getCheckRuns(RestTableHandle table)
     {
-        Map<String, String> filters = getCheckRunsFilters(table);
-        String owner = filters.get("owner");
-        String repo = filters.get("repo");
-        String ref = filters.get("ref");
+        Map<String, ?> filters = getCheckRunsFilters(table);
+        String owner = (String) filters.get("owner");
+        String repo = (String) filters.get("repo");
+        Optional<String> ref = (Optional<String>) filters.get("ref");
+        Optional<Long> checkSuiteId = (Optional<Long>) filters.get("check_suite_id");
+
+        if (checkSuiteId.isPresent()) {
+            return getRowsFromPagesEnvelope(
+                    page -> service.listCheckRunsForSuite("Bearer " + token, owner, repo, checkSuiteId.get(), PER_PAGE, page),
+                    item -> {
+                        item.setOwner(owner);
+                        item.setRepo(repo);
+                        return Stream.of(item.toRow());
+                    },
+                    table.getOffset(),
+                    table.getLimit(),
+                    table.getPageIncrement());
+        }
 
         return getRowsFromPagesEnvelope(
-                page -> service.listCheckRuns("Bearer " + token, owner, repo, ref, PER_PAGE, page),
+                page -> service.listCheckRuns("Bearer " + token, owner, repo, ref.orElse(""), PER_PAGE, page),
                 item -> {
                     item.setOwner(owner);
                     item.setRepo(repo);
-                    item.setRef(ref);
+                    item.setRef(ref.orElse(""));
                     return Stream.of(item.toRow());
                 },
                 table.getOffset(),
@@ -2351,15 +2382,20 @@ public class GithubRest
 
     private long getCheckRunsCount(RestTableHandle table)
     {
-        Map<String, String> filters = getCheckRunsFilters(table);
-        String owner = filters.get("owner");
-        String repo = filters.get("repo");
-        String ref = filters.get("ref");
+        Map<String, ?> filters = getCheckRunsFilters(table);
+        String owner = (String) filters.get("owner");
+        String repo = (String) filters.get("repo");
+        Optional<String> ref = (Optional<String>) filters.get("ref");
+        Optional<Long> checkSuiteId = (Optional<Long>) filters.get("check_suite_id");
+        if (checkSuiteId.isPresent()) {
+            return getTotalCountFromPagesEnvelope(
+                    () -> service.listCheckRunsForSuite("Bearer " + token, owner, repo, checkSuiteId.get(), 0, 1));
+        }
         return getTotalCountFromPagesEnvelope(
-                () -> service.listCheckRuns("Bearer " + token, owner, repo, ref, 0, 1));
+                () -> service.listCheckRuns("Bearer " + token, owner, repo, ref.orElse(""), 0, 1));
     }
 
-    private Map<String, String> getCheckRunsFilters(RestTableHandle table)
+    private Map<String, ?> getCheckRunsFilters(RestTableHandle table)
     {
         GithubTable tableName = GithubTable.valueOf(table);
         TupleDomain<ColumnHandle> constraint = table.getConstraint();
@@ -2369,14 +2405,21 @@ public class GithubRest
         String owner = (String) filter.getFilter((RestColumnHandle) columns.get("owner"), constraint);
         String repo = (String) filter.getFilter((RestColumnHandle) columns.get("repo"), constraint);
         String ref = (String) filter.getFilter((RestColumnHandle) columns.get("ref"), constraint);
+        Long checkSuiteId = (Long) filter.getFilter((RestColumnHandle) columns.get("check_suite_id"), constraint);
         requirePredicate(owner, "check_runs.owner");
         requirePredicate(repo, "check_runs.repo");
-        requirePredicate(ref, "check_runs.ref");
+        if (checkSuiteId == null) {
+            requirePredicate(ref, "check_runs.ref");
+        }
+        else {
+            requirePredicate(checkSuiteId, "check_runs.check_suite_id");
+        }
 
         return ImmutableMap.of(
                 "owner", owner,
                 "repo", repo,
-                "ref", ref);
+                "ref", Optional.ofNullable(ref),
+                "check_suite_id", Optional.ofNullable(checkSuiteId));
     }
 
     private Iterable<List<?>> getCheckRunAnnotations(RestTableHandle table)

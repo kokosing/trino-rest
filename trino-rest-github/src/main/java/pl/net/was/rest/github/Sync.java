@@ -1419,13 +1419,11 @@ public class Sync
             // ALTER TABLE check_suites ADD PRIMARY KEY (id, ref);
             // CREATE INDEX ON check_suites(owner, repo);
 
-            String runsQuery = "SELECT r.head_sha " +
+            String runsQuery = "SELECT DISTINCT r.check_suite_id " +
                     "FROM " + destSchema + ".runs r " +
                     "LEFT JOIN " + destSchema + ".check_suites c ON c.id = r.check_suite_id " +
-                    "WHERE r.owner = ? AND r.repo = ? AND r.status = 'completed' AND r.conclusion != 'cancelled' " +
-                    "AND r.created_at > NOW() - INTERVAL '2' MONTH AND r.created_at < NOW() - INTERVAL '2' HOUR " +
-                    "GROUP BY r.id, r.head_sha " +
-                    "HAVING COUNT(c.id) = 0 " +
+                    "WHERE r.owner = ? AND r.repo = ? AND r.status = 'completed' AND r.created_at > NOW() - INTERVAL '2' MONTH AND r.created_at < NOW() - INTERVAL '2' HOUR " +
+                    "AND c.id IS NUL " +
                     "ORDER BY r.id ASC";
             PreparedStatement idStatement = conn.prepareStatement(runsQuery);
             idStatement.setString(1, options.owner);
@@ -1436,25 +1434,25 @@ public class Sync
                     "SELECT src.* " +
                     "FROM " + srcSchema + ".check_suites src " +
                     "LEFT JOIN " + destSchema + ".check_suites dst ON dst.ref = src.ref AND dst.id = src.id " +
-                    "WHERE src.owner = ? AND src.repo = ? AND src.ref IN (" + batchPlaceholders + ") AND src.status = 'completed' AND dst.id IS NULL";
+                    "WHERE src.owner = ? AND src.repo = ? AND src.id IN (" + batchPlaceholders + ") AND src.status = 'completed' AND dst.id IS NULL";
             PreparedStatement insertStatement = conn.prepareStatement(query);
             insertStatement.setString(1, options.owner);
             insertStatement.setString(2, options.repo);
 
-            log.info("Fetching run refs to get check suites for");
+            log.info("Fetching check suite ids from runs without any");
             if (!idStatement.execute()) {
                 log.info("No results!");
                 return;
             }
             ResultSet resultSet = idStatement.getResultSet();
             while (true) {
-                List<String> runRefs = getStringBatch(resultSet, batchSize);
-                log.info(format("Fetching check suites for refs: %s", runRefs));
-                if (runRefs.isEmpty()) {
+                List<Long> ids = getLongBatch(resultSet, batchSize);
+                log.info(format("Fetching check suites for ids: %s", ids));
+                if (ids.isEmpty()) {
                     break;
                 }
-                for (int i = 0; i < runRefs.size(); i++) {
-                    insertStatement.setString(3 + i, runRefs.get(i));
+                for (int i = 0; i < ids.size(); i++) {
+                    insertStatement.setLong(3 + i, ids.get(i));
                 }
 
                 long startTime = System.currentTimeMillis();
@@ -1482,13 +1480,11 @@ public class Sync
             // CREATE INDEX ON check_runs(owner, repo);
             // CREATE INDEX ON check_runs(check_suite_id);
 
-            String runsQuery = "SELECT r.head_sha " +
+            String runsQuery = "SELECT r.check_suite_id " +
                     "FROM " + destSchema + ".runs r " +
                     "LEFT JOIN " + destSchema + ".check_runs c ON c.check_suite_id = r.check_suite_id " +
-                    "WHERE r.owner = ? AND r.repo = ? AND r.status = 'completed' AND r.conclusion != 'cancelled' " +
-                    "AND r.created_at > NOW() - INTERVAL '2' MONTH AND r.created_at < NOW() - INTERVAL '2' HOUR " +
-                    "GROUP BY r.id, r.head_sha " +
-                    "HAVING COUNT(c.id) = 0 " +
+                    "WHERE r.owner = ? AND r.repo = ? AND r.status = 'completed' AND r.created_at > NOW() - INTERVAL '2' MONTH AND r.created_at < NOW() - INTERVAL '2' HOUR " +
+                    "AND c.check_suite_id IS NULL " +
                     "ORDER BY r.id ASC";
             PreparedStatement idStatement = conn.prepareStatement(runsQuery);
             idStatement.setString(1, options.owner);
@@ -1499,25 +1495,25 @@ public class Sync
                     "SELECT src.* " +
                     "FROM " + srcSchema + ".check_runs src " +
                     "LEFT JOIN " + destSchema + ".check_runs dst ON dst.ref = src.ref AND dst.id = src.id " +
-                    "WHERE src.owner = ? AND src.repo = ? AND src.ref IN (" + batchPlaceholders + ") AND src.status = 'completed' AND dst.id IS NULL";
+                    "WHERE src.owner = ? AND src.repo = ? AND src.check_suite_id IN (" + batchPlaceholders + ") AND src.status = 'completed' AND dst.id IS NULL";
             PreparedStatement insertStatement = conn.prepareStatement(query);
             insertStatement.setString(1, options.owner);
             insertStatement.setString(2, options.repo);
 
-            log.info("Fetching run refs to get check runs for");
+            log.info("Fetching check suite ids from runs without any check runs");
             if (!idStatement.execute()) {
                 log.info("No results!");
                 return;
             }
             ResultSet resultSet = idStatement.getResultSet();
             while (true) {
-                List<String> runRefs = getStringBatch(resultSet, batchSize);
-                log.info(format("Fetching check runs for refs: %s", runRefs));
-                if (runRefs.isEmpty()) {
+                List<Long> ids = getLongBatch(resultSet, batchSize);
+                log.info(format("Fetching check runs for check suite ids: %s", ids));
+                if (ids.isEmpty()) {
                     break;
                 }
-                for (int i = 0; i < runRefs.size(); i++) {
-                    insertStatement.setString(3 + i, runRefs.get(i));
+                for (int i = 0; i < ids.size(); i++) {
+                    insertStatement.setLong(3 + i, ids.get(i));
                 }
 
                 long startTime = System.currentTimeMillis();

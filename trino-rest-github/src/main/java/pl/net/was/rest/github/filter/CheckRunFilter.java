@@ -29,6 +29,7 @@ public class CheckRunFilter
         return ImmutableMap.of(
                 "owner", FilterType.EQUAL,
                 "repo", FilterType.EQUAL,
-                "ref", FilterType.EQUAL);
+                "ref", FilterType.EQUAL,
+                "check_suite_id", FilterType.EQUAL);
     }
 }

@@ -104,7 +104,7 @@ public class CheckRun
         return ImmutableList.of(
                 owner,
                 repo,
-                ref,
+                ref != null ? ref : "",
                 id,
                 headSha,
                 externalId,

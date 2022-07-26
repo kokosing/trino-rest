@@ -29,6 +29,7 @@ public class CheckSuiteFilter
         return ImmutableMap.of(
                 "owner", FilterType.EQUAL,
                 "repo", FilterType.EQUAL,
+                "id", FilterType.EQUAL,
                 "ref", FilterType.EQUAL);
     }
 }
