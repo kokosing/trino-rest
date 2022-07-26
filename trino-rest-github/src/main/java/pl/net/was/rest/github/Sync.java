@@ -1419,7 +1419,7 @@ public class Sync
             // ALTER TABLE check_suites ADD PRIMARY KEY (id, ref);
             // CREATE INDEX ON check_suites(owner, repo);
 
-            String runsQuery = "SELECT DISTINCT r.check_suite_id " +
+            String runsQuery = "SELECT r.check_suite_id " +
                     "FROM " + destSchema + ".runs r " +
                     "LEFT JOIN " + destSchema + ".check_suites c ON c.id = r.check_suite_id " +
                     "WHERE r.owner = ? AND r.repo = ? AND r.status = 'completed' AND r.created_at > NOW() - INTERVAL '2' MONTH AND r.created_at < NOW() - INTERVAL '2' HOUR " +
