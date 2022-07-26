@@ -88,7 +88,6 @@ import pl.net.was.rest.github.filter.WorkflowFilter;
 import pl.net.was.rest.github.function.JobLogs;
 import pl.net.was.rest.github.model.Artifact;
 import pl.net.was.rest.github.model.ArtifactsList;
-import pl.net.was.rest.github.model.CheckSuite;
 import pl.net.was.rest.github.model.Envelope;
 import pl.net.was.rest.github.model.IssueComment;
 import pl.net.was.rest.github.model.Job;
@@ -2289,7 +2288,11 @@ public class GithubRest
         Optional<Long> id = (Optional<Long>) filters.get("id");
 
         if (id.isPresent()) {
-            return getRow(() -> service.getCheckSuite("Bearer " + token, owner, repo, id.get()), CheckSuite::toRow);
+            return getRow(() -> service.getCheckSuite("Bearer " + token, owner, repo, id.get()), item -> {
+                item.setOwner(owner);
+                item.setRepo(repo);
+                return item.toRow();
+            });
         }
 
         return getRowsFromPagesEnvelope(
