@@ -22,7 +22,6 @@ import java.util.List;
 
 import static io.trino.spi.type.BigintType.BIGINT;
 import static io.trino.spi.type.IntegerType.INTEGER;
-import static io.trino.spi.type.VarcharType.VARCHAR;
 
 public class CheckRunAnnotation
         extends BaseBlockWriter
@@ -109,10 +108,10 @@ public class CheckRunAnnotation
         INTEGER.writeLong(rowBuilder, endLine);
         INTEGER.writeLong(rowBuilder, startColumn);
         INTEGER.writeLong(rowBuilder, endColumn);
-        VARCHAR.writeString(rowBuilder, annotationLevel);
-        VARCHAR.writeString(rowBuilder, title);
-        VARCHAR.writeString(rowBuilder, message);
-        VARCHAR.writeString(rowBuilder, rawDetails);
-        VARCHAR.writeString(rowBuilder, blobHref);
+        writeString(rowBuilder, annotationLevel);
+        writeString(rowBuilder, title);
+        writeString(rowBuilder, message);
+        writeString(rowBuilder, rawDetails);
+        writeString(rowBuilder, blobHref);
     }
 }

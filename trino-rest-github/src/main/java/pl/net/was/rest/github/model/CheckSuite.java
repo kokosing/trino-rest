@@ -22,7 +22,6 @@ import java.time.ZonedDateTime;
 import java.util.List;
 
 import static io.trino.spi.type.BigintType.BIGINT;
-import static io.trino.spi.type.VarcharType.VARCHAR;
 
 @SuppressWarnings("unused")
 public class CheckSuite
@@ -150,8 +149,8 @@ public class CheckSuite
         writeString(rowBuilder, repo);
         writeString(rowBuilder, ref);
         BIGINT.writeLong(rowBuilder, id);
-        VARCHAR.writeString(rowBuilder, headBranch);
-        VARCHAR.writeString(rowBuilder, headSha);
+        writeString(rowBuilder, headBranch);
+        writeString(rowBuilder, headSha);
         writeString(rowBuilder, status);
         writeString(rowBuilder, conclusion);
         writeString(rowBuilder, url);
@@ -165,8 +164,8 @@ public class CheckSuite
         }
         ARRAY_BIGINT.writeObject(rowBuilder, pullRequests.build());
         BIGINT.writeLong(rowBuilder, app.getId());
-        VARCHAR.writeString(rowBuilder, app.getSlug());
-        VARCHAR.writeString(rowBuilder, app.getName());
+        writeString(rowBuilder, app.getSlug());
+        writeString(rowBuilder, app.getName());
         writeTimestamp(rowBuilder, createdAt);
         writeTimestamp(rowBuilder, updatedAt);
         BIGINT.writeLong(rowBuilder, latestCheckRunsCount);

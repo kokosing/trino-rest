@@ -93,7 +93,7 @@ public class PullCommit
                 commit.getMessage(),
                 commit.getTree() != null ? commit.getTree().getSha() : "",
                 commit.getCommentCount(),
-                commit.getVerification() != null ? commit.getVerification().getVerified() : false,
+                commit.getVerification() != null && commit.getVerification().getVerified(),
                 commit.getVerification() != null ? commit.getVerification().getReason() : "",
                 commit.getAuthor().getName(),
                 commit.getAuthor().getEmail(),
@@ -118,7 +118,7 @@ public class PullCommit
         writeString(rowBuilder, commit.getMessage());
         writeString(rowBuilder, commit.getTree() != null ? commit.getTree().getSha() : "");
         BIGINT.writeLong(rowBuilder, commit.getCommentCount());
-        BOOLEAN.writeBoolean(rowBuilder, commit.getVerification() != null ? commit.getVerification().getVerified() : false);
+        BOOLEAN.writeBoolean(rowBuilder, commit.getVerification() != null && commit.getVerification().getVerified());
         writeString(rowBuilder, commit.getVerification() != null ? commit.getVerification().getReason() : "");
         writeString(rowBuilder, commit.getAuthor().getName());
         writeString(rowBuilder, commit.getAuthor().getEmail());

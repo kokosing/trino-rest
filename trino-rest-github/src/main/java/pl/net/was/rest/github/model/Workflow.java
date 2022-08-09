@@ -22,7 +22,6 @@ import java.time.ZonedDateTime;
 import java.util.List;
 
 import static io.trino.spi.type.BigintType.BIGINT;
-import static io.trino.spi.type.VarcharType.VARCHAR;
 
 public class Workflow
         extends BaseBlockWriter
@@ -97,14 +96,14 @@ public class Workflow
         writeString(rowBuilder, owner);
         writeString(rowBuilder, repo);
         BIGINT.writeLong(rowBuilder, id);
-        VARCHAR.writeString(rowBuilder, nodeId);
-        VARCHAR.writeString(rowBuilder, name);
-        VARCHAR.writeString(rowBuilder, path);
-        VARCHAR.writeString(rowBuilder, state);
+        writeString(rowBuilder, nodeId);
+        writeString(rowBuilder, name);
+        writeString(rowBuilder, path);
+        writeString(rowBuilder, state);
         writeTimestamp(rowBuilder, createdAt);
         writeTimestamp(rowBuilder, updatedAt);
-        VARCHAR.writeString(rowBuilder, url);
-        VARCHAR.writeString(rowBuilder, htmlUrl);
-        VARCHAR.writeString(rowBuilder, badgeUrl);
+        writeString(rowBuilder, url);
+        writeString(rowBuilder, htmlUrl);
+        writeString(rowBuilder, badgeUrl);
     }
 }

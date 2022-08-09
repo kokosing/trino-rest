@@ -23,7 +23,6 @@ import java.util.List;
 
 import static io.trino.spi.type.BigintType.BIGINT;
 import static io.trino.spi.type.IntegerType.INTEGER;
-import static io.trino.spi.type.VarcharType.VARCHAR;
 
 public class Step
         extends BaseBlockWriter
@@ -105,7 +104,7 @@ public class Step
         BIGINT.writeLong(rowBuilder, runId);
         INTEGER.writeLong(rowBuilder, runAttempt);
         BIGINT.writeLong(rowBuilder, jobId);
-        VARCHAR.writeString(rowBuilder, name);
+        writeString(rowBuilder, name);
         writeString(rowBuilder, status);
         writeString(rowBuilder, conclusion);
         BIGINT.writeLong(rowBuilder, number);

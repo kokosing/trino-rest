@@ -22,7 +22,6 @@ import java.time.ZonedDateTime;
 import java.util.List;
 
 import static io.trino.spi.type.BigintType.BIGINT;
-import static io.trino.spi.type.VarcharType.VARCHAR;
 
 @SuppressWarnings("unused")
 public class CheckRun
@@ -134,24 +133,24 @@ public class CheckRun
         writeString(rowBuilder, repo);
         writeString(rowBuilder, ref);
         BIGINT.writeLong(rowBuilder, id);
-        VARCHAR.writeString(rowBuilder, headSha);
-        VARCHAR.writeString(rowBuilder, externalId);
-        VARCHAR.writeString(rowBuilder, url);
-        VARCHAR.writeString(rowBuilder, htmlUrl);
-        VARCHAR.writeString(rowBuilder, detailsUrl);
-        VARCHAR.writeString(rowBuilder, status);
-        VARCHAR.writeString(rowBuilder, conclusion);
+        writeString(rowBuilder, headSha);
+        writeString(rowBuilder, externalId);
+        writeString(rowBuilder, url);
+        writeString(rowBuilder, htmlUrl);
+        writeString(rowBuilder, detailsUrl);
+        writeString(rowBuilder, status);
+        writeString(rowBuilder, conclusion);
         writeTimestamp(rowBuilder, startedAt);
         writeTimestamp(rowBuilder, completedAt);
-        VARCHAR.writeString(rowBuilder, output.getTitle());
-        VARCHAR.writeString(rowBuilder, output.getSummary());
-        VARCHAR.writeString(rowBuilder, output.getText());
+        writeString(rowBuilder, output.getTitle());
+        writeString(rowBuilder, output.getSummary());
+        writeString(rowBuilder, output.getText());
         BIGINT.writeLong(rowBuilder, output.getAnnotationsCount());
-        VARCHAR.writeString(rowBuilder, output.getAnnotationsUrl());
-        VARCHAR.writeString(rowBuilder, name);
+        writeString(rowBuilder, output.getAnnotationsUrl());
+        writeString(rowBuilder, name);
         BIGINT.writeLong(rowBuilder, checkSuiteId);
         BIGINT.writeLong(rowBuilder, app.getId());
-        VARCHAR.writeString(rowBuilder, app.getSlug());
-        VARCHAR.writeString(rowBuilder, app.getName());
+        writeString(rowBuilder, app.getSlug());
+        writeString(rowBuilder, app.getName());
     }
 }

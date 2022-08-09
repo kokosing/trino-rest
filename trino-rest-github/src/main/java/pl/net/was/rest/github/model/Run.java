@@ -23,7 +23,6 @@ import java.util.List;
 
 import static io.trino.spi.type.BigintType.BIGINT;
 import static io.trino.spi.type.IntegerType.INTEGER;
-import static io.trino.spi.type.VarcharType.VARCHAR;
 
 @SuppressWarnings("unused")
 public class Run
@@ -171,15 +170,15 @@ public class Run
         writeString(rowBuilder, owner);
         writeString(rowBuilder, repo);
         BIGINT.writeLong(rowBuilder, id);
-        VARCHAR.writeString(rowBuilder, name);
-        VARCHAR.writeString(rowBuilder, nodeId);
+        writeString(rowBuilder, name);
+        writeString(rowBuilder, nodeId);
         BIGINT.writeLong(rowBuilder, checkSuiteId);
-        VARCHAR.writeString(rowBuilder, checkSuiteNodeId);
-        VARCHAR.writeString(rowBuilder, headBranch);
-        VARCHAR.writeString(rowBuilder, headSha);
+        writeString(rowBuilder, checkSuiteNodeId);
+        writeString(rowBuilder, headBranch);
+        writeString(rowBuilder, headSha);
         BIGINT.writeLong(rowBuilder, runNumber);
         INTEGER.writeLong(rowBuilder, runAttempt);
-        VARCHAR.writeString(rowBuilder, event);
+        writeString(rowBuilder, event);
         writeString(rowBuilder, status);
         writeString(rowBuilder, conclusion);
         BIGINT.writeLong(rowBuilder, workflowId);
