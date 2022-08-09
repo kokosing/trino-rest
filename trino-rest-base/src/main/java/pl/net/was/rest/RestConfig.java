@@ -14,6 +14,7 @@
 
 package pl.net.was.rest;
 
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import io.airlift.configuration.Config;
 import io.airlift.configuration.ConfigSecuritySensitive;
 import io.airlift.units.DataSize;
@@ -54,6 +55,7 @@ public class RestConfig
     }
 
     @Config("customer_key")
+    @CanIgnoreReturnValue
     public RestConfig setCustomerKey(String key)
     {
         this.customerKey = key;
@@ -67,6 +69,7 @@ public class RestConfig
 
     @Config("customer_secret")
     @ConfigSecuritySensitive
+    @CanIgnoreReturnValue
     public RestConfig setCustomerSecret(String secret)
     {
         this.customerSecret = secret;
@@ -80,6 +83,7 @@ public class RestConfig
 
     @Config("secret")
     @ConfigSecuritySensitive
+    @CanIgnoreReturnValue
     public RestConfig setSecret(String secret)
     {
         this.secret = secret;
@@ -94,6 +98,7 @@ public class RestConfig
 
     @Config("token")
     @ConfigSecuritySensitive
+    @CanIgnoreReturnValue
     public RestConfig setToken(String token)
     {
         this.token = token;
@@ -107,6 +112,7 @@ public class RestConfig
     }
 
     @Config("client-cache-path")
+    @CanIgnoreReturnValue
     public RestConfig setClientCachePath(String clientCachePath)
     {
         this.clientCachePath = clientCachePath;
@@ -126,6 +132,7 @@ public class RestConfig
     }
 
     @Config("client-cache-max-size")
+    @CanIgnoreReturnValue
     public RestConfig setClientCacheMaxSize(DataSize clientCacheMaxSize)
     {
         this.clientCacheMaxSize = clientCacheMaxSize;
@@ -140,6 +147,7 @@ public class RestConfig
     }
 
     @Config("client-connect-timeout")
+    @CanIgnoreReturnValue
     public RestConfig setClientConnectTimeout(Duration clientConnectTimeout)
     {
         this.clientConnectTimeout = clientConnectTimeout;
@@ -154,6 +162,7 @@ public class RestConfig
     }
 
     @Config("client-read-timeout")
+    @CanIgnoreReturnValue
     public RestConfig setClientReadTimeout(Duration clientReadTimeout)
     {
         this.clientReadTimeout = clientReadTimeout;
@@ -176,6 +185,7 @@ public class RestConfig
     }
 
     @Config("client-max-binary-download-size")
+    @CanIgnoreReturnValue
     public RestConfig setClientMaxBinaryDownloadSize(DataSize clientMaxBinaryDownloadSize)
     {
         this.clientMaxBinaryDownloadSize = clientMaxBinaryDownloadSize;
@@ -202,6 +212,7 @@ public class RestConfig
     }
 
     @Config("min_splits")
+    @CanIgnoreReturnValue
     public RestConfig setMinSplits(String minSplits)
     {
         int value = Integer.parseInt(minSplits);
@@ -216,6 +227,7 @@ public class RestConfig
     }
 
     @Config("min_split_tables")
+    @CanIgnoreReturnValue
     public RestConfig setMinSplitTables(String minSplitTables)
     {
         this.minSplitTables = Arrays.stream(minSplitTables.split(",")).map(String::trim).collect(Collectors.toList());

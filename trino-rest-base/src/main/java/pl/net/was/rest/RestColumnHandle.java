@@ -54,10 +54,9 @@ public class RestColumnHandle
         if (this == o) {
             return true;
         }
-        if (!(o instanceof RestColumnHandle)) {
+        if (!(o instanceof RestColumnHandle that)) {
             return false;
         }
-        RestColumnHandle that = (RestColumnHandle) o;
         return Objects.equals(name, that.name);
     }
 

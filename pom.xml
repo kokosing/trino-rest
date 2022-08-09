@@ -49,7 +49,8 @@
     </modules>
 
     <properties>
-        <project.build.targetJdk>11</project.build.targetJdk>
+        <project.build.targetJdk>17</project.build.targetJdk>
+        <air.java.version>17.0.4</air.java.version>
 
         <air.check.skip-extended>true</air.check.skip-extended>
         <air.check.skip-license>false</air.check.skip-license>
@@ -58,10 +59,10 @@
         <air.check.skip-checkstyle>false</air.check.skip-checkstyle>
 
         <!-- must be in sync with Dockerfile -->
-        <dep.trino.version>391</dep.trino.version>
+        <dep.trino.version>392</dep.trino.version>
         <dep.airlift.version>217</dep.airlift.version>
         <dep.packaging.version>${dep.airlift.version}</dep.packaging.version>
-        <dep.errorprone.version>2.14.0</dep.errorprone.version>
+        <dep.errorprone.version>2.15.0</dep.errorprone.version>
         <dep.jackson.version>2.13.3</dep.jackson.version>
         <dep.testng.version>7.6.1</dep.testng.version>
 
@@ -86,7 +87,7 @@
             <dependency>
                 <groupId>io.airlift</groupId>
                 <artifactId>json</artifactId>
-                <version>217</version>
+                <version>218</version>
             </dependency>
             <dependency>
                 <groupId>org.osgi</groupId>
@@ -123,6 +124,11 @@
                 <artifactId>slf4j-api</artifactId>
                 <version>1.7.36</version>
             </dependency>
+            <dependency>
+                <groupId>com.google.errorprone</groupId>
+                <artifactId>error_prone_annotations</artifactId>
+                <version>${dep.errorprone.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -143,7 +149,6 @@
         <dependency>
             <groupId>com.google.errorprone</groupId>
             <artifactId>error_prone_annotations</artifactId>
-            <version>${dep.errorprone.version}</version>
             <scope>runtime</scope>
         </dependency>
 
