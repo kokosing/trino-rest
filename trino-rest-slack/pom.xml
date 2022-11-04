@@ -68,7 +68,6 @@
         <dependency>
             <groupId>io.airlift</groupId>
             <artifactId>units</artifactId>
-            <version>1.6</version>
             <scope>runtime</scope>
         </dependency>
 
