@@ -164,11 +164,21 @@ public class Artifacts
                 result.add(artifactFile);
                 continue;
             }
+            else if (remaining == -1) {
+                // size is not know, keep reading until no more content is available
+                remaining = Integer.MAX_VALUE;
+            }
             int i = 1;
             while (remaining > 0) {
                 Artifact chunk = artifactFile.clone();
                 byte[] contents = new byte[Math.min((int) remaining, MAX_PAGE_SIZE_IN_BYTES - MAX_ROW_SIZE_IN_BYTES)];
-                remaining -= is.readNBytes(contents, 0, contents.length);
+                long read = is.readNBytes(contents, 0, contents.length);
+                if (read == 0) {
+                    remaining = 0;
+                }
+                else {
+                    remaining -= read;
+                }
                 chunk.setContents(contents);
                 chunk.setPartNumber(i++);
                 result.add(chunk);
