@@ -109,8 +109,8 @@ FROM timestamped_members;
 
 CREATE OR REPLACE VIEW latest_collaborators SECURITY INVOKER AS
 WITH latest AS (
-  SELECT *, row_number() OVER (PARTITION BY owner, repo, id ORDER BY joined_at DESC, removed_at) AS rownum
-  FROM timestamped_members
+  SELECT *, row_number() OVER (PARTITION BY owner, repo, login ORDER BY joined_at DESC, removed_at) AS rownum
+  FROM timestamped_collaborators
 )
 SELECT *
 FROM latest
@@ -121,7 +121,7 @@ SELECT
   owner, repo, login, id, avatar_url, gravatar_id, type, site_admin, permission_pull, permission_triage, permission_push, permission_maintain, permission_admin, role_name
   -- joined_at is an approximate, recorded when membership was checked; assume membership is as old as possible, so stretch it to the end of the previous row
   , CASE source
-      WHEN 'sync' THEN coalesce(lag(removed_at) OVER (PARTITION BY owner, login ORDER BY joined_at) + interval '1' second, timestamp '0001-01-01')
+      WHEN 'sync' THEN coalesce(lag(removed_at) OVER (PARTITION BY owner, repo, login ORDER BY joined_at) + interval '1' second, timestamp '0001-01-01')
       ELSE joined_at
     END AS joined_at
   , coalesce(removed_at, timestamp '9999-12-31') AS removed_at
