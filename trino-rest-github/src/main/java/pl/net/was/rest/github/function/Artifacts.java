@@ -113,10 +113,14 @@ public class Artifacts
                     Logger.getLogger(Artifacts.class.getName()).warning(format("Skipping downloading artifact %s because its size %d is greater than max of %d",
                             artifact.getId(), artifact.getSizeInBytes(), getMaxBinaryDownloadSizeBytes()));
                     result.add(artifact.clone());
+                    continue;
                 }
-                else {
-                    result.addAll(download(service, token, artifact));
+                if (artifact.getExpired()) {
+                    Logger.getLogger(Artifacts.class.getName()).warning(format("Skipping downloading expired artifact %s", artifact.getId()));
+                    result.add(artifact.clone());
+                    continue;
                 }
+                result.addAll(download(service, token, artifact));
             }
             if (items.size() < PER_PAGE) {
                 break;

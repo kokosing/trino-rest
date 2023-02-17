@@ -2172,16 +2172,20 @@ public class GithubRest
                         log.warning(format("Skipping downloading artifact %s because its size %d is greater than max of %d",
                                 item.getId(), item.getSizeInBytes(), getMaxBinaryDownloadSizeBytes()));
                         result.add(item.toRow());
+                        return result.build();
                     }
-                    else {
-                        try {
-                            for (Artifact artifact : download(service, token, item)) {
-                                result.add(artifact.toRow());
-                            }
+                    if (item.getExpired()) {
+                        log.warning(format("Skipping downloading expired artifact %s", item.getId()));
+                        result.add(item.toRow());
+                        return result.build();
+                    }
+                    try {
+                        for (Artifact artifact : download(service, token, item)) {
+                            result.add(artifact.toRow());
                         }
-                        catch (IOException e) {
-                            throw new RuntimeException(e);
-                        }
+                    }
+                    catch (IOException e) {
+                        throw new RuntimeException(e);
                     }
                     return result.build();
                 },

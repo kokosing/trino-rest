@@ -96,6 +96,11 @@ public class Artifact
         return sizeInBytes;
     }
 
+    public boolean getExpired()
+    {
+        return expired;
+    }
+
     public void setOwner(String owner)
     {
         this.owner = owner;
