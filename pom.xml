@@ -30,7 +30,7 @@
     <parent>
         <groupId>io.airlift</groupId>
         <artifactId>airbase</artifactId>
-        <version>130</version>
+        <version>134</version>
     </parent>
 
     <licenses>
@@ -50,7 +50,7 @@
 
     <properties>
         <project.build.targetJdk>17</project.build.targetJdk>
-        <air.java.version>17.0.4</air.java.version>
+        <air.java.version>17.0.6</air.java.version>
 
         <air.check.skip-extended>true</air.check.skip-extended>
         <air.check.skip-license>false</air.check.skip-license>
@@ -59,13 +59,13 @@
         <air.check.skip-checkstyle>false</air.check.skip-checkstyle>
 
         <!-- must be in sync with Dockerfile -->
-        <dep.trino.version>405</dep.trino.version>
-        <dep.airlift.version>219</dep.airlift.version>
+        <dep.trino.version>411</dep.trino.version>
+        <dep.airlift.version>228</dep.airlift.version>
         <dep.packaging.version>${dep.airlift.version}</dep.packaging.version>
-        <dep.errorprone.version>2.17.0</dep.errorprone.version>
-        <dep.jackson.version>2.14.1</dep.jackson.version>
+        <dep.errorprone.version>2.18.0</dep.errorprone.version>
+        <dep.jackson.version>2.14.2</dep.jackson.version>
         <dep.testng.version>7.7.1</dep.testng.version>
-        <dep.joda.version>2.12.2</dep.joda.version>
+        <dep.joda.version>2.12.5</dep.joda.version>
 
         <project.scm.id>github</project.scm.id>
     </properties>
@@ -83,7 +83,7 @@
             <dependency>
                 <groupId>io.airlift</groupId>
                 <artifactId>json</artifactId>
-                <version>219</version>
+                <version>${dep.airlift.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.osgi</groupId>
@@ -93,12 +93,17 @@
             <dependency>
                 <groupId>net.java.dev.jna</groupId>
                 <artifactId>jna</artifactId>
-                <version>5.12.1</version>
+                <version>5.13.0</version>
             </dependency>
             <dependency>
                 <groupId>net.java.dev.jna</groupId>
                 <artifactId>jna-platform</artifactId>
-                <version>5.12.1</version>
+                <version>5.13.0</version>
+            </dependency>
+            <dependency>
+                <groupId>net.bytebuddy</groupId>
+                <artifactId>byte-buddy</artifactId>
+                <version>1.14.0</version>
             </dependency>
             <dependency>
                 <groupId>com.google.errorprone</groupId>
@@ -108,7 +113,7 @@
             <dependency>
                 <groupId>org.slf4j</groupId>
                 <artifactId>slf4j-api</artifactId>
-                <version>2.0.3</version>
+                <version>2.0.7</version>
             </dependency>
             <dependency>
                 <groupId>io.airlift</groupId>
@@ -122,7 +127,7 @@
         <dependency>
             <groupId>io.airlift</groupId>
             <artifactId>slice</artifactId>
-            <version>0.44</version>
+            <version>0.45</version>
             <scope>provided</scope>
         </dependency>
 
@@ -182,7 +187,7 @@
         <dependency>
             <groupId>org.assertj</groupId>
             <artifactId>assertj-core</artifactId>
-            <version>3.21.0</version>
+            <version>3.24.2</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -193,12 +198,12 @@
                 <plugin>
                     <groupId>org.apache.maven.plugins</groupId>
                     <artifactId>maven-shade-plugin</artifactId>
-                    <version>3.3.0</version>
+                    <version>3.4.1</version>
                 </plugin>
                 <plugin>
                     <groupId>ca.vanzyl.provisio.maven.plugins</groupId>
                     <artifactId>provisio-maven-plugin</artifactId>
-                    <version>1.0.19</version>
+                    <version>1.0.20</version>
                 </plugin>
             </plugins>
         </pluginManagement>
@@ -206,14 +211,14 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-deploy-plugin</artifactId>
-                <version>3.0.0</version>
+                <version>3.1.1</version>
                 <configuration>
                     <skip>true</skip>
                 </configuration>
             </plugin>
             <plugin>
                 <artifactId>maven-release-plugin</artifactId>
-                <version>3.0.0-M6</version>
+                <version>3.0.0</version>
                 <configuration>
                     <scmCommentPrefix>[ci skip]</scmCommentPrefix>
                     <tagNameFormat>v@{project.version}</tagNameFormat>
@@ -223,7 +228,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-scm-plugin</artifactId>
-                <version>1.13.0</version>
+                <version>2.0.0</version>
                 <configuration>
                     <pushChanges>true</pushChanges>
                 </configuration>
@@ -231,7 +236,7 @@
             <plugin>
                 <groupId>io.trino</groupId>
                 <artifactId>trino-maven-plugin</artifactId>
-                <version>11</version>
+                <version>12</version>
                 <extensions>true</extensions>
                 <configuration>
                     <pluginClassName>io.trino.spi.Plugin</pluginClassName>
