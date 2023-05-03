@@ -30,7 +30,7 @@
     <parent>
         <groupId>io.airlift</groupId>
         <artifactId>airbase</artifactId>
-        <version>134</version>
+        <version>138</version>
     </parent>
 
     <licenses>
@@ -59,11 +59,11 @@
         <air.check.skip-checkstyle>false</air.check.skip-checkstyle>
 
         <!-- must be in sync with Dockerfile -->
-        <dep.trino.version>411</dep.trino.version>
-        <dep.airlift.version>228</dep.airlift.version>
+        <dep.trino.version>415</dep.trino.version>
+        <dep.airlift.version>230</dep.airlift.version>
         <dep.packaging.version>${dep.airlift.version}</dep.packaging.version>
         <dep.errorprone.version>2.18.0</dep.errorprone.version>
-        <dep.jackson.version>2.14.2</dep.jackson.version>
+        <dep.jackson.version>2.15.0</dep.jackson.version>
         <dep.testng.version>7.7.1</dep.testng.version>
         <dep.joda.version>2.12.5</dep.joda.version>
 
@@ -103,7 +103,7 @@
             <dependency>
                 <groupId>net.bytebuddy</groupId>
                 <artifactId>byte-buddy</artifactId>
-                <version>1.14.0</version>
+                <version>1.14.4</version>
             </dependency>
             <dependency>
                 <groupId>com.google.errorprone</groupId>
@@ -120,6 +120,13 @@
                 <artifactId>units</artifactId>
                 <version>1.8</version>
             </dependency>
+            <dependency>
+                <groupId>io.opentelemetry</groupId>
+                <artifactId>opentelemetry-bom</artifactId>
+                <version>1.25.0</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -128,6 +135,18 @@
             <groupId>io.airlift</groupId>
             <artifactId>slice</artifactId>
             <version>0.45</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>io.opentelemetry</groupId>
+            <artifactId>opentelemetry-context</artifactId>
             <scope>provided</scope>
         </dependency>
 
