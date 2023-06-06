@@ -45,7 +45,6 @@
         <module>trino-rest-base</module>
         <module>trino-rest-slack</module>
         <module>trino-rest-github</module>
-        <module>trino-rest-twitter</module>
     </modules>
 
     <properties>
