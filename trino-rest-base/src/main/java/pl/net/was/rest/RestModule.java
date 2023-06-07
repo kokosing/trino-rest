@@ -18,6 +18,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.google.inject.Binder;
+import com.google.inject.Inject;
 import com.google.inject.Module;
 import com.google.inject.Scopes;
 import io.trino.spi.NodeManager;
@@ -42,6 +43,7 @@ public class RestModule
     private final TypeManager typeManager;
     private final Class<? extends Rest> rest;
 
+    @Inject
     public RestModule(NodeManager nodeManager, TypeManager typeManager, Class<? extends Rest> rest)
     {
         this.nodeManager = requireNonNull(nodeManager, "nodeManager is null");
