@@ -22,8 +22,7 @@ import io.trino.spi.connector.ConnectorTableHandle;
 import io.trino.spi.connector.ConnectorTransactionHandle;
 import io.trino.spi.connector.Constraint;
 import io.trino.spi.connector.DynamicFilter;
-
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;

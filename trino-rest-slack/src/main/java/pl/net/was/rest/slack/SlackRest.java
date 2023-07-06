@@ -31,6 +31,7 @@ import io.trino.spi.type.ArrayType;
 import io.trino.spi.type.MapType;
 import io.trino.spi.type.TimestampWithTimeZoneType;
 import io.trino.spi.type.TypeOperators;
+import jakarta.inject.Inject;
 import pl.net.was.rest.Rest;
 import pl.net.was.rest.RestColumnHandle;
 import pl.net.was.rest.RestConfig;
@@ -43,8 +44,6 @@ import pl.net.was.rest.slack.filter.ReplyFilter;
 import pl.net.was.rest.slack.model.Envelope;
 import retrofit2.Call;
 import retrofit2.Response;
-
-import javax.inject.Inject;
 
 import java.io.IOException;
 import java.util.Iterator;

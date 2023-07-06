@@ -28,8 +28,7 @@ import pl.net.was.rest.twitter.model.SearchResult;
 import pl.net.was.rest.twitter.model.Status;
 import pl.net.was.rest.twitter.rest.TwitterService;
 import retrofit2.Response;
-
-import javax.inject.Inject;
+import jakarta.inject.Inject;
 
 import java.io.IOException;
 import java.util.List;

@@ -52,6 +52,7 @@ import io.trino.spi.type.MapType;
 import io.trino.spi.type.RowType;
 import io.trino.spi.type.TimestampWithTimeZoneType;
 import io.trino.spi.type.TypeOperators;
+import jakarta.inject.Inject;
 import okhttp3.ResponseBody;
 import pl.net.was.rest.Rest;
 import pl.net.was.rest.RestColumnHandle;
@@ -102,8 +103,6 @@ import pl.net.was.rest.github.model.User;
 import pl.net.was.rest.github.service.GithubService;
 import retrofit2.Call;
 import retrofit2.Response;
-
-import javax.inject.Inject;
 
 import java.io.IOException;
 import java.util.AbstractMap;
