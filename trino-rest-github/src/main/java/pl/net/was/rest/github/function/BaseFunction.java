@@ -15,8 +15,9 @@
 package pl.net.was.rest.github.function;
 
 import io.trino.spi.PageBuilder;
+import io.trino.spi.block.ArrayBlockBuilder;
 import io.trino.spi.block.Block;
-import io.trino.spi.block.BlockBuilder;
+import io.trino.spi.block.RowBlockBuilder;
 import io.trino.spi.type.ArrayType;
 import pl.net.was.rest.github.GithubRest;
 import pl.net.was.rest.github.model.BlockWriter;
@@ -53,16 +54,11 @@ public abstract class BaseFunction
             pageBuilder.reset();
         }
 
-        BlockBuilder blockBuilder = pageBuilder.getBlockBuilder(0);
-        BlockBuilder entryBuilder = blockBuilder.beginBlockEntry();
-
-        for (BlockWriter writer : writers) {
-            BlockBuilder rowBuilder = entryBuilder.beginBlockEntry();
-            writer.writeTo(rowBuilder);
-            entryBuilder.closeEntry();
-        }
-
-        blockBuilder.closeEntry();
+        ArrayBlockBuilder blockBuilder = (ArrayBlockBuilder) pageBuilder.getBlockBuilder(0);
+        blockBuilder.buildEntry(elementBuilder -> writers.forEach(writer -> {
+            RowBlockBuilder rowBuilder = (RowBlockBuilder) elementBuilder;
+            rowBuilder.buildEntry(writer::writeTo);
+        }));
         pageBuilder.declarePosition();
         return arrayType.getObject(blockBuilder, blockBuilder.getPositionCount() - 1);
     }

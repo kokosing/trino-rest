@@ -18,8 +18,9 @@ import com.google.common.collect.ImmutableList;
 import io.airlift.slice.Slice;
 import io.airlift.slice.Slices;
 import io.trino.spi.PageBuilder;
+import io.trino.spi.block.ArrayBlockBuilder;
 import io.trino.spi.block.Block;
-import io.trino.spi.block.BlockBuilder;
+import io.trino.spi.block.RowBlockBuilder;
 import io.trino.spi.function.Description;
 import io.trino.spi.function.ScalarFunction;
 import io.trino.spi.function.SqlType;
@@ -90,29 +91,31 @@ public class JobLogs
             pageBuilder.reset();
         }
 
-        BlockBuilder blockBuilder = pageBuilder.getBlockBuilder(0);
-        BlockBuilder entryBuilder = blockBuilder.beginBlockEntry();
+        ArrayBlockBuilder blockBuilder = (ArrayBlockBuilder) pageBuilder.getBlockBuilder(0);
+        RowType rowType = getRowType(GithubTable.JOB_LOGS);
+        blockBuilder.buildEntry(elementBuilder -> {
+            int i = 1;
+            for (Slice slice : getParts(inputStream)) {
+                RowBlockBuilder rowBuilder = rowType.createBlockBuilder(null, rowType.getFields().size());
+                int partNumber = i++;
+                rowBuilder.buildEntry(fieldBuilders -> {
+                    VarcharType.VARCHAR.writeString(fieldBuilders.get(0), owner);
+                    VarcharType.VARCHAR.writeString(fieldBuilders.get(1), repo);
+                    BigintType.BIGINT.writeLong(fieldBuilders.get(2), jobId);
+                    if (size == null) {
+                        fieldBuilders.get(3).appendNull();
+                    }
+                    else {
+                        BigintType.BIGINT.writeLong(fieldBuilders.get(3), size);
+                    }
+                    INTEGER.writeLong(fieldBuilders.get(4), partNumber);
+                    VARBINARY.writeSlice(fieldBuilders.get(5), slice);
+                });
 
-        int i = 1;
-        for (Slice slice : getParts(inputStream)) {
-            BlockBuilder rowBuilder = entryBuilder.beginBlockEntry();
-
-            VarcharType.VARCHAR.writeString(rowBuilder, owner);
-            VarcharType.VARCHAR.writeString(rowBuilder, repo);
-            BigintType.BIGINT.writeLong(rowBuilder, jobId);
-            if (size == null) {
-                rowBuilder.appendNull();
+                rowType.writeObject(rowBuilder, elementBuilder);
             }
-            else {
-                BigintType.BIGINT.writeLong(rowBuilder, size);
-            }
-            INTEGER.writeLong(rowBuilder, i++);
-            VARBINARY.writeSlice(rowBuilder, slice);
+        });
 
-            entryBuilder.closeEntry();
-        }
-
-        blockBuilder.closeEntry();
         pageBuilder.declarePosition();
         return arrayType.getObject(blockBuilder, blockBuilder.getPositionCount() - 1);
     }

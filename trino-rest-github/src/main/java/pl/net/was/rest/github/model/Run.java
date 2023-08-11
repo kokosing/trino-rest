@@ -165,25 +165,26 @@ public class Run
     }
 
     @Override
-    public void writeTo(BlockBuilder rowBuilder)
+    public void writeTo(List<BlockBuilder> fieldBuilders)
     {
-        writeString(rowBuilder, owner);
-        writeString(rowBuilder, repo);
-        BIGINT.writeLong(rowBuilder, id);
-        writeString(rowBuilder, name);
-        writeString(rowBuilder, nodeId);
-        BIGINT.writeLong(rowBuilder, checkSuiteId);
-        writeString(rowBuilder, checkSuiteNodeId);
-        writeString(rowBuilder, headBranch);
-        writeString(rowBuilder, headSha);
-        BIGINT.writeLong(rowBuilder, runNumber);
-        INTEGER.writeLong(rowBuilder, runAttempt);
-        writeString(rowBuilder, event);
-        writeString(rowBuilder, status);
-        writeString(rowBuilder, conclusion);
-        BIGINT.writeLong(rowBuilder, workflowId);
-        writeTimestamp(rowBuilder, createdAt);
-        writeTimestamp(rowBuilder, updatedAt);
-        writeTimestamp(rowBuilder, runStartedAt);
+        int i = 0;
+        writeString(fieldBuilders.get(i++), owner);
+        writeString(fieldBuilders.get(i++), repo);
+        BIGINT.writeLong(fieldBuilders.get(i++), id);
+        writeString(fieldBuilders.get(i++), name);
+        writeString(fieldBuilders.get(i++), nodeId);
+        BIGINT.writeLong(fieldBuilders.get(i++), checkSuiteId);
+        writeString(fieldBuilders.get(i++), checkSuiteNodeId);
+        writeString(fieldBuilders.get(i++), headBranch);
+        writeString(fieldBuilders.get(i++), headSha);
+        BIGINT.writeLong(fieldBuilders.get(i++), runNumber);
+        INTEGER.writeLong(fieldBuilders.get(i++), runAttempt);
+        writeString(fieldBuilders.get(i++), event);
+        writeString(fieldBuilders.get(i++), status);
+        writeString(fieldBuilders.get(i++), conclusion);
+        BIGINT.writeLong(fieldBuilders.get(i++), workflowId);
+        writeTimestamp(fieldBuilders.get(i++), createdAt);
+        writeTimestamp(fieldBuilders.get(i++), updatedAt);
+        writeTimestamp(fieldBuilders.get(i), runStartedAt);
     }
 }

@@ -93,27 +93,28 @@ public class Team
     }
 
     @Override
-    public void writeTo(BlockBuilder rowBuilder)
+    public void writeTo(List<BlockBuilder> fieldBuilders)
     {
-        writeString(rowBuilder, org);
-        BIGINT.writeLong(rowBuilder, id);
-        writeString(rowBuilder, nodeId);
-        writeString(rowBuilder, url);
-        writeString(rowBuilder, htmlUrl);
-        writeString(rowBuilder, name);
-        writeString(rowBuilder, slug);
-        writeString(rowBuilder, description);
-        writeString(rowBuilder, privacy);
-        writeString(rowBuilder, permission);
-        writeString(rowBuilder, membersUrl);
-        writeString(rowBuilder, repositoriesUrl);
+        int i = 0;
+        writeString(fieldBuilders.get(i++), org);
+        BIGINT.writeLong(fieldBuilders.get(i++), id);
+        writeString(fieldBuilders.get(i++), nodeId);
+        writeString(fieldBuilders.get(i++), url);
+        writeString(fieldBuilders.get(i++), htmlUrl);
+        writeString(fieldBuilders.get(i++), name);
+        writeString(fieldBuilders.get(i++), slug);
+        writeString(fieldBuilders.get(i++), description);
+        writeString(fieldBuilders.get(i++), privacy);
+        writeString(fieldBuilders.get(i++), permission);
+        writeString(fieldBuilders.get(i++), membersUrl);
+        writeString(fieldBuilders.get(i++), repositoriesUrl);
         if (parent == null) {
-            rowBuilder.appendNull();
-            rowBuilder.appendNull();
+            fieldBuilders.get(i++).appendNull();
+            fieldBuilders.get(i).appendNull();
         }
         else {
-            BIGINT.writeLong(rowBuilder, parent.id);
-            writeString(rowBuilder, parent.slug);
+            BIGINT.writeLong(fieldBuilders.get(i++), parent.id);
+            writeString(fieldBuilders.get(i), parent.slug);
         }
     }
 }

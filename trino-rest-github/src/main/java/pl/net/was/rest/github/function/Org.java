@@ -18,7 +18,7 @@ import com.google.common.collect.ImmutableList;
 import io.airlift.slice.Slice;
 import io.trino.spi.PageBuilder;
 import io.trino.spi.block.Block;
-import io.trino.spi.block.BlockBuilder;
+import io.trino.spi.block.RowBlockBuilder;
 import io.trino.spi.function.Description;
 import io.trino.spi.function.ScalarFunction;
 import io.trino.spi.function.SqlType;
@@ -70,10 +70,8 @@ public class Org
             pageBuilder.reset();
         }
 
-        BlockBuilder blockBuilder = pageBuilder.getBlockBuilder(0);
-        BlockBuilder rowBuilder = blockBuilder.beginBlockEntry();
-        writer.writeTo(rowBuilder);
-        blockBuilder.closeEntry();
+        RowBlockBuilder blockBuilder = (RowBlockBuilder) pageBuilder.getBlockBuilder(0);
+        blockBuilder.buildEntry(writer::writeTo);
         pageBuilder.declarePosition();
         return rowType.getObject(blockBuilder, blockBuilder.getPositionCount() - 1);
     }

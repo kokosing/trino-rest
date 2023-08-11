@@ -127,30 +127,31 @@ public class CheckRun
     }
 
     @Override
-    public void writeTo(BlockBuilder rowBuilder)
+    public void writeTo(List<BlockBuilder> fieldBuilders)
     {
-        writeString(rowBuilder, owner);
-        writeString(rowBuilder, repo);
-        writeString(rowBuilder, ref);
-        BIGINT.writeLong(rowBuilder, id);
-        writeString(rowBuilder, headSha);
-        writeString(rowBuilder, externalId);
-        writeString(rowBuilder, url);
-        writeString(rowBuilder, htmlUrl);
-        writeString(rowBuilder, detailsUrl);
-        writeString(rowBuilder, status);
-        writeString(rowBuilder, conclusion);
-        writeTimestamp(rowBuilder, startedAt);
-        writeTimestamp(rowBuilder, completedAt);
-        writeString(rowBuilder, output.getTitle());
-        writeString(rowBuilder, output.getSummary());
-        writeString(rowBuilder, output.getText());
-        BIGINT.writeLong(rowBuilder, output.getAnnotationsCount());
-        writeString(rowBuilder, output.getAnnotationsUrl());
-        writeString(rowBuilder, name);
-        BIGINT.writeLong(rowBuilder, checkSuiteId);
-        BIGINT.writeLong(rowBuilder, app.getId());
-        writeString(rowBuilder, app.getSlug());
-        writeString(rowBuilder, app.getName());
+        int i = 0;
+        writeString(fieldBuilders.get(i++), owner);
+        writeString(fieldBuilders.get(i++), repo);
+        writeString(fieldBuilders.get(i++), ref);
+        BIGINT.writeLong(fieldBuilders.get(i++), id);
+        writeString(fieldBuilders.get(i++), headSha);
+        writeString(fieldBuilders.get(i++), externalId);
+        writeString(fieldBuilders.get(i++), url);
+        writeString(fieldBuilders.get(i++), htmlUrl);
+        writeString(fieldBuilders.get(i++), detailsUrl);
+        writeString(fieldBuilders.get(i++), status);
+        writeString(fieldBuilders.get(i++), conclusion);
+        writeTimestamp(fieldBuilders.get(i++), startedAt);
+        writeTimestamp(fieldBuilders.get(i++), completedAt);
+        writeString(fieldBuilders.get(i++), output.getTitle());
+        writeString(fieldBuilders.get(i++), output.getSummary());
+        writeString(fieldBuilders.get(i++), output.getText());
+        BIGINT.writeLong(fieldBuilders.get(i++), output.getAnnotationsCount());
+        writeString(fieldBuilders.get(i++), output.getAnnotationsUrl());
+        writeString(fieldBuilders.get(i++), name);
+        BIGINT.writeLong(fieldBuilders.get(i++), checkSuiteId);
+        BIGINT.writeLong(fieldBuilders.get(i++), app.getId());
+        writeString(fieldBuilders.get(i++), app.getSlug());
+        writeString(fieldBuilders.get(i), app.getName());
     }
 }

@@ -17,6 +17,7 @@ package pl.net.was.rest.github.model;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableList;
 import io.trino.spi.block.BlockBuilder;
+import io.trino.spi.block.MapBlockBuilder;
 import io.trino.spi.type.MapType;
 import io.trino.spi.type.TypeOperators;
 
@@ -321,14 +322,15 @@ public class Repository
             }
         }
         MapType mapType = new MapType(VARCHAR, BOOLEAN, new TypeOperators());
-        BlockBuilder permissions = mapType.createBlockBuilder(null, this.permissions != null ? this.permissions.size() : 0);
+        MapBlockBuilder permissions = mapType.createBlockBuilder(null, this.permissions != null ? this.permissions.size() : 0);
         if (this.permissions != null) {
-            BlockBuilder builder = permissions.beginBlockEntry();
-            for (Map.Entry<String, Boolean> permission : this.permissions.entrySet()) {
-                VARCHAR.writeString(builder, permission.getKey());
-                BOOLEAN.writeBoolean(builder, permission.getValue());
-            }
-            permissions.closeEntry();
+            permissions.buildEntry((keyBuilder, valueBuilder) -> this.permissions.forEach((key, value) -> {
+                VARCHAR.writeString(keyBuilder, key);
+                BOOLEAN.writeBoolean(valueBuilder, value);
+            }));
+        }
+        else {
+            permissions.appendNull();
         }
         // TODO allow nulls
         return ImmutableList.of(
@@ -365,26 +367,27 @@ public class Repository
     }
 
     @Override
-    public void writeTo(BlockBuilder rowBuilder)
+    public void writeTo(List<BlockBuilder> fieldBuilders)
     {
+        int i = 0;
         // TODO this should be a map of column names to value getters and types should be fetched from GithubRest.columns
-        BIGINT.writeLong(rowBuilder, id);
-        writeString(rowBuilder, name);
-        writeString(rowBuilder, fullName);
-        BIGINT.writeLong(rowBuilder, owner.getId());
-        writeString(rowBuilder, owner.getLogin());
-        BOOLEAN.writeBoolean(rowBuilder, isPrivate);
-        writeString(rowBuilder, description);
-        BOOLEAN.writeBoolean(rowBuilder, fork);
-        writeString(rowBuilder, homepage);
-        writeString(rowBuilder, url);
-        BIGINT.writeLong(rowBuilder, forksCount);
-        BIGINT.writeLong(rowBuilder, stargazersCount);
-        BIGINT.writeLong(rowBuilder, watchersCount);
-        BIGINT.writeLong(rowBuilder, size);
-        writeString(rowBuilder, defaultBranch);
-        BIGINT.writeLong(rowBuilder, openIssuesCount);
-        BOOLEAN.writeBoolean(rowBuilder, isTemplate);
+        BIGINT.writeLong(fieldBuilders.get(i++), id);
+        writeString(fieldBuilders.get(i++), name);
+        writeString(fieldBuilders.get(i++), fullName);
+        BIGINT.writeLong(fieldBuilders.get(i++), owner.getId());
+        writeString(fieldBuilders.get(i++), owner.getLogin());
+        BOOLEAN.writeBoolean(fieldBuilders.get(i++), isPrivate);
+        writeString(fieldBuilders.get(i++), description);
+        BOOLEAN.writeBoolean(fieldBuilders.get(i++), fork);
+        writeString(fieldBuilders.get(i++), homepage);
+        writeString(fieldBuilders.get(i++), url);
+        BIGINT.writeLong(fieldBuilders.get(i++), forksCount);
+        BIGINT.writeLong(fieldBuilders.get(i++), stargazersCount);
+        BIGINT.writeLong(fieldBuilders.get(i++), watchersCount);
+        BIGINT.writeLong(fieldBuilders.get(i++), size);
+        writeString(fieldBuilders.get(i++), defaultBranch);
+        BIGINT.writeLong(fieldBuilders.get(i++), openIssuesCount);
+        BOOLEAN.writeBoolean(fieldBuilders.get(i++), isTemplate);
 
         BlockBuilder topics = VARCHAR.createBlockBuilder(null, this.topics != null ? this.topics.length : 0);
         if (this.topics != null) {
@@ -393,32 +396,30 @@ public class Repository
             }
         }
 
-        ARRAY_VARCHAR.writeObject(rowBuilder, topics.build());
-        BOOLEAN.writeBoolean(rowBuilder, hasIssues);
-        BOOLEAN.writeBoolean(rowBuilder, hasProjects);
-        BOOLEAN.writeBoolean(rowBuilder, hasWiki);
-        BOOLEAN.writeBoolean(rowBuilder, hasPages);
-        BOOLEAN.writeBoolean(rowBuilder, hasDownloads);
-        BOOLEAN.writeBoolean(rowBuilder, archived);
-        BOOLEAN.writeBoolean(rowBuilder, disabled);
-        writeString(rowBuilder, visibility);
-        writeTimestamp(rowBuilder, pushedAt);
-        writeTimestamp(rowBuilder, createdAt);
-        writeTimestamp(rowBuilder, updatedAt);
+        ARRAY_VARCHAR.writeObject(fieldBuilders.get(i++), topics.build());
+        BOOLEAN.writeBoolean(fieldBuilders.get(i++), hasIssues);
+        BOOLEAN.writeBoolean(fieldBuilders.get(i++), hasProjects);
+        BOOLEAN.writeBoolean(fieldBuilders.get(i++), hasWiki);
+        BOOLEAN.writeBoolean(fieldBuilders.get(i++), hasPages);
+        BOOLEAN.writeBoolean(fieldBuilders.get(i++), hasDownloads);
+        BOOLEAN.writeBoolean(fieldBuilders.get(i++), archived);
+        BOOLEAN.writeBoolean(fieldBuilders.get(i++), disabled);
+        writeString(fieldBuilders.get(i++), visibility);
+        writeTimestamp(fieldBuilders.get(i++), pushedAt);
+        writeTimestamp(fieldBuilders.get(i++), createdAt);
+        writeTimestamp(fieldBuilders.get(i++), updatedAt);
 
         MapType mapType = new MapType(VARCHAR, BOOLEAN, new TypeOperators());
-        BlockBuilder permissions = mapType.createBlockBuilder(null, this.permissions != null ? this.permissions.size() : 0);
+        MapBlockBuilder permissions = mapType.createBlockBuilder(null, this.permissions != null ? this.permissions.size() : 0);
         if (this.permissions != null) {
-            BlockBuilder builder = permissions.beginBlockEntry();
-            for (Map.Entry<String, Boolean> permission : this.permissions.entrySet()) {
-                VARCHAR.writeString(builder, permission.getKey());
-                BOOLEAN.writeBoolean(builder, permission.getValue());
-            }
-            permissions.closeEntry();
-            mapType.writeObject(rowBuilder, mapType.getObject(permissions, 0));
+            permissions.buildEntry((keyBuilder, valueBuilder) -> this.permissions.forEach((key, value) -> {
+                VARCHAR.writeString(keyBuilder, key);
+                BOOLEAN.writeBoolean(valueBuilder, value);
+            }));
+            mapType.writeObject(fieldBuilders.get(i), mapType.getObject(permissions, 0));
         }
         else {
-            rowBuilder.appendNull();
+            fieldBuilders.get(i).appendNull();
         }
     }
 }

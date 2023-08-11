@@ -30,7 +30,7 @@
     <parent>
         <groupId>io.airlift</groupId>
         <artifactId>airbase</artifactId>
-        <version>141</version>
+        <version>143</version>
     </parent>
 
     <licenses>
@@ -58,10 +58,10 @@
         <air.check.skip-checkstyle>false</air.check.skip-checkstyle>
 
         <!-- must be in sync with Dockerfile -->
-        <dep.trino.version>420</dep.trino.version>
-        <dep.airlift.version>233</dep.airlift.version>
+        <dep.trino.version>423</dep.trino.version>
+        <dep.airlift.version>235</dep.airlift.version>
         <dep.packaging.version>${dep.airlift.version}</dep.packaging.version>
-        <dep.errorprone.version>2.20.0</dep.errorprone.version>
+        <dep.errorprone.version>2.21.1</dep.errorprone.version>
         <dep.jackson.version>2.15.2</dep.jackson.version>
         <dep.testng.version>7.8.0</dep.testng.version>
         <dep.joda.version>2.12.5</dep.joda.version>
@@ -102,7 +102,7 @@
             <dependency>
                 <groupId>io.airlift</groupId>
                 <artifactId>units</artifactId>
-                <version>1.8</version>
+                <version>1.10</version>
             </dependency>
             <dependency>
                 <groupId>io.opentelemetry</groupId>
@@ -111,6 +111,11 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+            <dependency>
+                <groupId>org.openjdk.jol</groupId>
+                <artifactId>jol-core</artifactId>
+                <version>0.17</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -118,7 +123,6 @@
         <dependency>
             <groupId>io.airlift</groupId>
             <artifactId>slice</artifactId>
-            <version>0.45</version>
             <scope>provided</scope>
         </dependency>
 
@@ -137,7 +141,7 @@
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
-            <version>32.1.1-jre</version>
+            <version>32.1.2-jre</version>
         </dependency>
 
         <dependency>

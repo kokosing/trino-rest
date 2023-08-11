@@ -134,21 +134,22 @@ public class Collaborator
     }
 
     @Override
-    public void writeTo(BlockBuilder rowBuilder)
+    public void writeTo(List<BlockBuilder> fieldBuilders)
     {
-        writeString(rowBuilder, owner);
-        writeString(rowBuilder, repo);
-        writeString(rowBuilder, login);
-        BIGINT.writeLong(rowBuilder, id);
-        writeString(rowBuilder, avatarUrl);
-        writeString(rowBuilder, gravatarId);
-        writeString(rowBuilder, type);
-        BOOLEAN.writeBoolean(rowBuilder, siteAdmin);
-        BOOLEAN.writeBoolean(rowBuilder, permissions.getPull());
-        BOOLEAN.writeBoolean(rowBuilder, permissions.getTriage());
-        BOOLEAN.writeBoolean(rowBuilder, permissions.getPush());
-        BOOLEAN.writeBoolean(rowBuilder, permissions.getMaintain());
-        BOOLEAN.writeBoolean(rowBuilder, permissions.getAdmin());
-        writeString(rowBuilder, roleName);
+        int i = 0;
+        writeString(fieldBuilders.get(i++), owner);
+        writeString(fieldBuilders.get(i++), repo);
+        writeString(fieldBuilders.get(i++), login);
+        BIGINT.writeLong(fieldBuilders.get(i++), id);
+        writeString(fieldBuilders.get(i++), avatarUrl);
+        writeString(fieldBuilders.get(i++), gravatarId);
+        writeString(fieldBuilders.get(i++), type);
+        BOOLEAN.writeBoolean(fieldBuilders.get(i++), siteAdmin);
+        BOOLEAN.writeBoolean(fieldBuilders.get(i++), permissions.getPull());
+        BOOLEAN.writeBoolean(fieldBuilders.get(i++), permissions.getTriage());
+        BOOLEAN.writeBoolean(fieldBuilders.get(i++), permissions.getPush());
+        BOOLEAN.writeBoolean(fieldBuilders.get(i++), permissions.getMaintain());
+        BOOLEAN.writeBoolean(fieldBuilders.get(i++), permissions.getAdmin());
+        writeString(fieldBuilders.get(i), roleName);
     }
 }

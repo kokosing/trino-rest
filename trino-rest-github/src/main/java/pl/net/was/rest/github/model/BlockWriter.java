@@ -16,7 +16,9 @@ package pl.net.was.rest.github.model;
 
 import io.trino.spi.block.BlockBuilder;
 
+import java.util.List;
+
 public interface BlockWriter
 {
-    void writeTo(BlockBuilder rowBuilder);
+    void writeTo(List<BlockBuilder> fieldBuilders);
 }

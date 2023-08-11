@@ -143,32 +143,33 @@ public class CheckSuite
     }
 
     @Override
-    public void writeTo(BlockBuilder rowBuilder)
+    public void writeTo(List<BlockBuilder> fieldBuilders)
     {
-        writeString(rowBuilder, owner);
-        writeString(rowBuilder, repo);
-        writeString(rowBuilder, ref);
-        BIGINT.writeLong(rowBuilder, id);
-        writeString(rowBuilder, headBranch);
-        writeString(rowBuilder, headSha);
-        writeString(rowBuilder, status);
-        writeString(rowBuilder, conclusion);
-        writeString(rowBuilder, url);
-        writeString(rowBuilder, before);
-        writeString(rowBuilder, after);
+        int i = 0;
+        writeString(fieldBuilders.get(i++), owner);
+        writeString(fieldBuilders.get(i++), repo);
+        writeString(fieldBuilders.get(i++), ref);
+        BIGINT.writeLong(fieldBuilders.get(i++), id);
+        writeString(fieldBuilders.get(i++), headBranch);
+        writeString(fieldBuilders.get(i++), headSha);
+        writeString(fieldBuilders.get(i++), status);
+        writeString(fieldBuilders.get(i++), conclusion);
+        writeString(fieldBuilders.get(i++), url);
+        writeString(fieldBuilders.get(i++), before);
+        writeString(fieldBuilders.get(i++), after);
         BlockBuilder pullRequests = BIGINT.createBlockBuilder(null, this.pullRequests != null ? this.pullRequests.size() : 0);
         if (this.pullRequests != null) {
             for (Pull pr : this.pullRequests) {
                 BIGINT.writeLong(pullRequests, pr.getNumber());
             }
         }
-        ARRAY_BIGINT.writeObject(rowBuilder, pullRequests.build());
-        BIGINT.writeLong(rowBuilder, app.getId());
-        writeString(rowBuilder, app.getSlug());
-        writeString(rowBuilder, app.getName());
-        writeTimestamp(rowBuilder, createdAt);
-        writeTimestamp(rowBuilder, updatedAt);
-        BIGINT.writeLong(rowBuilder, latestCheckRunsCount);
-        writeString(rowBuilder, checkRunsUrl);
+        ARRAY_BIGINT.writeObject(fieldBuilders.get(i++), pullRequests.build());
+        BIGINT.writeLong(fieldBuilders.get(i++), app.getId());
+        writeString(fieldBuilders.get(i++), app.getSlug());
+        writeString(fieldBuilders.get(i++), app.getName());
+        writeTimestamp(fieldBuilders.get(i++), createdAt);
+        writeTimestamp(fieldBuilders.get(i++), updatedAt);
+        BIGINT.writeLong(fieldBuilders.get(i++), latestCheckRunsCount);
+        writeString(fieldBuilders.get(i), checkRunsUrl);
     }
 }

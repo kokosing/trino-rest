@@ -17,6 +17,7 @@ package pl.net.was.rest.slack.model;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.collect.ImmutableList;
 import io.trino.spi.block.BlockBuilder;
+import io.trino.spi.block.MapBlockBuilder;
 import io.trino.spi.type.MapType;
 import io.trino.spi.type.TypeOperators;
 
@@ -98,15 +99,18 @@ public class Message
             }
         }
         MapType mapType = new MapType(VARCHAR, INTEGER, new TypeOperators());
-        BlockBuilder reactions = mapType.createBlockBuilder(null, this.reactions != null ? this.reactions.size() : 0);
-        BlockBuilder builder = reactions.beginBlockEntry();
+        MapBlockBuilder reactions = mapType.createBlockBuilder(null, this.reactions != null ? this.reactions.size() : 0);
         if (this.reactions != null) {
-            for (Reaction reaction : this.reactions) {
-                VARCHAR.writeString(builder, reaction.getName());
-                INTEGER.writeLong(builder, reaction.getCount());
-            }
+            reactions.buildEntry((keyBuilder, valueBuilder) -> {
+                for (Reaction reaction : this.reactions) {
+                    VARCHAR.writeString(keyBuilder, reaction.getName());
+                    INTEGER.writeLong(valueBuilder, reaction.getCount());
+                }
+            });
         }
-        reactions.closeEntry();
+        else {
+            reactions.appendNull();
+        }
         return ImmutableList.of(
                 type != null ? type : "",
                 subtype != null ? subtype : "",

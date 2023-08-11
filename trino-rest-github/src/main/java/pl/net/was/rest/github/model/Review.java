@@ -98,18 +98,19 @@ public class Review
     }
 
     @Override
-    public void writeTo(BlockBuilder rowBuilder)
+    public void writeTo(List<BlockBuilder> fieldBuilders)
     {
-        writeString(rowBuilder, owner);
-        writeString(rowBuilder, repo);
-        BIGINT.writeLong(rowBuilder, id);
-        BIGINT.writeLong(rowBuilder, pullNumber);
-        BIGINT.writeLong(rowBuilder, user.getId());
-        writeString(rowBuilder, user.getLogin());
-        writeString(rowBuilder, body);
-        writeString(rowBuilder, state);
-        writeTimestamp(rowBuilder, submittedAt);
-        writeString(rowBuilder, commitId);
-        writeString(rowBuilder, authorAssociation);
+        int i = 0;
+        writeString(fieldBuilders.get(i++), owner);
+        writeString(fieldBuilders.get(i++), repo);
+        BIGINT.writeLong(fieldBuilders.get(i++), id);
+        BIGINT.writeLong(fieldBuilders.get(i++), pullNumber);
+        BIGINT.writeLong(fieldBuilders.get(i++), user.getId());
+        writeString(fieldBuilders.get(i++), user.getLogin());
+        writeString(fieldBuilders.get(i++), body);
+        writeString(fieldBuilders.get(i++), state);
+        writeTimestamp(fieldBuilders.get(i++), submittedAt);
+        writeString(fieldBuilders.get(i++), commitId);
+        writeString(fieldBuilders.get(i), authorAssociation);
     }
 }

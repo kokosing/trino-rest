@@ -91,19 +91,20 @@ public class Workflow
     }
 
     @Override
-    public void writeTo(BlockBuilder rowBuilder)
+    public void writeTo(List<BlockBuilder> fieldBuilders)
     {
-        writeString(rowBuilder, owner);
-        writeString(rowBuilder, repo);
-        BIGINT.writeLong(rowBuilder, id);
-        writeString(rowBuilder, nodeId);
-        writeString(rowBuilder, name);
-        writeString(rowBuilder, path);
-        writeString(rowBuilder, state);
-        writeTimestamp(rowBuilder, createdAt);
-        writeTimestamp(rowBuilder, updatedAt);
-        writeString(rowBuilder, url);
-        writeString(rowBuilder, htmlUrl);
-        writeString(rowBuilder, badgeUrl);
+        int i = 0;
+        writeString(fieldBuilders.get(i++), owner);
+        writeString(fieldBuilders.get(i++), repo);
+        BIGINT.writeLong(fieldBuilders.get(i++), id);
+        writeString(fieldBuilders.get(i++), nodeId);
+        writeString(fieldBuilders.get(i++), name);
+        writeString(fieldBuilders.get(i++), path);
+        writeString(fieldBuilders.get(i++), state);
+        writeTimestamp(fieldBuilders.get(i++), createdAt);
+        writeTimestamp(fieldBuilders.get(i++), updatedAt);
+        writeString(fieldBuilders.get(i++), url);
+        writeString(fieldBuilders.get(i++), htmlUrl);
+        writeString(fieldBuilders.get(i), badgeUrl);
     }
 }

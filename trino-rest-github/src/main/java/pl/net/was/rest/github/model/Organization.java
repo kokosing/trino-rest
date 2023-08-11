@@ -217,44 +217,45 @@ public class Organization
     }
 
     @Override
-    public void writeTo(BlockBuilder rowBuilder)
+    public void writeTo(List<BlockBuilder> fieldBuilders)
     {
+        int i = 0;
         // TODO this should be a map of column names to value getters and types should be fetched from GithubRest.columns
-        writeString(rowBuilder, login);
-        BIGINT.writeLong(rowBuilder, id);
-        writeString(rowBuilder, description);
-        writeString(rowBuilder, name);
-        writeString(rowBuilder, company);
-        writeString(rowBuilder, blog);
-        writeString(rowBuilder, location);
-        writeString(rowBuilder, email);
-        writeString(rowBuilder, twitterUsername);
-        BOOLEAN.writeBoolean(rowBuilder, isVerified);
-        BOOLEAN.writeBoolean(rowBuilder, hasOrganizationProjects);
-        BOOLEAN.writeBoolean(rowBuilder, hasRepositoryProjects);
-        BIGINT.writeLong(rowBuilder, publicRepos);
-        BIGINT.writeLong(rowBuilder, publicGists);
-        BIGINT.writeLong(rowBuilder, followers);
-        BIGINT.writeLong(rowBuilder, following);
-        writeTimestamp(rowBuilder, createdAt);
-        writeTimestamp(rowBuilder, updatedAt);
-        writeString(rowBuilder, type);
-        BIGINT.writeLong(rowBuilder, totalPrivateRepos);
-        BIGINT.writeLong(rowBuilder, ownedPrivateRepos);
-        BIGINT.writeLong(rowBuilder, privateGists);
-        BIGINT.writeLong(rowBuilder, diskUsage);
-        BIGINT.writeLong(rowBuilder, collaborators);
-        writeString(rowBuilder, billingEmail);
-        writeString(rowBuilder, defaultRepositoryPermission);
-        BOOLEAN.writeBoolean(rowBuilder, membersCanCreateRepositories);
-        BOOLEAN.writeBoolean(rowBuilder, twoFactorRequirementEnabled);
-        writeString(rowBuilder, membersAllowedRepositoryCreationType);
-        BOOLEAN.writeBoolean(rowBuilder, membersCanCreatePublicRepositories);
-        BOOLEAN.writeBoolean(rowBuilder, membersCanCreatePrivateRepositories);
-        BOOLEAN.writeBoolean(rowBuilder, membersCanCreateInternalRepositories);
-        BOOLEAN.writeBoolean(rowBuilder, membersCanCreatePages);
-        BOOLEAN.writeBoolean(rowBuilder, membersCanCreatePublicPages);
-        BOOLEAN.writeBoolean(rowBuilder, membersCanCreatePrivatePages);
-        BOOLEAN.writeBoolean(rowBuilder, membersCanForkPrivateRepositories);
+        writeString(fieldBuilders.get(i++), login);
+        BIGINT.writeLong(fieldBuilders.get(i++), id);
+        writeString(fieldBuilders.get(i++), description);
+        writeString(fieldBuilders.get(i++), name);
+        writeString(fieldBuilders.get(i++), company);
+        writeString(fieldBuilders.get(i++), blog);
+        writeString(fieldBuilders.get(i++), location);
+        writeString(fieldBuilders.get(i++), email);
+        writeString(fieldBuilders.get(i++), twitterUsername);
+        BOOLEAN.writeBoolean(fieldBuilders.get(i++), isVerified);
+        BOOLEAN.writeBoolean(fieldBuilders.get(i++), hasOrganizationProjects);
+        BOOLEAN.writeBoolean(fieldBuilders.get(i++), hasRepositoryProjects);
+        BIGINT.writeLong(fieldBuilders.get(i++), publicRepos);
+        BIGINT.writeLong(fieldBuilders.get(i++), publicGists);
+        BIGINT.writeLong(fieldBuilders.get(i++), followers);
+        BIGINT.writeLong(fieldBuilders.get(i++), following);
+        writeTimestamp(fieldBuilders.get(i++), createdAt);
+        writeTimestamp(fieldBuilders.get(i++), updatedAt);
+        writeString(fieldBuilders.get(i++), type);
+        BIGINT.writeLong(fieldBuilders.get(i++), totalPrivateRepos);
+        BIGINT.writeLong(fieldBuilders.get(i++), ownedPrivateRepos);
+        BIGINT.writeLong(fieldBuilders.get(i++), privateGists);
+        BIGINT.writeLong(fieldBuilders.get(i++), diskUsage);
+        BIGINT.writeLong(fieldBuilders.get(i++), collaborators);
+        writeString(fieldBuilders.get(i++), billingEmail);
+        writeString(fieldBuilders.get(i++), defaultRepositoryPermission);
+        BOOLEAN.writeBoolean(fieldBuilders.get(i++), membersCanCreateRepositories);
+        BOOLEAN.writeBoolean(fieldBuilders.get(i++), twoFactorRequirementEnabled);
+        writeString(fieldBuilders.get(i++), membersAllowedRepositoryCreationType);
+        BOOLEAN.writeBoolean(fieldBuilders.get(i++), membersCanCreatePublicRepositories);
+        BOOLEAN.writeBoolean(fieldBuilders.get(i++), membersCanCreatePrivateRepositories);
+        BOOLEAN.writeBoolean(fieldBuilders.get(i++), membersCanCreateInternalRepositories);
+        BOOLEAN.writeBoolean(fieldBuilders.get(i++), membersCanCreatePages);
+        BOOLEAN.writeBoolean(fieldBuilders.get(i++), membersCanCreatePublicPages);
+        BOOLEAN.writeBoolean(fieldBuilders.get(i++), membersCanCreatePrivatePages);
+        BOOLEAN.writeBoolean(fieldBuilders.get(i++), membersCanForkPrivateRepositories);
     }
 }

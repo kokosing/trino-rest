@@ -122,15 +122,16 @@ public class Member
     }
 
     @Override
-    public void writeTo(BlockBuilder rowBuilder)
+    public void writeTo(List<BlockBuilder> fieldBuilders)
     {
-        writeString(rowBuilder, org);
-        writeString(rowBuilder, teamSlug);
-        writeString(rowBuilder, login);
-        BIGINT.writeLong(rowBuilder, id);
-        writeString(rowBuilder, avatarUrl);
-        writeString(rowBuilder, gravatarId);
-        writeString(rowBuilder, type);
-        BOOLEAN.writeBoolean(rowBuilder, siteAdmin);
+        int i = 0;
+        writeString(fieldBuilders.get(i++), org);
+        writeString(fieldBuilders.get(i++), teamSlug);
+        writeString(fieldBuilders.get(i++), login);
+        BIGINT.writeLong(fieldBuilders.get(i++), id);
+        writeString(fieldBuilders.get(i++), avatarUrl);
+        writeString(fieldBuilders.get(i++), gravatarId);
+        writeString(fieldBuilders.get(i++), type);
+        BOOLEAN.writeBoolean(fieldBuilders.get(i), siteAdmin);
     }
 }

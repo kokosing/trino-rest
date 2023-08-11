@@ -166,28 +166,29 @@ public class User
     }
 
     @Override
-    public void writeTo(BlockBuilder rowBuilder)
+    public void writeTo(List<BlockBuilder> fieldBuilders)
     {
+        int i = 0;
         // TODO this should be a map of column names to value getters and types should be fetched from GithubRest.columns
-        writeString(rowBuilder, login);
-        BIGINT.writeLong(rowBuilder, id);
-        writeString(rowBuilder, avatarUrl);
-        writeString(rowBuilder, gravatarId);
-        writeString(rowBuilder, type);
-        BOOLEAN.writeBoolean(rowBuilder, siteAdmin);
-        writeString(rowBuilder, name);
-        writeString(rowBuilder, company);
-        writeString(rowBuilder, blog);
-        writeString(rowBuilder, location);
-        writeString(rowBuilder, email);
-        BOOLEAN.writeBoolean(rowBuilder, hireable);
-        writeString(rowBuilder, bio);
-        writeString(rowBuilder, twitterUsername);
-        BIGINT.writeLong(rowBuilder, publicRepos);
-        BIGINT.writeLong(rowBuilder, publicGists);
-        BIGINT.writeLong(rowBuilder, followers);
-        BIGINT.writeLong(rowBuilder, following);
-        writeTimestamp(rowBuilder, createdAt);
-        writeTimestamp(rowBuilder, updatedAt);
+        writeString(fieldBuilders.get(i++), login);
+        BIGINT.writeLong(fieldBuilders.get(i++), id);
+        writeString(fieldBuilders.get(i++), avatarUrl);
+        writeString(fieldBuilders.get(i++), gravatarId);
+        writeString(fieldBuilders.get(i++), type);
+        BOOLEAN.writeBoolean(fieldBuilders.get(i++), siteAdmin);
+        writeString(fieldBuilders.get(i++), name);
+        writeString(fieldBuilders.get(i++), company);
+        writeString(fieldBuilders.get(i++), blog);
+        writeString(fieldBuilders.get(i++), location);
+        writeString(fieldBuilders.get(i++), email);
+        BOOLEAN.writeBoolean(fieldBuilders.get(i++), hireable);
+        writeString(fieldBuilders.get(i++), bio);
+        writeString(fieldBuilders.get(i++), twitterUsername);
+        BIGINT.writeLong(fieldBuilders.get(i++), publicRepos);
+        BIGINT.writeLong(fieldBuilders.get(i++), publicGists);
+        BIGINT.writeLong(fieldBuilders.get(i++), followers);
+        BIGINT.writeLong(fieldBuilders.get(i++), following);
+        writeTimestamp(fieldBuilders.get(i++), createdAt);
+        writeTimestamp(fieldBuilders.get(i), updatedAt);
     }
 }

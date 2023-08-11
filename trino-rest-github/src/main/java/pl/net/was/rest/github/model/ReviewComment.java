@@ -158,32 +158,33 @@ public class ReviewComment
     }
 
     @Override
-    public void writeTo(BlockBuilder rowBuilder)
+    public void writeTo(List<BlockBuilder> fieldBuilders)
     {
-        writeString(rowBuilder, owner);
-        writeString(rowBuilder, repo);
-        BIGINT.writeLong(rowBuilder, pullNumber);
-        writeString(rowBuilder, pullRequestUrl);
-        BIGINT.writeLong(rowBuilder, pullRequestReviewId);
-        BIGINT.writeLong(rowBuilder, id);
-        writeString(rowBuilder, diffHunk);
-        writeString(rowBuilder, path);
-        BIGINT.writeLong(rowBuilder, position);
-        BIGINT.writeLong(rowBuilder, originalPosition);
-        writeString(rowBuilder, commitId);
-        writeString(rowBuilder, originalCommitId);
-        BIGINT.writeLong(rowBuilder, inReplyToId);
-        BIGINT.writeLong(rowBuilder, user.getId());
-        writeString(rowBuilder, user.getLogin());
-        writeString(rowBuilder, body);
-        writeTimestamp(rowBuilder, createdAt);
-        writeTimestamp(rowBuilder, updatedAt);
-        writeString(rowBuilder, authorAssociation);
-        BIGINT.writeLong(rowBuilder, startLine);
-        BIGINT.writeLong(rowBuilder, originalStartLine);
-        writeString(rowBuilder, startSide);
-        BIGINT.writeLong(rowBuilder, line);
-        BIGINT.writeLong(rowBuilder, originalLine);
-        writeString(rowBuilder, side);
+        int i = 0;
+        writeString(fieldBuilders.get(i++), owner);
+        writeString(fieldBuilders.get(i++), repo);
+        BIGINT.writeLong(fieldBuilders.get(i++), pullNumber);
+        writeString(fieldBuilders.get(i++), pullRequestUrl);
+        BIGINT.writeLong(fieldBuilders.get(i++), pullRequestReviewId);
+        BIGINT.writeLong(fieldBuilders.get(i++), id);
+        writeString(fieldBuilders.get(i++), diffHunk);
+        writeString(fieldBuilders.get(i++), path);
+        BIGINT.writeLong(fieldBuilders.get(i++), position);
+        BIGINT.writeLong(fieldBuilders.get(i++), originalPosition);
+        writeString(fieldBuilders.get(i++), commitId);
+        writeString(fieldBuilders.get(i++), originalCommitId);
+        BIGINT.writeLong(fieldBuilders.get(i++), inReplyToId);
+        BIGINT.writeLong(fieldBuilders.get(i++), user.getId());
+        writeString(fieldBuilders.get(i++), user.getLogin());
+        writeString(fieldBuilders.get(i++), body);
+        writeTimestamp(fieldBuilders.get(i++), createdAt);
+        writeTimestamp(fieldBuilders.get(i++), updatedAt);
+        writeString(fieldBuilders.get(i++), authorAssociation);
+        BIGINT.writeLong(fieldBuilders.get(i++), startLine);
+        BIGINT.writeLong(fieldBuilders.get(i++), originalStartLine);
+        writeString(fieldBuilders.get(i++), startSide);
+        BIGINT.writeLong(fieldBuilders.get(i++), line);
+        BIGINT.writeLong(fieldBuilders.get(i++), originalLine);
+        writeString(fieldBuilders.get(i), side);
     }
 }

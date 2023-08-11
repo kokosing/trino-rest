@@ -97,18 +97,19 @@ public class Step
     }
 
     @Override
-    public void writeTo(BlockBuilder rowBuilder)
+    public void writeTo(List<BlockBuilder> fieldBuilders)
     {
-        writeString(rowBuilder, owner);
-        writeString(rowBuilder, repo);
-        BIGINT.writeLong(rowBuilder, runId);
-        INTEGER.writeLong(rowBuilder, runAttempt);
-        BIGINT.writeLong(rowBuilder, jobId);
-        writeString(rowBuilder, name);
-        writeString(rowBuilder, status);
-        writeString(rowBuilder, conclusion);
-        BIGINT.writeLong(rowBuilder, number);
-        writeTimestamp(rowBuilder, startedAt);
-        writeTimestamp(rowBuilder, completedAt);
+        int i = 0;
+        writeString(fieldBuilders.get(i++), owner);
+        writeString(fieldBuilders.get(i++), repo);
+        BIGINT.writeLong(fieldBuilders.get(i++), runId);
+        INTEGER.writeLong(fieldBuilders.get(i++), runAttempt);
+        BIGINT.writeLong(fieldBuilders.get(i++), jobId);
+        writeString(fieldBuilders.get(i++), name);
+        writeString(fieldBuilders.get(i++), status);
+        writeString(fieldBuilders.get(i++), conclusion);
+        BIGINT.writeLong(fieldBuilders.get(i++), number);
+        writeTimestamp(fieldBuilders.get(i++), startedAt);
+        writeTimestamp(fieldBuilders.get(i), completedAt);
     }
 }

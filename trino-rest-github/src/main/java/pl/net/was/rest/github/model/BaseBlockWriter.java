@@ -21,6 +21,7 @@ import io.trino.spi.type.DateTimeEncoding;
 import io.trino.spi.type.Type;
 
 import java.time.ZonedDateTime;
+import java.util.List;
 
 import static io.trino.spi.type.BigintType.BIGINT;
 import static io.trino.spi.type.TimestampWithTimeZoneType.TIMESTAMP_TZ_SECONDS;
@@ -37,7 +38,7 @@ abstract class BaseBlockWriter
     public static final Type ARRAY_BIGINT = new ArrayType(BIGINT);
 
     @Override
-    public abstract void writeTo(BlockBuilder rowBuilder);
+    public abstract void writeTo(List<BlockBuilder> fieldBuilders);
 
     @SuppressWarnings("JavaLocalTimeGetNano")
     protected static long packTimestamp(ZonedDateTime timestamp)

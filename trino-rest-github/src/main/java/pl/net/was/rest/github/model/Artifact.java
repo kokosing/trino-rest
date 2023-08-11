@@ -170,27 +170,28 @@ public class Artifact
     }
 
     @Override
-    public void writeTo(BlockBuilder rowBuilder)
+    public void writeTo(List<BlockBuilder> fieldBuilders)
     {
         // TODO this should be a map of column names to value getters and types should be fetched from GithubRest.columns
-        writeString(rowBuilder, owner);
-        writeString(rowBuilder, repo);
-        BIGINT.writeLong(rowBuilder, runId);
-        BIGINT.writeLong(rowBuilder, id);
-        BIGINT.writeLong(rowBuilder, sizeInBytes);
-        writeString(rowBuilder, name);
-        writeString(rowBuilder, url);
-        writeString(rowBuilder, archiveDownloadUrl);
-        BOOLEAN.writeBoolean(rowBuilder, expired);
-        writeTimestamp(rowBuilder, createdAt);
-        writeTimestamp(rowBuilder, expiresAt);
-        writeTimestamp(rowBuilder, updatedAt);
-        writeString(rowBuilder, filename);
-        writeString(rowBuilder, path);
-        writeString(rowBuilder, mimetype);
-        BIGINT.writeLong(rowBuilder, fileSizeInBytes);
-        INTEGER.writeLong(rowBuilder, partNumber);
-        writeBytes(rowBuilder, contents);
+        int i = 0;
+        writeString(fieldBuilders.get(i++), owner);
+        writeString(fieldBuilders.get(i++), repo);
+        BIGINT.writeLong(fieldBuilders.get(i++), runId);
+        BIGINT.writeLong(fieldBuilders.get(i++), id);
+        BIGINT.writeLong(fieldBuilders.get(i++), sizeInBytes);
+        writeString(fieldBuilders.get(i++), name);
+        writeString(fieldBuilders.get(i++), url);
+        writeString(fieldBuilders.get(i++), archiveDownloadUrl);
+        BOOLEAN.writeBoolean(fieldBuilders.get(i++), expired);
+        writeTimestamp(fieldBuilders.get(i++), createdAt);
+        writeTimestamp(fieldBuilders.get(i++), expiresAt);
+        writeTimestamp(fieldBuilders.get(i++), updatedAt);
+        writeString(fieldBuilders.get(i++), filename);
+        writeString(fieldBuilders.get(i++), path);
+        writeString(fieldBuilders.get(i++), mimetype);
+        BIGINT.writeLong(fieldBuilders.get(i++), fileSizeInBytes);
+        INTEGER.writeLong(fieldBuilders.get(i++), partNumber);
+        writeBytes(fieldBuilders.get(i), contents);
     }
 
     @Override

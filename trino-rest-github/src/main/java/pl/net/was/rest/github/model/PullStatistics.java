@@ -99,20 +99,21 @@ public class PullStatistics
     }
 
     @Override
-    public void writeTo(BlockBuilder rowBuilder)
+    public void writeTo(List<BlockBuilder> fieldBuilders)
     {
-        writeString(rowBuilder, owner);
-        writeString(rowBuilder, repo);
-        BIGINT.writeLong(rowBuilder, pullNumber);
-        BIGINT.writeLong(rowBuilder, comments);
-        BIGINT.writeLong(rowBuilder, reviewComments);
-        BIGINT.writeLong(rowBuilder, commits);
-        BIGINT.writeLong(rowBuilder, additions);
-        BIGINT.writeLong(rowBuilder, deletions);
-        BIGINT.writeLong(rowBuilder, changedFiles);
-        writeTimestamp(rowBuilder, createdAt);
-        writeTimestamp(rowBuilder, updatedAt);
-        writeTimestamp(rowBuilder, closedAt);
-        writeTimestamp(rowBuilder, mergedAt);
+        int i = 0;
+        writeString(fieldBuilders.get(i++), owner);
+        writeString(fieldBuilders.get(i++), repo);
+        BIGINT.writeLong(fieldBuilders.get(i++), pullNumber);
+        BIGINT.writeLong(fieldBuilders.get(i++), comments);
+        BIGINT.writeLong(fieldBuilders.get(i++), reviewComments);
+        BIGINT.writeLong(fieldBuilders.get(i++), commits);
+        BIGINT.writeLong(fieldBuilders.get(i++), additions);
+        BIGINT.writeLong(fieldBuilders.get(i++), deletions);
+        BIGINT.writeLong(fieldBuilders.get(i++), changedFiles);
+        writeTimestamp(fieldBuilders.get(i++), createdAt);
+        writeTimestamp(fieldBuilders.get(i++), updatedAt);
+        writeTimestamp(fieldBuilders.get(i++), closedAt);
+        writeTimestamp(fieldBuilders.get(i), mergedAt);
     }
 }

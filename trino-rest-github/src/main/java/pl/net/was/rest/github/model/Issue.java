@@ -190,30 +190,31 @@ public class Issue
     }
 
     @Override
-    public void writeTo(BlockBuilder rowBuilder)
+    public void writeTo(List<BlockBuilder> fieldBuilders)
     {
         // TODO this should be a map of column names to value getters and types should be fetched from GithubRest.columns
-        writeString(rowBuilder, owner);
-        writeString(rowBuilder, repo);
-        BIGINT.writeLong(rowBuilder, id);
-        writeString(rowBuilder, nodeId);
-        writeString(rowBuilder, url);
-        writeString(rowBuilder, repositoryUrl);
-        writeString(rowBuilder, labelsUrl);
-        writeString(rowBuilder, commentsUrl);
-        writeString(rowBuilder, eventsUrl);
-        writeString(rowBuilder, htmlUrl);
-        writeString(rowBuilder, timelineUrl);
-        BIGINT.writeLong(rowBuilder, number);
-        writeString(rowBuilder, state);
-        writeString(rowBuilder, title);
-        writeString(rowBuilder, body);
-        BIGINT.writeLong(rowBuilder, user.getId());
-        writeString(rowBuilder, user.getLogin());
+        int i = 0;
+        writeString(fieldBuilders.get(i++), owner);
+        writeString(fieldBuilders.get(i++), repo);
+        BIGINT.writeLong(fieldBuilders.get(i++), id);
+        writeString(fieldBuilders.get(i++), nodeId);
+        writeString(fieldBuilders.get(i++), url);
+        writeString(fieldBuilders.get(i++), repositoryUrl);
+        writeString(fieldBuilders.get(i++), labelsUrl);
+        writeString(fieldBuilders.get(i++), commentsUrl);
+        writeString(fieldBuilders.get(i++), eventsUrl);
+        writeString(fieldBuilders.get(i++), htmlUrl);
+        writeString(fieldBuilders.get(i++), timelineUrl);
+        BIGINT.writeLong(fieldBuilders.get(i++), number);
+        writeString(fieldBuilders.get(i++), state);
+        writeString(fieldBuilders.get(i++), title);
+        writeString(fieldBuilders.get(i++), body);
+        BIGINT.writeLong(fieldBuilders.get(i++), user.getId());
+        writeString(fieldBuilders.get(i++), user.getLogin());
 
         if (labels == null) {
-            rowBuilder.appendNull();
-            rowBuilder.appendNull();
+            fieldBuilders.get(i++).appendNull();
+            fieldBuilders.get(i++).appendNull();
         }
         else {
             // labels array
@@ -221,64 +222,64 @@ public class Issue
             for (Label label : labels) {
                 BIGINT.writeLong(labelIds, label.getId());
             }
-            ARRAY_BIGINT.writeObject(rowBuilder, labelIds.build());
+            ARRAY_BIGINT.writeObject(fieldBuilders.get(i++), labelIds.build());
 
             BlockBuilder labelNames = VARCHAR.createBlockBuilder(null, labels.size());
             for (Label label : labels) {
                 writeString(labelNames, label.getName());
             }
-            ARRAY_VARCHAR.writeObject(rowBuilder, labelNames.build());
+            ARRAY_VARCHAR.writeObject(fieldBuilders.get(i++), labelNames.build());
         }
 
         if (assignee == null) {
-            rowBuilder.appendNull();
-            rowBuilder.appendNull();
+            fieldBuilders.get(i++).appendNull();
+            fieldBuilders.get(i++).appendNull();
         }
         else {
-            BIGINT.writeLong(rowBuilder, assignee.getId());
-            writeString(rowBuilder, assignee.getLogin());
+            BIGINT.writeLong(fieldBuilders.get(i++), assignee.getId());
+            writeString(fieldBuilders.get(i++), assignee.getLogin());
         }
         if (milestone == null) {
-            rowBuilder.appendNull();
-            rowBuilder.appendNull();
+            fieldBuilders.get(i++).appendNull();
+            fieldBuilders.get(i++).appendNull();
         }
         else {
-            BIGINT.writeLong(rowBuilder, milestone.getId());
-            writeString(rowBuilder, milestone.getTitle());
+            BIGINT.writeLong(fieldBuilders.get(i++), milestone.getId());
+            writeString(fieldBuilders.get(i++), milestone.getTitle());
         }
-        BOOLEAN.writeBoolean(rowBuilder, locked);
-        writeString(rowBuilder, activeLockReason);
-        BIGINT.writeLong(rowBuilder, comments);
-        writeTimestamp(rowBuilder, closedAt);
-        writeTimestamp(rowBuilder, createdAt);
-        writeTimestamp(rowBuilder, updatedAt);
+        BOOLEAN.writeBoolean(fieldBuilders.get(i++), locked);
+        writeString(fieldBuilders.get(i++), activeLockReason);
+        BIGINT.writeLong(fieldBuilders.get(i++), comments);
+        writeTimestamp(fieldBuilders.get(i++), closedAt);
+        writeTimestamp(fieldBuilders.get(i++), createdAt);
+        writeTimestamp(fieldBuilders.get(i++), updatedAt);
         if (closedBy == null) {
-            rowBuilder.appendNull();
-            rowBuilder.appendNull();
+            fieldBuilders.get(i++).appendNull();
+            fieldBuilders.get(i++).appendNull();
         }
         else {
-            BIGINT.writeLong(rowBuilder, closedBy.getId());
-            writeString(rowBuilder, closedBy.getLogin());
+            BIGINT.writeLong(fieldBuilders.get(i++), closedBy.getId());
+            writeString(fieldBuilders.get(i++), closedBy.getLogin());
         }
-        writeString(rowBuilder, authorAssociation);
-        BOOLEAN.writeBoolean(rowBuilder, draft);
+        writeString(fieldBuilders.get(i++), authorAssociation);
+        BOOLEAN.writeBoolean(fieldBuilders.get(i++), draft);
         if (reactions == null) {
-            rowBuilder.appendNull();
-            rowBuilder.appendNull();
+            fieldBuilders.get(i++).appendNull();
+            fieldBuilders.get(i++).appendNull();
         }
         else {
-            writeString(rowBuilder, reactions.getUrl());
-            INTEGER.writeLong(rowBuilder, reactions.getTotalCount());
+            writeString(fieldBuilders.get(i++), reactions.getUrl());
+            INTEGER.writeLong(fieldBuilders.get(i++), reactions.getTotalCount());
         }
         if (performedViaGithubApp == null) {
-            rowBuilder.appendNull();
-            rowBuilder.appendNull();
-            rowBuilder.appendNull();
+            fieldBuilders.get(i++).appendNull();
+            fieldBuilders.get(i++).appendNull();
+            fieldBuilders.get(i).appendNull();
         }
         else {
-            BIGINT.writeLong(rowBuilder, performedViaGithubApp.getId());
-            writeString(rowBuilder, performedViaGithubApp.getSlug());
-            writeString(rowBuilder, performedViaGithubApp.getName());
+            BIGINT.writeLong(fieldBuilders.get(i++), performedViaGithubApp.getId());
+            writeString(fieldBuilders.get(i++), performedViaGithubApp.getSlug());
+            writeString(fieldBuilders.get(i), performedViaGithubApp.getName());
         }
     }
 }

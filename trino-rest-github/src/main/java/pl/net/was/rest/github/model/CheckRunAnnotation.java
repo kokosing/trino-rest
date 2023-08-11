@@ -98,20 +98,21 @@ public class CheckRunAnnotation
     }
 
     @Override
-    public void writeTo(BlockBuilder rowBuilder)
+    public void writeTo(List<BlockBuilder> fieldBuilders)
     {
-        writeString(rowBuilder, owner);
-        writeString(rowBuilder, repo);
-        BIGINT.writeLong(rowBuilder, checkRunId);
-        writeString(rowBuilder, path);
-        INTEGER.writeLong(rowBuilder, startLine);
-        INTEGER.writeLong(rowBuilder, endLine);
-        INTEGER.writeLong(rowBuilder, startColumn);
-        INTEGER.writeLong(rowBuilder, endColumn);
-        writeString(rowBuilder, annotationLevel);
-        writeString(rowBuilder, title);
-        writeString(rowBuilder, message);
-        writeString(rowBuilder, rawDetails);
-        writeString(rowBuilder, blobHref);
+        int i = 0;
+        writeString(fieldBuilders.get(i++), owner);
+        writeString(fieldBuilders.get(i++), repo);
+        BIGINT.writeLong(fieldBuilders.get(i++), checkRunId);
+        writeString(fieldBuilders.get(i++), path);
+        INTEGER.writeLong(fieldBuilders.get(i++), startLine);
+        INTEGER.writeLong(fieldBuilders.get(i++), endLine);
+        INTEGER.writeLong(fieldBuilders.get(i++), startColumn);
+        INTEGER.writeLong(fieldBuilders.get(i++), endColumn);
+        writeString(fieldBuilders.get(i++), annotationLevel);
+        writeString(fieldBuilders.get(i++), title);
+        writeString(fieldBuilders.get(i++), message);
+        writeString(fieldBuilders.get(i++), rawDetails);
+        writeString(fieldBuilders.get(i), blobHref);
     }
 }

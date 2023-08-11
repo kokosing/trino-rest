@@ -91,19 +91,20 @@ public class Runner
     }
 
     @Override
-    public void writeTo(BlockBuilder rowBuilder)
+    public void writeTo(List<BlockBuilder> fieldBuilders)
     {
-        writeString(rowBuilder, org);
-        writeString(rowBuilder, owner);
-        writeString(rowBuilder, repo);
-        BIGINT.writeLong(rowBuilder, id);
-        VARCHAR.writeString(rowBuilder, name);
-        VARCHAR.writeString(rowBuilder, os);
-        VARCHAR.writeString(rowBuilder, status);
-        BOOLEAN.writeBoolean(rowBuilder, busy);
+        int i = 0;
+        writeString(fieldBuilders.get(i++), org);
+        writeString(fieldBuilders.get(i++), owner);
+        writeString(fieldBuilders.get(i++), repo);
+        BIGINT.writeLong(fieldBuilders.get(i++), id);
+        VARCHAR.writeString(fieldBuilders.get(i++), name);
+        VARCHAR.writeString(fieldBuilders.get(i++), os);
+        VARCHAR.writeString(fieldBuilders.get(i++), status);
+        BOOLEAN.writeBoolean(fieldBuilders.get(i++), busy);
         if (labels == null) {
-            rowBuilder.appendNull();
-            rowBuilder.appendNull();
+            fieldBuilders.get(i++).appendNull();
+            fieldBuilders.get(i).appendNull();
         }
         else {
             // labels array
@@ -111,13 +112,13 @@ public class Runner
             for (Label label : labels) {
                 BIGINT.writeLong(labelIds, label.getId());
             }
-            ARRAY_BIGINT.writeObject(rowBuilder, labelIds.build());
+            ARRAY_BIGINT.writeObject(fieldBuilders.get(i++), labelIds.build());
 
             BlockBuilder labelNames = VARCHAR.createBlockBuilder(null, labels.size());
             for (Label label : labels) {
                 writeString(labelNames, label.getName());
             }
-            ARRAY_VARCHAR.writeObject(rowBuilder, labelNames.build());
+            ARRAY_VARCHAR.writeObject(fieldBuilders.get(i), labelNames.build());
         }
     }
 }

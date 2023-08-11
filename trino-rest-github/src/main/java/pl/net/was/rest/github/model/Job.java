@@ -131,21 +131,22 @@ public class Job
     }
 
     @Override
-    public void writeTo(BlockBuilder rowBuilder)
+    public void writeTo(List<BlockBuilder> fieldBuilders)
     {
-        writeString(rowBuilder, owner);
-        writeString(rowBuilder, repo);
-        BIGINT.writeLong(rowBuilder, id);
-        BIGINT.writeLong(rowBuilder, runId);
-        INTEGER.writeLong(rowBuilder, runAttempt);
-        writeString(rowBuilder, nodeId);
-        writeString(rowBuilder, headSha);
-        writeString(rowBuilder, status);
-        writeString(rowBuilder, conclusion);
-        writeTimestamp(rowBuilder, startedAt);
-        writeTimestamp(rowBuilder, completedAt);
-        writeString(rowBuilder, name);
-        INTEGER.writeLong(rowBuilder, stepsCount);
+        int i = 0;
+        writeString(fieldBuilders.get(i++), owner);
+        writeString(fieldBuilders.get(i++), repo);
+        BIGINT.writeLong(fieldBuilders.get(i++), id);
+        BIGINT.writeLong(fieldBuilders.get(i++), runId);
+        INTEGER.writeLong(fieldBuilders.get(i++), runAttempt);
+        writeString(fieldBuilders.get(i++), nodeId);
+        writeString(fieldBuilders.get(i++), headSha);
+        writeString(fieldBuilders.get(i++), status);
+        writeString(fieldBuilders.get(i++), conclusion);
+        writeTimestamp(fieldBuilders.get(i++), startedAt);
+        writeTimestamp(fieldBuilders.get(i++), completedAt);
+        writeString(fieldBuilders.get(i++), name);
+        INTEGER.writeLong(fieldBuilders.get(i), stepsCount);
         // not writing steps
     }
 
